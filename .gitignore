@@ -1,0 +1,33 @@
+imports/
+analysis/
+.tools/
+artifacts/
+.DS_Store
+.gradle/
+**/build/
+local.properties
+*.jks
+*.keystore
+
+# Local caches, editor state and generated files
+__pycache__/
+*.py[cod]
+.idea/
+.kotlin/
+*.iml
+*.log
+*.apk
+*.aab
+*.apks
+*.xapk
+
+# Private configuration, device exports and signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.p12
+*.pfx
+profile-setup.json
+portal-test.json
+worker-access.json

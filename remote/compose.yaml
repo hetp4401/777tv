@@ -1,0 +1,22 @@
+x-runner:
+  port: 8879
+  replicas: 3
+  ready: /health
+services:
+  worker:
+    build: .
+    ports: ["8879:8879"]
+    env_file: .env
+    devices: ["/dev/kvm:/dev/kvm"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - work:/work
+      - cache:/cache
+    cpus: "2.0"
+    mem_limit: 7g
+    shm_size: 512m
+    restart: unless-stopped
+volumes:
+  work:
+  cache:

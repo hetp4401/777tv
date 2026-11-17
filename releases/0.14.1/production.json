@@ -1,0 +1,131 @@
+{
+  "application": "777tv",
+  "applicationId": "xyz.billybishop4.fleet.tv",
+  "versionName": "0.14.1",
+  "versionCode": 18,
+  "snapshot": "Source corresponding to the installed production APK; repository documentation and ignore rules prepared separately.",
+  "verifiedAt": "2026-11-17T02:58:01.197973+00:00",
+  "apk": {
+    "file": "777tv-0.14.1-preview.apk",
+    "sha256": "29098dc0771eb6cfe987ce42153cdcd97d39a8acb6dda8a00d41d6bd96e62a18",
+    "bytes": 6266487,
+    "installedPackageHashVerified": true,
+    "nativeLibraries": 0
+  },
+  "productionSourceSha256": {
+    "app/build.gradle.kts": "2009d72db55200cdfcc0e27beb834c948e4e716b89d54e6663ef33ad4257ac65",
+    "app/src/main/AndroidManifest.xml": "13798c242ca12100629d1aca39c25d3d1106a4a64f4d2e85a73017ca6d8fa838",
+    "app/src/main/assets/THIRD_PARTY_NOTICES.md": "7bbdb71943ed6366efba1ec8ad3adc05ff6d37333159b9ee7db26536cff69dce",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/AddonSettingsScreen.kt": "b7d1094edc406c310bd43c7407c55927a70c969754c57ab9b83d0f56c5915f09",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Addons.kt": "8ce012ae17e02e39dc24adab4151893378e77156cdcce8895b803c9e171cf6bb",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/FleetModel.kt": "201a1b61cccf062434dcf1c2e84b8b5cf1891d7e268f57e5b2f9b64a367d5c3e",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Guide.kt": "e4afb9f80a40f1aca03e12e75a2e8a1f8823d0ca7d899cb4842e7b7ad51c0d46",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Http.kt": "24b5e8a90d77c368c303e67329992a2614792f1cb79a26b81f510c828f34334b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveChannelRow.kt": "9d927affe9496cc7e7a1af22418ff5776ccbb3bbfe0ea731c31ffbe7d695439a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveScreen.kt": "d2d2fd5333197dfd53e18b862b20578a032ab94f4a0a9b82d7652c31f56a0498",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/MainActivity.kt": "434fde91c9b1d776e4cd6127e0cfc3f861c3f179852c29a09e623408955deb58",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Models.kt": "ec3c917a4b838993a4c47c50ef9adf6d3bab6b385c7ee07764d3ae262fa73db9",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeAdapters.kt": "4618a438de2f79b13affda650e5e21cfafd9f1b6bffa1434cf4a03f50a14185c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeBrowse.kt": "88bb1b225ce9a429987eb12539fe1cd58f02b6f8aa24760d0c546aedb73a9b5b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeUi.kt": "6c89e77063d50c119a546fbae32444106724520125e7777c484b0c04c46990f7",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/PictureControls.kt": "9ff4a7ac808c2b6694e7fc0e7155b1dc7570e33e8e3daef7ff9946c8230f5985",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Playback.kt": "e5bee512455f071556f74fffd5efc1568e215dcf0805debc22d22de30ba12dd7",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Preferences.kt": "163389897248ecd94da80b56a5b6c5b4fe2766c894f2910d8eaf249702959aec",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ProviderForm.kt": "c35c29d91bb9df5022e6fd0b795fb207c9575e8e088756771c7c968821541127",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Repository.kt": "3ca9e8ca1d0515f29619806c189e31ed9a43f23b58da63ec5fff51f7f381746c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SearchScreen.kt": "d2a4172adbb1dbf02eaa3bb078fe87ab585a23f98a470976482f02402b39201a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SettingsScreen.kt": "2ca4e18ab4454da444d18aeceeabda53192447e183fe795a364d756e102cd931",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Stalker.kt": "8fe96960d30df73d5f4694cef6c777f927e05c4c7e859a43b4904b189499df42",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Store.kt": "429f5e8e7ddc79e1ea7de1d10f86ce7e9956ebc8b1b8fb677ce44794aea8ff75",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VideoPicture.kt": "61e99faabd02f03e60f179bcb48c9ec62f77b64b797e79328ae8a44b0044e3e0",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VodControls.kt": "95e98e692b1ba3532490288909b1508c1af1577008be874ed8e4ed6f64e5c1b0",
+    "app/src/main/res/drawable/fleet_icon.xml": "7ee412788f6f077cc84c61259207d56834047c53047395582ac0b81b571a05b3",
+    "app/src/main/res/drawable/ic_search.xml": "cbad918ba86c29515012c5b56976fdd423b9bf58e955b03de5f81610b1d3b19f",
+    "app/src/main/res/drawable/tv_banner.xml": "14983758b8949f645eee6dfb5796d35dc44ad0b3e8d1c56b38f181979da48116",
+    "app/src/main/res/layout/live_player.xml": "424758bc787f01863866ecae626f2775dedba88fbe97052bad908de60eb9ea39",
+    "app/src/main/res/layout/live_player_content.xml": "23c97249640061e9b6d66103b7895838e0ec6eed00d8e304b348fbb5b8203730",
+    "app/src/main/res/values/styles.xml": "eda8d33d4cd76ce9dd84e5b3f6ad57691f67f1c4f8933c77ae1c4e251043ef08",
+    "app/src/main/res/xml/data_extraction_rules.xml": "4c6f140d42cbf35e21ef83cd909993da77c8cdc67a7c0c5a31536ddcc438f7b0"
+  },
+  "buildConfigurationSha256": {
+    "build.gradle.kts": "5b59a737f79aff3069b158e3716c6c89df8d01d1f43a9b369058d20e564f4dce",
+    "settings.gradle.kts": "255089f15de031e855a5ee37bd5629df934fe2fe86ab620533341566f545c1f0",
+    "gradle.properties": "b2e84e0cb850407244f1120080aad6162dc92a2fbd29787a69ae3a8ac0a680f7",
+    "gradlew": "734b3879d3501dce471cf0522d3bcbafe76873d9fc5129345b67fb43bd15e933",
+    "gradlew.bat": "57931b17dd228e5c24dac90e815d0bf82477e831a4618dfab4136f5446b42a9f",
+    "gradle/wrapper/gradle-wrapper.jar": "81a82aaea5abcc8ff68b3dfcb58b3c3c429378efd98e7433460610fecd7ae45f",
+    "gradle/wrapper/gradle-wrapper.properties": "1bb6d43ff8af30abb0eaf03fe58f636ed9b37f758a748bf30a9cebd809639c9d",
+    "remote/toolchain.json": "b88c11435739ba313909d5c26178da754cc440fdd545bc9d146f51a60a34d8b3"
+  },
+  "validation": {
+    "unit": {
+      "tests": 60,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "lintErrors": 0,
+    "instrumentation": {
+      "scenarios": 29,
+      "failures": 0,
+      "skipped": 0,
+      "scope": "Current episode, search and catalog scenarios were rerun, with a same-worker before/after rapid/held navigation comparison. Prior startup/settings/playback evidence remains linked through the 0.14.0 report.",
+      "cases": [
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#backRestoresOffscreenPosterWithinItsHorizontalShelf",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#browsedSeasonSurvivesRecreationAndSeasonPickerTargetsTheChosenSeason",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#continueWatchingRetainsStoredEpisodeAndPlaysWhenMetadataFails",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#disabledResumeUsesNormalFirstSeasonWithoutResumeLabel",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#emptyAddonLinksOfferRefreshAndRecoverWithoutAutoplay",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#episodeRowContinuesBothWaysAcrossSeasonsWithoutLoadingStreamsOnFocus",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#episodeRowMatchesStreamRowForRapidAndHeldInput",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#finishedOrMissingEpisodeProgressFallsBackToNormalSelection",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#homeHasOnlyCompactShelvesAndOneOkOpensMovieStreams",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#moviePosterShowsStreamsDirectlyAndPlayerBackRestoresTheChosenTileAndQuery",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#movieStreamFailureKeepsDetailsAndRetryRecoversInline",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#nativeSearchKeyboardSubmitsResultsAndControlsStayVisible",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#pendingMovieStreamsCannotReplaceSelectedEpisodeSources",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#posterFocusFramesOnlyImagesAcrossSearchNavigationAndShelfRecycling",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#profilesHaveOnePrimaryAndOneMenuAndDeleteCancelPreservesData",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#sameStreamUrlWithDifferentHeadersKeepsBothChoicesAndRestoresTheChosenOne",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#searchControlsRemainAvailableWhenHomeOnlyHasSavedContentAndServerFails",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#searchReselectPreservesResultsAndClearReturnsFocusInOneAction",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#searchTabFromSourcesAndDirectionalNavigationReachTheSearchField",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#searchWithoutCatalogCapabilityOpensManagementAndDefaultsRestoreBrowsing",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#seriesRefreshRenewsLinksPreservesSourceAndDoesNotStealEpisodeFocus",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#seriesResumesNewestUnfinishedEpisodeAndExplicitBackSelectionWins",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#singleSeasonHasNoDeadFocusStopAndStreamChoiceRemainsExplicit",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#sourcesWithoutStreamCapabilityOpensManagementAndBackLoadsDefaultLinks",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#streamRowsLeadWithKnownMetadataAndLongPressKeepsCompleteDetails",
+        "xyz.billybishop4.fleet.tv.BrowseNavigationTest#unreadableAddonStorageOffersManagementFromSearchAndSources",
+        "xyz.billybishop4.fleet.tv.SearchCatalogTest#catalogYearAndGenreChoicesUseTheirManifestAndCancelOlderResponses",
+        "xyz.billybishop4.fleet.tv.SearchCatalogTest#groupedSearchKeepsLocalShelvesAndRestoresQueryPosterFocusOnBack",
+        "xyz.billybishop4.fleet.tv.SearchCatalogTest#sameAddonConfigurationsHaveDistinctCatalogChoicesWithoutExposingTheirUrls"
+      ]
+    },
+    "navigationComparison": {
+      "sameWorker": true,
+      "keysPerProfile": 18,
+      "before": {
+        "rapidEpisodeMoves": 8,
+        "heldEpisodeMoves": 6
+      },
+      "after": {
+        "rapidEpisodeMoves": 18,
+        "heldEpisodeMoves": 18
+      },
+      "streamMoves": 18
+    },
+    "physicalTvSample": {
+      "rapidMoves": 18,
+      "crossedSeasonBoundary": true,
+      "framesRendered": 84,
+      "jankyFrames": 0,
+      "p95FrameMs": 9,
+      "missedVsync": 0,
+      "note": "Bounded actual TCL UI-only rapid-scroll sample."
+    },
+    "limits": [
+      "Timing measurements use generated Android TV fixtures and include emulator/input IPC overhead. Progress is compared over the same number of delivered keys; no universal frame-rate guarantee is made. The actual TCL rapid episode and season-crossing check is recorded separately."
+    ]
+  }
+}
