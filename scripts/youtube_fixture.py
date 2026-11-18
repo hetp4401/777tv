@@ -15,7 +15,7 @@ def reset():
     with _lock:
         _state.clear()
         _state.update(requests=[],resolved=[],approve=False,deny=False,slow=False,fail=False,fail_playback=False,split_media=False,
-            no_heatmap=False,no_comments=False,fail_details=False)
+            no_heatmap=False,no_comments=False,fail_details=False,guest_fail=False,empty_guest=False)
 
 
 reset()
@@ -26,9 +26,9 @@ def snapshot():
         return json.loads(json.dumps(_state))
 
 
-def video(index,short=False):
-    identifier=('S' if short else 'V')+str(index).zfill(10)
-    name=('Short ' if short else 'Video ')+str(index)
+def video(index,short=False,prefix=None):
+    identifier=(prefix or ('S' if short else 'V'))+str(index).zfill(10)
+    name=('Guest video ' if prefix=='G' else 'Short ' if short else 'Video ')+str(index)
     metadata={'title':{'content':name},'metadata':{'contentMetadataViewModel':{'metadataRows':[
         {'metadataParts':[{'text':{'content':'Generated channel'}}]},
         {'metadataParts':[{'text':{'content':'Fixture video'}}]}]}}}
@@ -54,7 +54,7 @@ def handle_get(handler,path,query,root):
         q=parse_qs(query)
         if q.get('reset')==['1']:reset()
         with _lock:
-            for name in ['approve','deny','slow','fail','fail_playback','split_media','no_heatmap','no_comments','fail_details']:
+            for name in ['approve','deny','slow','fail','fail_playback','split_media','no_heatmap','no_comments','fail_details','guest_fail','empty_guest']:
                 if name in q:_state[name]=q[name]==['1']
         return handler.send({'ok':True})
     if path=='/youtube/state':return handler.send(snapshot())
@@ -122,7 +122,8 @@ def handle_post(handler,path):
     body=json.loads(handler.rfile.read(length) or b'{}')
     with _lock:
         _state['requests'].append({'path':path,'query':body.get('query',''),'authenticated':bool(handler.headers.get('Authorization')),
-            'client':body.get('context',{}).get('client',{}).get('clientName',''),'continuation':body.get('continuation','')})
+            'client':body.get('context',{}).get('client',{}).get('clientName',''),'continuation':body.get('continuation',''),
+            'browseId':body.get('browseId',''),'videoId':body.get('videoId','')})
         approved=_state['approve'];denied=_state['deny'];slow=_state['slow'];fail=_state['fail']
     if slow and path.endswith('/search') and body.get('query')=='slow':time.sleep(1)
     if fail:return handler.send({'error':'generated failure'},status=503)
@@ -139,8 +140,21 @@ def handle_post(handler,path):
         page=int(body.get('sequenceParams','shorts-1').rsplit('-',1)[-1])
         return handler.send({'entries':[{'command':{'reelWatchEndpoint':endpoint(page*12+n)}} for n in range(1,13)],'continuation':'shorts-'+str(page+1)})
     if path.endswith('/browse'):
+        identifier=body.get('browseId','')
+        if identifier.startswith('FEtopics_'):
+            with _lock:guest_fail=_state['guest_fail'];empty_guest=_state['empty_guest']
+            if guest_fail:return handler.send({'error':'generated guest failure'},status=503)
+            start={'FEtopics_music':100,'FEtopics_gaming':200,'FEtopics_news':300}.get(identifier,400)
+            return handler.send({'contents':[] if empty_guest else [video(start+n,prefix='G') for n in range(1,13)]})
         if not handler.headers.get('Authorization'):
             return handler.send({'contents':{'feedNudgeRenderer':{'subtitle':{'simpleText':'Sign in for recommendations, or search.'}}}})
+        personal={'FEsubscriptions':'U','FEhistory':'H','FEmy_youtube':'L','VLLL':'K'}
+        continuation=body.get('continuation','')
+        if continuation.startswith('fixture-library-'):identifier=continuation.removeprefix('fixture-library-')
+        if identifier in personal:
+            start=21 if continuation else 1
+            return handler.send({'contents':[video(n,prefix=personal[identifier]) for n in range(start,start+20)],
+                **({'continuationContents':{'nextContinuationData':{'continuation':'fixture-library-'+identifier}}} if not continuation else {})})
         rows=[]
         for title,start,short in [('Recommended',1,False),('New to you',13,False),('Shorts',25,True)]:
             rows.append({'shelfRenderer':{'title':{'simpleText':title},'content':{'horizontalListRenderer':{

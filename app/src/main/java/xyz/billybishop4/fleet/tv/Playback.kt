@@ -42,6 +42,8 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     private var pausedPictureAnchor:Long?=null
     private var pausedPictureRefresh:Runnable?=null
     private var controls: VodControls? = null
+    private var liveInfo:LiveInfoOverlay?=null
+    private var liveAnnounced=false
     private var youtubePanel:YouTubeWatchPanel?=null
     private var replayRequest:Job?=null
     private var replayRequested=false
@@ -60,6 +62,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         view.descendantFocusability=if(value)ViewGroup.FOCUS_AFTER_DESCENDANTS else ViewGroup.FOCUS_BLOCK_DESCENDANTS
         view.background=a.round(INK,radius=if(value)0 else 12);view.clipToOutline=!value
         if(value)(playerView?:view.findTag("button:Retry"))?.requestFocus()
+        if(value)liveInfo?.show() else liveInfo?.hide()
     }
     private var playerView: PlayerView? = null
     private var session: MediaSession? = null
@@ -102,14 +105,16 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             val builder=ExoPlayer.Builder(a).setMediaSourceFactory(DefaultMediaSourceFactory(source)).setTrackSelector(tracks)
                 .setSeekBackIncrementMs(prefs.seekSeconds*1000L).setSeekForwardIncrementMs(prefs.seekSeconds*1000L)
             val lowRam=(a.getSystemService(android.content.Context.ACTIVITY_SERVICE) as android.app.ActivityManager).isLowRamDevice
-            bufferBudgetBytes=(if(lowRam)16 else 24)*1024*1024
+            bufferBudgetBytes=(if(w.playbackMode==PlaybackMode.SHORTS){if(lowRam)6 else 8}else if(lowRam)16 else 24)*1024*1024
             // Bound encoded samples for every source, including high-bitrate on-demand files.
             // Decoder surfaces are separate; the byte target can overshoot by a media chunk.
             val load=DefaultLoadControl.Builder().setTargetBufferBytes(bufferBudgetBytes).setPrioritizeTimeOverSizeThresholds(false)
             if(w.live){val min=prefs.liveBufferSeconds*1000;load.setBufferDurationsMs(min,maxOf(15000,min*2),500,1000)}
+            else if(w.short)load.setBufferDurationsMs(5000,15000,500,1000)
             else load.setBufferDurationsMs(10000,30000,1000,2000)
             builder.setLoadControl(load.build())
             val exo=builder.build();player=exo
+            if(w.playbackMode==PlaybackMode.SHORTS)exo.repeatMode=Player.REPEAT_MODE_ONE
             // Do not even set an empty effect list for neutral playback: doing
             // so creates a GPU sink instead of the direct MediaCodec Surface.
             if(!picture.isNeutral) {
@@ -135,12 +140,13 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             p=if(w.live)LivePlayer(exo)else exo
             p.setAudioAttributes(AudioAttributes.DEFAULT,true)
             val pv=(LayoutInflater.from(a).inflate(R.layout.live_player,null) as PlayerView).apply{
-                player=p;useController=false;resizeMode=when(prefs.videoFit){"Fill"->AspectRatioFrameLayout.RESIZE_MODE_FILL;"Zoom"->AspectRatioFrameLayout.RESIZE_MODE_ZOOM;else->AspectRatioFrameLayout.RESIZE_MODE_FIT}
+                player=p;useController=false;resizeMode=if(w.short)AspectRatioFrameLayout.RESIZE_MODE_FIT else when(prefs.videoFit){"Fill"->AspectRatioFrameLayout.RESIZE_MODE_FILL;"Zoom"->AspectRatioFrameLayout.RESIZE_MODE_ZOOM;else->AspectRatioFrameLayout.RESIZE_MODE_FIT}
                 setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                 isFocusable=true;isFocusableInTouchMode=true;tag="native-player"
             };playerView=pv
             view.removeAllViews();view.addView(pv,FrameLayout.LayoutParams(-1,-1));if(fullscreen)pv.requestFocus()
         mediaPlayer=p
+        view.tag="playback-mode:${w.playbackMode.name.lowercase()}"
         buffering=a.column().apply {
             tag="playback-buffering";gravity=Gravity.CENTER;pad(12);background=a.round(0xB0080808.toInt())
             add(ProgressBar(a),width=a.dp(32),height=a.dp(32));gap(8)
@@ -158,8 +164,13 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                 },pictureControls={ showPictureControls() },
                 youtubePanel=if(w.title.type=="youtube")({comments:Boolean->showYouTubePanel(w,comments)}) else null).also { c ->
                 view.addView(c.view,FrameLayout.LayoutParams(-1,-1))
-                playerView?.setOnClickListener { c.show() }
+                playerView?.setOnClickListener { c.surfaceClick() }
                 c.show()
+            }
+        }else {
+            liveInfo=LiveInfoOverlay(a,w).also { info->
+                view.addView(info.view,FrameLayout.LayoutParams(-1,a.dp(150),Gravity.BOTTOM))
+                playerView?.setOnClickListener { info.show() };if(fullscreen)info.show()
             }
         }
         session=MediaSession.Builder(a,p).build()
@@ -168,7 +179,9 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                 if(mediaPlayer!==p)return
                 buffering?.visibility=if(state==Player.STATE_BUFFERING)View.VISIBLE else View.GONE
                 keepAwake(p)
-                if(state==Player.STATE_READY && w.title.type=="youtube" && !replayRequested) {
+                if(state==Player.STATE_READY && w.live && !liveAnnounced){liveAnnounced=true;if(fullscreen)liveInfo?.show()}
+                if(state==Player.STATE_READY && w.playbackMode==PlaybackMode.SHORTS)m.youtube.preloadShort(w)
+                if(state==Player.STATE_READY && w.playbackMode==PlaybackMode.YOUTUBE && !replayRequested) {
                     replayRequested=true
                     replayRequest=a.lifecycleScope.launch {
                         // No readiness polling, and fast clip changes cancel before optional metadata starts.
@@ -321,11 +334,13 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     }
     private fun keepAwake(p:Player){if(p.isPlaying||(p.playWhenReady&&p.playbackState==Player.STATE_BUFFERING))a.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)else a.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)}
     private fun detach(keepPictureControls:Boolean=false){
+        if(original.short)m.youtube.cancelShortPreload()
         replayRequest?.cancel();replayRequest=null;replayRequested=false;youtubePanel?.close();youtubePanel=null
         cancelPictureRefresh()
         if(!keepPictureControls) { pictureDialog?.dismiss();pictureDialog=null;pictureResult=null;pendingPictureFrame=false }
         progressJob?.cancel();progressJob=null
         controls?.close();controls=null
+        liveInfo?.close();liveInfo=null;liveAnnounced=false
         buffering=null
         val p=mediaPlayer;mediaPlayer=null;player=null;exoDecoder=""
         if(p!=null)playIntent=p.playWhenReady
@@ -364,13 +379,17 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             return if(event.keyCode in setOf(KeyEvent.KEYCODE_MEDIA_PLAY,KeyEvent.KEYCODE_MEDIA_PAUSE,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
                 KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,KeyEvent.KEYCODE_MEDIA_REWIND))controls?.dispatchKey(event)?:false else false
         }
-        if(original.short && (controls?.view?.visibility!=View.VISIBLE || event.keyCode in setOf(KeyEvent.KEYCODE_MEDIA_NEXT,KeyEvent.KEYCODE_MEDIA_PREVIOUS)) &&
+        if(original.short &&
             event.keyCode in setOf(KeyEvent.KEYCODE_DPAD_UP,KeyEvent.KEYCODE_DPAD_DOWN,KeyEvent.KEYCODE_MEDIA_NEXT,KeyEvent.KEYCODE_MEDIA_PREVIOUS)) {
             if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0)m.youtube.step(original,if(event.keyCode in setOf(KeyEvent.KEYCODE_DPAD_DOWN,KeyEvent.KEYCODE_MEDIA_NEXT))1 else -1)
             return true
         }
         if(!original.live)return controls?.dispatchKey(event)?:false
         if(mediaPlayer==null)return false
+        if(event.keyCode in setOf(KeyEvent.KEYCODE_MEDIA_PLAY,KeyEvent.KEYCODE_MEDIA_PAUSE,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))return true
+        if(event.keyCode in setOf(KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER,KeyEvent.KEYCODE_INFO)) {
+            if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0)liveInfo?.show();return true
+        }
         if(event.keyCode in listOf(KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,KeyEvent.KEYCODE_MEDIA_REWIND,KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD,KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD,KeyEvent.KEYCODE_MEDIA_NEXT,KeyEvent.KEYCODE_MEDIA_PREVIOUS,KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER))return true
         if(event.keyCode==KeyEvent.KEYCODE_MENU) {
             if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0)showPictureControls()
@@ -396,20 +415,22 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
 
 private fun exoTracks(p:Player,type:Int):List<PlaybackTrack> {
     val result=ArrayList<PlaybackTrack>()
+    val automatic=type==C.TRACK_TYPE_VIDEO && p.trackSelectionParameters.overrides.values.none{it.mediaTrackGroup.type==type}
+    if(type==C.TRACK_TYPE_VIDEO)result+=PlaybackTrack("auto","Auto",automatic)
     if(type==C.TRACK_TYPE_TEXT)result+=PlaybackTrack("off","Off",p.currentTracks.groups.none{it.type==type && it.isSelected})
     p.currentTracks.groups.forEachIndexed { groupIndex,group -> if(group.type==type) {
         for(i in 0 until group.length)if(group.isTrackSupported(i)) {
             val format=group.getTrackFormat(i)
-            val label=listOfNotNull(format.label?.takeIf{it.isNotBlank()},format.language?.takeIf{it!="und" && it.isNotBlank()},format.codecs)
+            val label=if(type==C.TRACK_TYPE_VIDEO)listOfNotNull(format.height.takeIf{it>0}?.let{"${it}p"},format.frameRate.takeIf{it>0}?.toInt()?.let{"$it fps"}).joinToString(" · ").ifBlank{"Video ${i+1}"} else listOfNotNull(format.label?.takeIf{it.isNotBlank()},format.language?.takeIf{it!="und" && it.isNotBlank()},format.codecs)
                 .distinct().joinToString(" · ").ifEmpty { (if(type==C.TRACK_TYPE_AUDIO)"Audio" else "Subtitles")+" ${i+1}" }
-            result+=PlaybackTrack("$groupIndex:$i",label,group.isTrackSelected(i))
+            result+=PlaybackTrack("$groupIndex:$i",label,group.isTrackSelected(i) && !automatic)
         }
     } }
     return result
 }
 private fun selectExoTrack(p:Player,type:Int,id:String) {
     val builder=p.trackSelectionParameters.buildUpon().clearOverridesOfType(type).setTrackTypeDisabled(type,id=="off")
-    if(id!="off") {
+    if(id!="off" && id!="auto") {
         val parts=id.split(':');if(parts.size!=2)return
         val group=p.currentTracks.groups.getOrNull(parts[0].toIntOrNull()?:return)?:return
         val track=parts[1].toIntOrNull()?:return

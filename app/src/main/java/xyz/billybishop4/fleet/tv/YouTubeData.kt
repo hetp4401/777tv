@@ -4,7 +4,11 @@ import java.net.URI
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal enum class YouTubeFeed { HOME, SHORTS, SEARCH }
+internal enum class YouTubeFeed {
+    HOME, SHORTS, SEARCH, SUBSCRIPTIONS, HISTORY, WATCH_LATER, LIKED;
+    val library get()=this==HISTORY || this==WATCH_LATER || this==LIKED
+    val requiresAccount get()=this==SUBSCRIPTIONS || this==WATCH_LATER || this==LIKED
+}
 internal data class YouTubeVideo(
     val id: String, val name: String, val thumbnail: String = "", val channel: String = "",
     val metadata: String = "", val duration: String = "", val isShort: Boolean = false, val live: Boolean = false,
@@ -78,7 +82,7 @@ internal object YouTubeDecode {
         }
         return found.take(limit)
     }
-    private val skip=setOf("menu", "onLongPress", "adSlotRenderer", "promotedVideoRenderer", "promotedSparklesWebRenderer",
+    private val skip=setOf("menu", "onLongPress", "onLongPressCommand", "onFocusCommand", "adSlotRenderer", "promotedVideoRenderer", "promotedSparklesWebRenderer",
         "adPlacements", "playerAds", "trackingParams", "loggingContext", "accessibility", "frameworkUpdates")
     fun page(j: JSONObject, onlyShorts: Boolean = false): YouTubePage {
         val videos=ArrayList<YouTubeVideo>(); val seen=HashSet<String>()
@@ -138,19 +142,25 @@ internal object YouTubeDecode {
             ?: endpoint?.optString("videoId")?.takeIf(::validId) ?: return null
         val metadata=j.optJSONObject("metadata")?.optJSONObject("lockupMetadataViewModel")
         val overlay=j.optJSONObject("overlayMetadata")
+        val header=j.optJSONObject("header")?.optJSONObject("tileHeaderRenderer")
+        val tile=j.optJSONObject("metadata")?.optJSONObject("tileMetadataRenderer")
+            ?:(find(header?.opt("thumbnailOverlays"),setOf("tileMetadataRenderer"),1).firstOrNull() as? JSONObject)
         val name=text(metadata?.opt("title")).ifBlank { text(j.opt("title")) }.ifBlank { text(j.opt("headline")) }
-            .ifBlank { text(overlay?.opt("primaryText")) }.ifBlank { text(j.optJSONObject("metadata")?.optJSONObject("tileMetadataRenderer")?.opt("title")) }
+            .ifBlank { text(overlay?.opt("primaryText")) }.ifBlank { text(tile?.opt("title")) }
         if(name.isBlank())return null
         val parts=find(metadata?.opt("metadata"),setOf("metadataParts")).filterIsInstance<JSONArray>().map { row ->
             row.objects().map { text(it.opt("text")) }.filter(String::isNotBlank).joinToString(" · ") }
-        val channel=parts.firstOrNull().orEmpty().ifBlank { text(j.opt("ownerText")) }.ifBlank { text(j.opt("shortBylineText")) }.ifBlank { text(j.opt("longBylineText")) }
+        val tileLines=find(tile?.opt("lines"),setOf("lineItemRenderer")).filterIsInstance<JSONObject>()
+            .map{text(it.opt("text"))}.filter{it.isNotBlank() && it!="•"}
+        val channel=parts.firstOrNull().orEmpty().ifBlank { text(j.opt("ownerText")) }.ifBlank { text(j.opt("shortBylineText")) }.ifBlank { text(j.opt("longBylineText")) }.ifBlank { tileLines.firstOrNull().orEmpty() }
         val badges=find(j.opt("contentImage"),setOf("thumbnailBadgeViewModel")).filterIsInstance<JSONObject>().map { text(it.opt("text")) }
-        val duration=text(j.opt("lengthText")).ifBlank { badges.firstOrNull { Regex("[0-9]+(?::[0-9]{2}){1,2}").matches(it) }.orEmpty() }
+        val time=(find(header?.opt("thumbnailOverlays"),setOf("thumbnailOverlayTimeStatusRenderer"),1).firstOrNull() as? JSONObject)
+        val duration=text(j.opt("lengthText")).ifBlank { badges.firstOrNull { Regex("[0-9]+(?::[0-9]{2}){1,2}").matches(it) }.orEmpty() }.ifBlank { text(time?.opt("text")) }
         val short=kind in setOf("shortsLockupViewModel", "reelItemRenderer") || type.contains("SHORT") ||
             find(j,setOf("reelWatchEndpoint"),1).isNotEmpty() || j.optJSONObject("styling")?.optString("contentImageAspectRatio").orEmpty().contains("9_BY_16")
-        return YouTubeVideo(id,name.take(500),image(j.opt("contentImage")?:j.opt("thumbnail")),channel.take(500),
-            parts.drop(1).joinToString(" · ").ifBlank { text(j.opt("viewCountText")) }.take(500),duration,short,
-            badges.any { it.equals("LIVE",true) } || j.optBoolean("isLive"))
+        return YouTubeVideo(id,name.take(500),image(j.opt("contentImage")?:j.opt("thumbnail")?:header?.opt("thumbnail")),channel.take(500),
+            parts.drop(1).joinToString(" · ").ifBlank { text(j.opt("viewCountText")) }.ifBlank { tileLines.drop(1).joinToString(" · ") }.take(500),duration,short,
+            badges.any { it.equals("LIVE",true) } || time?.optString("style")=="LIVE" || j.optBoolean("isLive"))
     }
     fun bootstrap(html:String,origin:String):YouTubeBootstrap {
         fun match(pattern:String)=Regex(pattern).find(html)?.groupValues?.get(1).orEmpty()

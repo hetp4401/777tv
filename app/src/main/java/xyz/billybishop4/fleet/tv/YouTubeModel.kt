@@ -37,6 +37,8 @@ internal class YouTubeModel(
     private var queueFeed=YouTubeFeed.HOME
     private var requestedVideo:String?=null
     private var displayedKey:String?=null
+    private var preloadJob:Job?=null;private var preloadId:String?=null;private var preloadGeneration=0
+    private var preloaded:Watch?=null
     private fun key()="$feed/${if(feed==YouTubeFeed.SEARCH)query.trim() else ""}"
     fun activate() {
         active=true
@@ -124,18 +126,22 @@ internal class YouTubeModel(
     }
     fun play(video:YouTubeVideo,group:List<YouTubeVideo>?=null) {
         queryJob?.cancel()
-        queue=group?:videos;queueFeed=feed;queueContinuation=continuation.takeIf{group==null}
+        pages.remove("HOME/");pages.remove("HISTORY/")
+        val items=group?:videos;queue=if(video.isShort)items.filter{it.isShort} else items
+        queueFeed=feed;queueContinuation=continuation.takeIf{group==null && (!video.isShort || feed==YouTubeFeed.SHORTS)}
         resolve(video,false)
     }
     fun playRelated(video:YouTubeVideo,related:List<YouTubeVideo>,done:()->Unit) {
-        queue=related;queueContinuation=null;queueFeed=YouTubeFeed.HOME
+        queue=if(video.isShort)related.filter{it.isShort} else related;queueContinuation=null;queueFeed=YouTubeFeed.HOME
         resolve(video,true,done)
     }
     private fun resolve(video:YouTubeVideo,replace:Boolean,done:(()->Unit)?=null) {
+        val warm=preloaded?.takeIf{it.title.id==video.id && System.currentTimeMillis()-it.resolvedAtMs in 0..60_000L}
+        cancelShortPreload()
         resolveJob?.cancel();val generation=++resolveGeneration;resolving=true;requestedVideo=video.id;error=null
         resolveJob=scope.launch {
             try {
-                val watch=resolver.resolve(video)
+                val watch=warm?:resolver.resolve(video)
                 if(generation==resolveGeneration) { resolving=false;requestedVideo=null;open(watch,replace) }
             } catch(e:CancellationException){throw e}
             catch(e:Exception) { if(generation==resolveGeneration) {
@@ -145,7 +151,22 @@ internal class YouTubeModel(
             finally { if(generation==resolveGeneration){resolving=false;requestedVideo=null};done?.invoke() }
         }
     }
-    fun cancelPlayback() { resolveJob?.cancel();resolveJob=null;resolveGeneration++;resolving=false;requestedVideo=null }
+    fun cancelPlayback() { resolveJob?.cancel();resolveJob=null;resolveGeneration++;resolving=false;requestedVideo=null;cancelShortPreload() }
+    /** One upcoming clip's URL only. No second player, decoder or media buffer is allocated. */
+    fun preloadShort(watch:Watch) {
+        if(!watch.short)return
+        val index=queue.indexOfFirst{it.id==watch.title.id};if(index<0)return
+        val next=queue.getOrNull(index+1)?:return
+        if(preloadId==next.id || preloaded?.let{it.title.id==next.id && System.currentTimeMillis()-it.resolvedAtMs in 0..60_000L}==true)return
+        cancelShortPreload();preloadId=next.id;val generation=preloadGeneration
+        preloadJob=scope.launch {
+            try { delay(600);val resolved=resolver.resolve(next);if(generation==preloadGeneration)preloaded=resolved }
+            catch(e:CancellationException){throw e}
+            catch(_:Exception){ /* An optional warmup never delays or fails the current clip. */ }
+            finally{if(generation==preloadGeneration)preloadId=null}
+        }
+    }
+    fun cancelShortPreload(){preloadJob?.cancel();preloadJob=null;preloadGeneration++;preloadId=null;preloaded=null}
     fun step(watch:Watch,direction:Int) {
         if(!watch.short || queue.isEmpty())return
         val id=requestedVideo?:watch.title.id
@@ -200,9 +221,13 @@ internal class YouTubeModel(
         }
     }
     fun trimMemory(keepPage:Boolean=false) {
-        pages.clear()
+        pages.clear();cancelShortPreload()
         if(!keepPage){queue=emptyList();queueContinuation=null}
         if(!active && !keepPage){videos=emptyList();homeShelves=emptyList();continuation=null;message=""}
+    }
+    fun historyCleared() {
+        pages.remove("HOME/");pages.remove("HISTORY/")
+        if(feed==YouTubeFeed.HOME || feed==YouTubeFeed.HISTORY){videos=emptyList();homeShelves=emptyList();displayedKey=null;if(active)load(force=true)}
     }
     internal fun installFixturePage(feed:YouTubeFeed,page:YouTubePage) {
         pageJob?.cancel();queryJob?.cancel();pageGeneration++;this.feed=feed;query="";videos=page.videos;homeShelves=if(feed==YouTubeFeed.HOME)mergeShelves(emptyList(),page.shelves,page.videos) else emptyList();continuation=page.continuation;message=page.message;busy=false;error=null

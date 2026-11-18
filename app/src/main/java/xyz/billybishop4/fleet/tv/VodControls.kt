@@ -21,7 +21,7 @@ import androidx.media3.common.Player
 
 internal data class PlaybackTrack(val id: String, val label: String, val selected: Boolean)
 
-/** Remote-first on-demand controls. Live TV has no transport overlay. */
+/** Source-specific controls: portrait Shorts, YouTube transport, and movie/episode transport. */
 internal class VodControls(
     private val a: MainActivity,
     private val watch: Watch,
@@ -68,11 +68,12 @@ internal class VodControls(
         }
     }
     private val playIcon = ControlIcon(ControlIcon.PAUSE)
-    private val heatmap=if(watch.title.type=="youtube")YouTubeHeatmapView(a,bar) else null
+    private val heatmap=if(watch.playbackMode==PlaybackMode.YOUTUBE)YouTubeHeatmapView(a,bar) else null
     private val play = iconButton("Pause", "vod-play-pause", playIcon) { togglePlayback() }
     private val rewind = iconButton("Back $seekSeconds seconds", "vod-rewind", ControlIcon(ControlIcon.REWIND, seekSeconds)) { skip(-1) }
     private val forward = iconButton("Forward $seekSeconds seconds", "vod-forward", ControlIcon(ControlIcon.FORWARD, seekSeconds)) { skip(1) }
     private val trackButton = iconButton("Audio & subtitles", "vod-tracks", ControlIcon(ControlIcon.TRACKS)) { showTrackOptions() }
+    private val quality=if(watch.playbackMode==PlaybackMode.YOUTUBE)iconButton("Video quality","youtube-quality",ControlIcon(ControlIcon.QUALITY)){chooseTrack(C.TRACK_TYPE_VIDEO)} else null
     private val options = iconButton("Picture controls", "vod-options", ControlIcon(ControlIcon.SETTINGS)) { openPictureControls() }
     private val closeButton = iconButton(if(watch.title.type=="youtube")"Back to YouTube" else "Back to streams", "vod-close", ControlIcon(ControlIcon.CLOSE)) { exit() }
     private val relatedButton=if(youtubePanel!=null)a.action("Related","Related videos"){openYouTubePanel(false)}.quiet() else null
@@ -133,6 +134,7 @@ internal class VodControls(
     }
     init {
         require(!watch.live) { "Live TV does not have transport controls" }
+        if(watch.short)buildShorts() else {
         view.addView(View(a).apply {
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             background = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
@@ -181,6 +183,7 @@ internal class VodControls(
                     addView(elapsed, LinearLayout.LayoutParams(0, -2, 1f)); add(remaining, width = -2)
                 }, FrameLayout.LayoutParams(-1, timeHeight, Gravity.BOTTOM).apply { leftMargin = a.dp(4); rightMargin = a.dp(4) })
             }, LinearLayout.LayoutParams(0, stripHeight, 1f).apply { marginStart = a.dp(16); marginEnd = a.dp(16) })
+            quality?.let { addView(it,LinearLayout.LayoutParams(a.dp(44),a.dp(44)).apply{marginEnd=a.dp(6)}) }
             addView(trackButton, LinearLayout.LayoutParams(a.dp(44), a.dp(44)).apply { marginEnd = a.dp(8) })
             addView(options, LinearLayout.LayoutParams(a.dp(44), a.dp(44)))
         }, height = stripHeight)
@@ -192,7 +195,7 @@ internal class VodControls(
             commentsButton.nextFocusLeftId=relatedButton.id;commentsButton.nextFocusRightId=closeButton.id;closeButton.nextFocusLeftId=commentsButton.id
             listOf(relatedButton,commentsButton).forEach { it.nextFocusDownId=bar.id;it.nextFocusUpId=it.id }
         }
-        val bottom = listOf(rewind, play, forward, trackButton, options)
+        val bottom = listOfNotNull(rewind, play, forward, quality, trackButton, options)
         bottom.forEachIndexed { index, button ->
             button.nextFocusLeftId = bottom[(index - 1).coerceAtLeast(0)].id
             button.nextFocusRightId = bottom[(index + 1).coerceAtMost(bottom.lastIndex)].id
@@ -233,12 +236,40 @@ internal class VodControls(
         }
         bar.setOnFocusChangeListener { _, focused -> if (!focused) { touchPosition = null; finishHold() } }
         bar.setOnTouchListener { _, event -> if (event.actionMasked == MotionEvent.ACTION_CANCEL) { touchPosition = null; update(); scheduleHide() }; false }
+        }
         view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: View) { if (view.visibility == View.VISIBLE) { startTicker(); scheduleHide(); publishInset() } }
             override fun onViewDetachedFromWindow(v: View) { main.removeCallbacks(ticker); main.removeCallbacks(hideLater); publishInset() }
         })
         view.viewTreeObserver.addOnWindowFocusChangeListener(windowFocus)
         player.addListener(listener)
+    }
+    private fun buildShorts() {
+        val videoWidth=(a.resources.displayMetrics.heightPixels*9/16).coerceAtMost(a.resources.displayMetrics.widthPixels)
+        view.addView(View(a).apply {
+            importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            background=GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,intArrayOf(Color.TRANSPARENT,0xAA000000.toInt()))
+        },FrameLayout.LayoutParams(videoWidth,a.dp(116),Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL))
+        view.addView(a.column().apply {
+            tag="shorts-title"
+            add(a.text(watch.title.name,15f,bold=true).apply { maxLines=2;ellipsize=TextUtils.TruncateAt.END })
+            gap(5);add(a.text(watch.title.description,11f,MUTED).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END })
+        },FrameLayout.LayoutParams((videoWidth-a.dp(32)).coerceAtLeast(a.dp(80)),-2,Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin=a.dp(30) })
+        bar.apply { tag="shorts-progress";isFocusable=false;isClickable=false;isEnabled=false;minimumHeight=0;thumb=null;setPadding(0,0,0,0);importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO }
+        view.addView(bar,FrameLayout.LayoutParams(videoWidth,a.dp(2),Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin=a.dp(12) })
+        panel.tag="shorts-actions";panel.isClickable=false;panel.gravity=Gravity.END
+        panel.add(a.text("↑ Previous    ↓ Next",11f,MUTED).apply { gravity=Gravity.END },height=a.dp(24))
+        val actions=listOfNotNull(play,commentsButton,options,closeButton)
+        panel.add(a.row().apply {
+            for(button in actions)addView(button,LinearLayout.LayoutParams(if(button===commentsButton)a.dp(106) else a.dp(44),a.dp(44)).apply { marginStart=a.dp(4) })
+        },width=-2,height=a.dp(44))
+        for((index,button) in actions.withIndex()) {
+            button.nextFocusLeftId=actions[(index-1).coerceAtLeast(0)].id
+            button.nextFocusRightId=actions[(index+1).coerceAtMost(actions.lastIndex)].id
+        }
+        view.addView(panel,FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.END).apply { rightMargin=a.dp(24);bottomMargin=a.dp(24) })
+        view.addOnLayoutChangeListener(insetLayout);panel.addOnLayoutChangeListener(insetLayout)
+        view.setOnClickListener{dismiss()}
     }
     private fun iconButton(label: String, tag: String, drawable: ControlIcon, action: () -> Unit) = ImageButton(a).apply {
         contentDescription = label; this.tag = tag; id = View.generateViewId()
@@ -259,6 +290,7 @@ internal class VodControls(
         publishInset(); view.post { publishInset() }
         if (focus) view.post { if (!closed && view.isShown && view.hasWindowFocus()) play.requestFocus() }
     }
+    fun surfaceClick(){if(watch.short)togglePlayback() else show()}
     /** Back dismisses the overlay; a later Back may exit. */
     fun dismiss(): Boolean {
         if (closed || view.visibility != View.VISIBLE) return false
@@ -282,7 +314,7 @@ internal class VodControls(
     }
     private fun duration() = player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0
     private fun position() = player.currentPosition.coerceAtLeast(0)
-    private fun canSeek() = player.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) && duration() > 0
+    private fun canSeek() = !watch.short && player.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) && duration() > 0
     private fun submitSeek(at: Long) {
         if (closed || !canSeek()) return
         val target = at.coerceIn(0, duration())
@@ -323,14 +355,14 @@ internal class VodControls(
         if (closed || view.visibility != View.VISIBLE) return
         val total = duration(); val at = (touchPosition ?: queuedSeek ?: position()).let { if (total > 0) it.coerceAtMost(total) else it }
         heatmap?.duration(total)
-        val seekable = canSeek(); bar.isEnabled = seekable; rewind.isEnabled = seekable; forward.isEnabled = seekable
-        rewind.alpha = if (seekable) 1f else .4f; forward.alpha = rewind.alpha
+        val seekable = canSeek();bar.isEnabled=seekable
+        if(!watch.short){rewind.isEnabled=seekable;forward.isEnabled=seekable;rewind.alpha=if(seekable)1f else .4f;forward.alpha=rewind.alpha}
         bar.progress = if (total > 0) (at.toDouble() / total * bar.max).toInt() else 0
         bar.secondaryProgress = if (total > 0) (player.bufferedPosition.coerceAtLeast(at).toDouble().coerceAtMost(total.toDouble()) / total * bar.max).toInt() else 0
         val second = at / 1000
-        if (elapsedSecond != second) { elapsedSecond = second; elapsed.text = format(at) }
+        if (!watch.short && elapsedSecond != second) { elapsedSecond = second; elapsed.text = format(at) }
         val left = if (total > 0) (total - at).coerceAtLeast(0) / 1000 else -1
-        if (remainingSecond != left) { remainingSecond = left; remaining.text = if (left < 0) "–:–" else "−${format(left * 1000)}" }
+        if (!watch.short && remainingSecond != left) { remainingSecond = left; remaining.text = if (left < 0) "–:–" else "−${format(left * 1000)}" }
         val ended = player.playbackState == Player.STATE_ENDED
         val paused = !player.playWhenReady || ended
         playIcon.mode = if (paused) ControlIcon.PLAY else ControlIcon.PAUSE
@@ -355,7 +387,9 @@ internal class VodControls(
             KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> return consume { skip(1) }
             KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> return consume { }
         }
-        if(code==KeyEvent.KEYCODE_DPAD_DOWN && youtubePanel!=null &&
+        if(watch.short && code in setOf(KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER) &&
+            (view.visibility!=View.VISIBLE || !view.hasFocus() || play.hasFocus()))return consume{togglePlayback()}
+        if(!watch.short && code==KeyEvent.KEYCODE_DPAD_DOWN && youtubePanel!=null &&
             (view.visibility!=View.VISIBLE || listOf(play,rewind,forward,trackButton,options).any { it.hasFocus() }))
             return consume { openYouTubePanel(false) }
         val navigation = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT
@@ -381,9 +415,9 @@ internal class VodControls(
             if (closed || token != trackRequest || view.visibility != View.VISIBLE) return@post
             loadingTracks = false; feedback.visibility = View.GONE
             if (available.isEmpty()) {
-                feedback.text = if (type == C.TRACK_TYPE_AUDIO) "No audio tracks available." else "No subtitle tracks available."
+                feedback.text = if (type == C.TRACK_TYPE_AUDIO) "No audio tracks available." else if(type==C.TRACK_TYPE_VIDEO)"No video qualities available." else "No subtitle tracks available."
                 feedback.visibility = View.VISIBLE; interacted()
-            } else dialog = a.chooseOption(if (type == C.TRACK_TYPE_AUDIO) "Audio track" else "Subtitles", available.map { it.label }, available.indexOfFirst { it.selected }) { index ->
+            } else dialog = a.chooseOption(if (type == C.TRACK_TYPE_AUDIO) "Audio track" else if(type==C.TRACK_TYPE_VIDEO)"Video quality" else "Subtitles", available.map { it.label }, available.indexOfFirst { it.selected }) { index ->
                 if (!closed) { selectTrack(type, available[index].id); interacted() }
             }
         } }
@@ -406,7 +440,7 @@ internal class VodControls(
 
 /** Small monochrome vector controls; no bitmap assets or per-frame path allocation. */
 private class ControlIcon(initial: Int, private val seconds: Int = 10) : Drawable() {
-    companion object { const val PLAY=0; const val PAUSE=1; const val REWIND=2; const val FORWARD=3; const val SETTINGS=4; const val CLOSE=5; const val TRACKS=6 }
+    companion object { const val PLAY=0; const val PAUSE=1; const val REWIND=2; const val FORWARD=3; const val SETTINGS=4; const val CLOSE=5; const val TRACKS=6; const val QUALITY=7 }
     var mode = initial
         set(value) { if (field != value) { field = value; invalidateSelf() } }
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = WHITE; strokeWidth = 2.2f; strokeCap = Paint.Cap.ROUND }
@@ -426,6 +460,7 @@ private class ControlIcon(initial: Int, private val seconds: Int = 10) : Drawabl
             }
             SETTINGS -> { paint.style=Paint.Style.STROKE;canvas.drawLine(5f,8f,27f,8f,paint);canvas.drawLine(5f,16f,27f,16f,paint);canvas.drawLine(5f,24f,27f,24f,paint);paint.style=Paint.Style.FILL;canvas.drawCircle(12f,8f,3f,paint);canvas.drawCircle(22f,16f,3f,paint);canvas.drawCircle(10f,24f,3f,paint) }
             CLOSE -> { paint.style=Paint.Style.STROKE;canvas.drawLine(8f,8f,24f,24f,paint);canvas.drawLine(24f,8f,8f,24f,paint) }
+            QUALITY -> { paint.typeface=Typeface.DEFAULT_BOLD;paint.textSize=15f;paint.textAlign=Paint.Align.CENTER;canvas.drawText("HD",16f,22f,paint) }
             TRACKS -> { paint.style=Paint.Style.STROKE;canvas.drawRoundRect(3f,5f,29f,27f,4f,4f,paint);canvas.drawLine(8f,13f,14f,13f,paint);canvas.drawLine(18f,13f,24f,13f,paint);canvas.drawLine(8f,20f,24f,20f,paint) }
         }
         canvas.restore()

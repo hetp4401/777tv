@@ -26,7 +26,7 @@ class YouTubeNavigationTest:NativeTestBase() {
             a.model.store.youTubeCredentials().write(null);a.model.youtubeFixture(base);a.model.top(Section.YOUTUBE)
         }
         await{tagged("youtube-page")?.isShown==true && ui{!a.model.youtube.busy}}
-        await{find("Make YouTube yours")!=null}
+        await{ui{a.model.youtube.videos.isNotEmpty() && a.model.youtube.account==null}}
     }
     @After fun cleanup() {
         ui { a.model.top(Section.SEARCH);a.model.store.youTubeCredentials().write(null);a.model.updatePreferences(Preferences()) }
@@ -53,11 +53,12 @@ class YouTubeNavigationTest:NativeTestBase() {
         await(20000){ui{a.model.youtube.account!=null} && device.findObject(By.text("TV-FIXTURE"))==null && ui{a.hasWindowFocus()}}
         await{ui{!a.model.youtube.busy}}
     }
-    @Test fun youtubeIsBesideOnDemandAndStartsWithAnHonestSignedOutHome() {
+    @Test fun youtubeIsBesideOnDemandAndRecommendationsWorkWithoutAnAccount() {
         val bounds=ui{listOf("Live TV","On-Demand","YouTube").map{a.window.decorView.findTag("navigation:$it")!!.let{v->android.graphics.Rect().apply{v.getGlobalVisibleRect(this)}}}}
         assertTrue(bounds[0].right<=bounds[1].left);assertTrue(bounds[1].right<=bounds[2].left)
-        assertEquals("On-Demand",ui{Preferences().startSection});assertTrue(videos().isEmpty())
-        assertNotNull(find("Make YouTube yours"));assertNotNull(tagged("field:Search YouTube"));assertNull(player())
+        assertEquals("On-Demand",ui{Preferences().startSection});assertTrue(videos().isNotEmpty())
+        assertNull(ui{a.model.youtube.account});assertEquals("Discover",ui{a.model.youtube.homeShelves.first().name})
+        assertNotNull(tagged("field:Search YouTube"));assertNull(player())
         assertFalse(ui{descendants(a.window.decorView).any{it is android.webkit.WebView}})
         assertTrue(audit().getJSONArray("resolved").length()==0)
         screenshot("youtube-signed-out-home")
@@ -98,7 +99,9 @@ class YouTubeNavigationTest:NativeTestBase() {
         assertTrue(ui{a.player!!.videoSize.height>a.player!!.videoSize.width})
         ui{a.playback!!.dismissControls()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
         await(30000){ui{(a.model.route as? Route.Player)?.watch?.title?.id==next.id && a.player?.isPlaying==true}}
-        assertEquals(2,audit().getJSONArray("resolved").length())
+        val resolved=audit().getJSONArray("resolved").let{j->(0 until j.length()).map{j.getString(it)}}
+        assertTrue(resolved.contains(first.id) && resolved.contains(next.id))
+        assertTrue("Only the active and one upcoming clip may resolve",resolved.all{it in rows.take(3).map{v->v.id}})
         returnFromPlayer();assertTrue(ui{a.model.route==Route.Browse(Section.YOUTUBE)})
         screenshot("youtube-shorts")
     }
@@ -155,7 +158,7 @@ class YouTubeNavigationTest:NativeTestBase() {
     @Test fun signOutKeepsOnDemandDataAndClearsPersonalRecommendations() {
         signIn();val title=Title("fixture-saved-title","Saved fixture");ui{a.model.toggle(title)}
         click("YouTube account");click("Sign out");click("Sign out")
-        await{ui{a.model.youtube.account==null && !a.model.youtube.busy && a.model.youtube.videos.isEmpty()}}
+        await{ui{a.model.youtube.account==null && !a.model.youtube.busy && a.model.youtube.videos.isNotEmpty() && a.model.youtube.videos.all{it.id.startsWith("G")}}}
         assertTrue(ui{a.model.saved.any{it.id==title.id}});assertNull(ui{a.model.store.youTubeCredentials().read()})
         ui{a.model.toggle(title)}
     }

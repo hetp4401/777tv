@@ -8,6 +8,16 @@ import org.junit.Test
 
 /** Opt-in live interoperability smoke test; ordinary regression suites use generated fixtures. */
 class YouTubeLiveProbeTest {
+    @Test fun liveUnsignedRecommendationsHavePlayableCardsArtworkAndNoAccount()=runBlocking {
+        assumeTrue("Set YOUTUBE_LIVE_PROBE=1 for live YouTube verification",System.getenv("YOUTUBE_LIVE_PROBE")=="1")
+        val store=MemoryYouTubeCredentials();val client=YouTubeClient(store)
+        val home=client.page(YouTubeFeed.HOME)
+        assertTrue("Expected real signed-out recommendations",home.videos.size>=10)
+        assertTrue(home.shelves.size>=3);assertEquals("Discover",home.shelves.first().name)
+        assertTrue(home.videos.all{YouTubeDecode.validId(it.id) && it.name.isNotBlank() && isHttp(it.thumbnail)})
+        assertNull(client.account());assertEquals(0,store.writes)
+        println("Verified signed-out YouTube recommendations: ${home.videos.size} videos in ${home.shelves.size} native shelves, no account created")
+    }
     @Test fun liveSearchShortsPairingAndPublicVideoResolve()=runBlocking {
         assumeTrue("Set YOUTUBE_LIVE_PROBE=1 for live YouTube verification",System.getenv("YOUTUBE_LIVE_PROBE")=="1")
         val store=MemoryYouTubeCredentials();val client=YouTubeClient(store)

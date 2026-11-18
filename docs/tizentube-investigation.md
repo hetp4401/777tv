@@ -51,9 +51,10 @@ tokens use a separate Android Keystore AES-GCM store, excluded from backup.
 Refreshing is serialized; revoked sessions require sign-in again. Sign-out clears
 personal recommendation pages without changing on-demand add-ons or IPTV data.
 
-The signed-out Home preserves YouTube's sign-in/search empty state rather than
-inserting unrelated trending videos. Personalized recommendations require
-successful user approval. YouTube watch progress is local and separate from
+Signed-out Home uses public TV Music, Gaming and News feeds, interleaved into
+Discover and separate topic rows. When a locally recorded video has been watched
+for at least 30 seconds, public watch-next also supplies a related-video row.
+Account-personalized recommendations require successful Google approval. YouTube watch progress is local and separate from
 movie/show progress; this feature does not claim to synchronize YouTube watch
 history or implement subscriptions, posting comments, likes or casting.
 
@@ -139,3 +140,54 @@ Artwork is decoded for its displayed frame with a pixel-accounted 8 MiB budget
 (4 MiB on low-memory devices). Replacing an image in an already measured, fixed
 frame invalidates its pixels without remeasuring the browsing hierarchy. Normal
 layout requests remain enabled for parent resizing and wrap-content artwork.
+
+
+## Guest recommendations and account feeds (0.18.0)
+
+The live anonymous TV `default`/`FEwhat_to_watch` feed currently returns a sign-in
+nudge. Public `FEtopics_music`, `FEtopics_gaming` and `FEtopics_news` return video
+cards without an account or cookie jar. The native client requests these with
+at most two concurrent calls and no account bearer, discards response trees,
+and retains bounded card metadata. This follows public TV browse routes also
+used by [SmartTube’s media service](https://github.com/yuliskov/MediaServiceCore/blob/master/youtubeapi/src/main/java/com/liskovsoft/youtubeapi/browse/v2/BrowseApiHelper.kt).
+A live Kotlin check returned 43 videos across Discover and three topic shelves.
+No Google account was created or authorized by that check.
+
+The current TV hero cards put titles, channel metadata, artwork and duration
+inside their thumbnail headers. The parser now handles these alongside legacy
+and modern lockups, still excluding playlists, channels, menus and promotions.
+Signed-in Home retains its personalized response instead of mixing public
+fallback content into the account feed.
+
+Subscriptions use `FEsubscriptions`. Library has History, Watch Later and Liked
+videos. Signed-in views use their account feed endpoints and continuations;
+signed-out History reads the existing maximum of 50 local progress records.
+Account-only pages offer a direct sign-in action and make no anonymous private
+feed requests. Sign-out clears personal page caches; Clear watch history also
+invalidates local history and its suggestion seeds. Actual private feed contents
+still require the account owner to complete Google’s approval; generated fixtures
+cover those account transitions and pages.
+
+## Player presentations (0.18.0)
+
+- Shorts retain the portrait picture even when movie sizing is set to Zoom.
+  Their controls show title/creator, a read-only progress line and compact actions
+  beside the picture. Center toggles playback; Up/Down changes clips even with
+  controls visible. Clips loop. A cancellable warmup retains only the next clip’s
+  resolved URL/metadata for up to one minute, with no second decoder or buffer.
+  Leaving playback, memory pressure or another explicit selection clears it.
+- Regular YouTube keeps the thin seek controls, related videos, comments and
+  optional replay graph. A separate quality action selects Auto or actual
+  supported ExoPlayer video tracks. Picture remains a separate control.
+- Movies and episodes retain the thin unboxed transport, accelerated seeking,
+  episode identity and audio/subtitle selection. Source selection determines
+  their movie-file quality; YouTube-only actions stay out of this presentation.
+- Live TV has a brief channel/now-next overlay and no seek, pause or skip controls.
+  Schedule metadata is optional, loads only for an applicable visible overlay,
+  and never blocks playback. Back leaves fullscreen without an extra HUD-dismiss
+  step. Picture controls remain available through the remote menu.
+
+Regular movie buffering targets 24 MiB (16 MiB on low-memory devices). Shorts use
+8/6 MiB and a 500 ms startup threshold. Artwork keeps the same pixel-accounted
+8/4 MiB cache. No additional video engine, browser runtime or native library is
+included, and neutral playback retains direct hardware decoding.

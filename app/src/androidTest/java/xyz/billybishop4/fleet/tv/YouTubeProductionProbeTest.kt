@@ -17,6 +17,37 @@ import org.junit.Test
 
 /** Explicit opt-in for live, non-destructive checks. Never provisions profiles or supplies account credentials. */
 class YouTubeProductionProbeTest {
+    @Test fun liveHomeRecommendationsAndNativeLibraryNavigation() {
+        assumeTrue("Explicit live TV opt-in required",InstrumentationRegistry.getArguments().getString("youtubeLive")=="true")
+        val instrumentation=InstrumentationRegistry.getInstrumentation();lateinit var a:MainActivity
+        fun <T> ui(block:()->T):T { var value:Any?=null;instrumentation.runOnMainSync{value=block()};@Suppress("UNCHECKED_CAST") return value as T }
+        fun model()=a.model.javaClass.methods.first{it.name.startsWith("getYoutube") && it.parameterCount==0}.invoke(a.model) as YouTubeModel
+        fun await(condition:()->Boolean){val end=SystemClock.elapsedRealtime()+60_000;while(SystemClock.elapsedRealtime()<end){if(condition())return;SystemClock.sleep(100)};assertTrue("Live Home condition timed out",condition())}
+        val report=JSONObject().put("usesFixtureBackend",false)
+        ActivityScenario.launch(MainActivity::class.java).use { scenario->
+            scenario.onActivity{a=it}
+            try {
+                ui{a.model.top(Section.YOUTUBE);model().select(YouTubeFeed.HOME);model().refresh()}
+                await{ui{!model().busy && model().videos.isNotEmpty()}}
+                report.put("signedIn",ui{model().account!=null}).put("recommendations",ui{model().videos.size}).put("shelves",ui{model().homeShelves.size})
+                if(ui{model().account==null}) {
+                    assertTrue(ui{model().homeShelves.any{it.name=="Discover"}})
+                    assertTrue(ui{model().videos.all{it.thumbnail.isNotBlank()}})
+                }
+                await{ui{a.window.decorView.findTag("youtube-video:${model().videos.first().id}")?.isShown==true}}
+                ui{a.window.decorView.findTag("youtube-video:${model().videos.first().id}")!!.requestFocus()}
+                repeat(5){instrumentation.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT)}
+                assertTrue(ui{a.currentFocus?.tag.toString().startsWith("youtube-video:")});assertNull(ui{a.player})
+                ui{a.window.decorView.findTag("button:YouTube library")!!.performClick()}
+                await{ui{model().feed==YouTubeFeed.HISTORY && !model().busy}}
+                assertTrue(ui{a.window.decorView.findTag("youtube-library-tabs")?.isShown==true})
+                report.put("nativeLibrary",true)
+                ui{a.window.decorView.findTag("button:YouTube home")!!.performClick()}
+                await{ui{model().feed==YouTubeFeed.HOME && !model().busy && model().videos.isNotEmpty()}}
+                report.put("success",true)
+            } finally { val dir=ui{a.getExternalFilesDir(null)!!};File(dir,"youtube-home-production-probe.json").writeText(report.toString(2)) }
+        }
+    }
     @Test fun liveNativePlaybackShortsAndPairing() {
         assumeTrue("Explicit live TV opt-in required",InstrumentationRegistry.getArguments().getString("youtubeLive")=="true")
         val instrumentation=InstrumentationRegistry.getInstrumentation()

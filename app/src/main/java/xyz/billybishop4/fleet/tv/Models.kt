@@ -43,6 +43,8 @@ data class Watch(val title: Title, val stream: Stream, val episode: Episode? = n
     val audioUrl:String="", val videoMimeType:String="", val audioMimeType:String="", val resolvedAtMs:Long=0L,
     val short:Boolean=false, val captions:List<VideoCaption> = emptyList())
 data class VideoCaption(val url:String,val language:String,val mimeType:String)
+internal enum class PlaybackMode { SHORTS, YOUTUBE, ON_DEMAND, LIVE }
+internal val Watch.playbackMode get()=when { live->PlaybackMode.LIVE;short->PlaybackMode.SHORTS;title.type=="youtube"->PlaybackMode.YOUTUBE;else->PlaybackMode.ON_DEMAND }
 
 object Decode {
     fun title(j: JSONObject, fallbackType: String = "movie"): Title {

@@ -647,3 +647,50 @@ The user subsequently requested local-only work again; the app was stopped to
 halt any remaining instrumentation, and no further TV checks or report retrieval
 were performed. That hold remains active. This bounded probe does not establish
 a general physical-device performance guarantee or real Google owner approval.
+
+
+## Guest YouTube and source-specific players (0.18.0)
+
+Anonymous Home now loads real public TV Music, Gaming and News feeds rather
+than displaying YouTube’s default sign-in nudge. Discover interleaves those
+suggestions; existing local history supplies a related-video row after a video
+has been watched for 30 seconds. Three topic calls share a two-request limit.
+No account bearer, account creation, browser or extra playback engine is needed.
+A live Kotlin check returned 43 valid video cards with artwork in four shelves.
+The parser also now reads current TV thumbnail-header titles, channels, duration
+and live badges, while excluding playlist/channel/menu cards.
+
+Subscriptions and Library provide account History, Watch Later and Liked videos.
+Signed-out History reads existing local records, and account-only screens offer
+one direct sign-in action without sending anonymous private-feed requests.
+Sign-out removes personal cached cards; clearing watch history removes local
+recommendation seeds too. Account completion and private feed transitions are
+validated with generated credentials; no real Google owner approval is claimed.
+
+The player has four presentations. Shorts retain the portrait picture, a
+read-only progress line and compact side actions; Up/Down changes clips and
+Center or a surface click toggles playback. The movie transport and replay
+chart are absent. A cancellable URL-only warmup holds one upcoming clip for at
+most a minute and is released on navigation/background/memory pressure. Shorts
+use 8/6 MiB of encoded buffering with a 500 ms startup threshold, compared with
+24/16 MiB for ordinary video. No additional player or media buffer is warmed.
+
+Regular YouTube keeps related videos, comments, the optional replay graph and
+actual supported Auto/fixed video-quality choices. On-demand retains episode
+identity, the thin unboxed transport and audio/subtitle choices. Live TV has a
+brief channel/available-guide overlay, no transport, and no extra Back press for
+hiding channel information. Guide parsing excludes elapsed programs before
+retaining the next eight. Default neutral playback stays on the direct codec
+surface; picture controls remain a separate action.
+
+The ordinary JVM suite passes 108 checks and lint reports no errors. Two opt-in
+checks verify real public recommendations, search, Shorts, metadata, media and
+code issuance from the Mac. All 145 unique emulator scenarios pass across the
+worker suites and two targeted reruns, including input-window readiness and effective
+parent visibility checks. Earlier failed jobs remain visible rather than being
+relabelled. Existing 0.16.1 before/after data is retained separately; the new
+memory workload is a smoke check, not a physical-TV frame-rate claim.
+
+The latest user instruction holds all TCL deployment and testing again.
+0.18.0 has not been installed or tested on the physical TV. The earlier 0.17.0
+installation remains; no IPTV profile was provisioned or other TV app changed.

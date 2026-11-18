@@ -102,7 +102,7 @@ class YouTubeTvLayoutTest:NativeTestBase() {
         assertEquals("café",ui{a.model.youtube.query})
         field("Search YouTube","")
         assertEquals(YouTubeFeed.SEARCH,ui{a.model.youtube.feed});assertTrue(ui{keyboard.isShown});assertTrue(ui{a.model.youtube.videos.isEmpty()})
-        ui{a.onBackPressedDispatcher.onBackPressed()};await{find("Make YouTube yours")!=null}
+        ui{a.onBackPressedDispatcher.onBackPressed()};await{ui{a.model.youtube.feed==YouTubeFeed.HOME && !a.model.youtube.busy && a.model.youtube.videos.isNotEmpty()}}
         assertEquals(YouTubeFeed.HOME,ui{a.model.youtube.feed})
     }
     @Test fun shortsKeepPortraitBrowseCardsAndDoNotResolveVideosOnFocus() {

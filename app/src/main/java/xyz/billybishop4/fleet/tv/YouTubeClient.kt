@@ -19,6 +19,7 @@ import org.json.JSONObject
 internal class YouTubeClient(
     private val credentials:YouTubeCredentials, private val transport:YouTubeTransport=YouTubeHttp(),
     internal val origin:String="https://www.youtube.com", private val now:()->Long=System::currentTimeMillis,
+    private val localHistory:()->List<Progress> = { emptyList() },
 ) {
     private val configMutex=Mutex();private var config:YouTubeBootstrap?=null;private var configAt=0L
     private val accountMutex=Mutex();private var loaded=false;private var session:YouTubeSession?=null
@@ -72,24 +73,63 @@ internal class YouTubeClient(
         .put("clientName","TVHTML5").put("clientVersion",client.version).put("hl","en").put("gl","US")
         .put("userAgent",YouTubeHttp.USER_AGENT).put("browserName","Cobalt").put("browserVersion","25.lts.3.1062949-gold")
         .put("visitorData",client.visitor).put("tvAppInfo",JSONObject().put("appQuality","TV_APP_QUALITY_FULL_ANIMATION").put("zylonLeftNav",true)))
-    private suspend fun api(method:String,body:JSONObject,retry:Boolean=true):JSONObject {
-        val client=bootstrap();val token=access()
+    private suspend fun api(method:String,body:JSONObject,retry:Boolean=true,authenticated:Boolean=true):JSONObject {
+        val client=bootstrap();val token=if(authenticated)access() else null
         val headers=buildMap { put("Origin",origin);put("Referer","$origin/tv");put("X-Youtube-Client-Name","7");put("X-Youtube-Client-Version",client.version)
             if(token!=null)put("Authorization","Bearer $token") }
         val response=transport.request("$origin/youtubei/v1/$method?prettyPrint=false",body.put("context",context(client)).toString(),headers)
-        if(response.status==401 && token!=null && retry) { access(true);return api(method,body,false) }
+        if(response.status==401 && token!=null && retry) { access(true);return api(method,body,false,authenticated) }
         if(response.status==401 && token!=null)throw YouTubeAuthError("unauthorized")
         if(response.status !in 200..299)throw HttpFailure(response.status)
         return withContext(Dispatchers.Default){JSONObject(response.text)}
     }
     suspend fun page(feed:YouTubeFeed,query:String="",continuation:String?=null):YouTubePage {
+        val signedIn=account()!=null
+        if(feed==YouTubeFeed.HOME && !signedIn)return guestHome()
+        if(feed==YouTubeFeed.HISTORY && !signedIn)return YouTubePage(history().map(::historyVideo),message="History on this TV")
+        if(feed.requiresAccount && !signedIn)return YouTubePage(emptyList(),message="Sign in to see this part of your YouTube account.")
         if(feed==YouTubeFeed.SHORTS)return shorts(continuation)
         val body=JSONObject()
         if(continuation!=null)body.put("continuation",continuation)
         else if(feed==YouTubeFeed.SEARCH)body.put("query",query.trim().take(200))
-        else body.put("browseId","default")
+        else when(feed) {
+            YouTubeFeed.SUBSCRIPTIONS->body.put("browseId","FEsubscriptions")
+            YouTubeFeed.HISTORY->body.put("browseId","FEhistory")
+            YouTubeFeed.WATCH_LATER->body.put("browseId","FEmy_youtube").put("params","cAc%3D")
+            YouTubeFeed.LIKED->body.put("browseId","VLLL")
+            else->body.put("browseId","default")
+        }
         val result=api(if(feed==YouTubeFeed.SEARCH)"search" else "browse",body)
         return withContext(Dispatchers.Default){if(feed==YouTubeFeed.HOME)YouTubeDecode.home(result) else YouTubeDecode.page(result)}
+    }
+    private suspend fun history():List<Progress> = withContext(Dispatchers.IO) {
+        localHistory().filter{YouTubeDecode.validId(it.title.id) && it.title.type=="youtube" && it.positionMs>0}
+            .sortedByDescending{it.updated}.distinctBy{it.title.id}.take(50)
+    }
+    private fun historyVideo(value:Progress)=YouTubeVideo(value.title.id,value.title.name,value.title.poster,metadata=value.title.description)
+    /** YouTube's guest Home is a sign-in nudge. Public TV topics and watch-next still supply real suggestions. */
+    private suspend fun guestHome():YouTubePage=coroutineScope {
+        val watched=history();val seen=watched.mapTo(HashSet()){it.title.id}
+        val seed=watched.firstOrNull{it.positionMs>=30_000}
+        val semaphore=Semaphore(2)
+        suspend fun request(method:String,body:JSONObject):YouTubePage?=semaphore.withPermit {
+            try { val j=api(method,body,authenticated=false);withContext(Dispatchers.Default){YouTubeDecode.page(j)} }
+            catch(e:CancellationException){throw e}
+            catch(_:Exception){null}
+        }
+        val topics=listOf("Music" to "FEtopics_music","Gaming" to "FEtopics_gaming","News" to "FEtopics_news")
+        val related=seed?.let{async { request("next",JSONObject().put("videoId",it.title.id)) }}
+        val pages=topics.map { (_,id)->async { request("browse",JSONObject().put("browseId",id)) } }.awaitAll()
+        val because=related?.await()?.videos.orEmpty().filter{it.id !in seen}.take(20)
+        if(pages.all{it==null} && because.isEmpty())throw UserMessage("Recommendations couldn't load. Check your connection and try again.")
+        val rows=ArrayList<YouTubeShelf>()
+        if(seed!=null && because.isNotEmpty())rows+=YouTubeShelf("guest/because/${seed.title.id}","Because you watched ${seed.title.name.take(80)}",because)
+        val groups=pages.map{it?.videos.orEmpty().filter{v->v.id !in seen}.take(20)}
+        val discover=(0 until 20).flatMap { i->groups.mapNotNull{it.getOrNull(i)} }.distinctBy{it.id}.take(18)
+        if(discover.isNotEmpty())rows+=YouTubeShelf("guest/discover","Discover",discover)
+        for((i,topic) in topics.withIndex())if(groups[i].isNotEmpty())rows+=YouTubeShelf("guest/${topic.second}",topic.first,groups[i])
+        val videos=rows.flatMap{it.videos}.distinctBy{it.id}.take(120)
+        YouTubePage(videos,message=if(videos.isEmpty())"No recommendations available right now. Try search or refresh." else "",shelves=rows)
     }
     suspend fun watchDetails(videoId:String):YouTubeWatchDetails {
         require(YouTubeDecode.validId(videoId))

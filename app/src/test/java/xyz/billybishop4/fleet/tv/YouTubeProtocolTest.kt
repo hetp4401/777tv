@@ -100,9 +100,18 @@ class YouTubeProtocolTest {
         assertEquals("7.fixture",request.body.getJSONObject("context").getJSONObject("client").getString("clientVersion"))
     }
     @Test fun homeUsesTheTvRecommendationFeed()=runBlocking {
-        val t=FixtureYouTubeTransport();val client=YouTubeClient(MemoryYouTubeCredentials(),t)
+        val t=FixtureYouTubeTransport();val client=YouTubeClient(MemoryYouTubeCredentials(YouTubeSession("fixture-access","fixture-refresh",Long.MAX_VALUE)),t)
         client.page(YouTubeFeed.HOME)
         assertEquals("default",t.requests.last().body!!.getString("browseId"));assertTrue(t.requests.last().path.endsWith("browse"))
+    }
+    @Test fun publicTvTilesReadHeaderTitlesArtworkChannelDurationAndLiveState() {
+        val card=JSONObject("""{"tileRenderer":{"contentId":"abcdefghijk","contentType":"TILE_CONTENT_TYPE_VIDEO","header":{"tileHeaderRenderer":{"thumbnail":{"thumbnails":[{"url":"//i.ytimg.com/tile.jpg","width":640}]},"thumbnailOverlays":[{"tileMetadataRenderer":{"title":{"simpleText":"A public video"},"lines":[{"lineRenderer":{"items":[{"lineItemRenderer":{"text":{"simpleText":"A channel"}}},{"lineItemRenderer":{"text":{"simpleText":"•"}}},{"lineItemRenderer":{"text":{"simpleText":"3M views"}}}]}}]}},{"thumbnailOverlayTimeStatusRenderer":{"text":{"simpleText":"4:01"},"style":"DEFAULT"}}]}}}}""")
+        val video=YouTubeDecode.page(page(card)).videos.single()
+        assertEquals("A public video",video.name);assertEquals("https://i.ytimg.com/tile.jpg",video.thumbnail)
+        assertEquals("A channel",video.channel);assertEquals("3M views",video.metadata);assertEquals("4:01",video.duration);assertFalse(video.live)
+        val time=card.getJSONObject("tileRenderer").getJSONObject("header").getJSONObject("tileHeaderRenderer").getJSONArray("thumbnailOverlays").getJSONObject(1).getJSONObject("thumbnailOverlayTimeStatusRenderer")
+        time.put("style","LIVE");assertTrue(YouTubeDecode.page(page(card)).videos.single().live)
+        card.getJSONObject("tileRenderer").put("contentType","TILE_CONTENT_TYPE_PLAYLIST");assertTrue(YouTubeDecode.page(page(card)).videos.isEmpty())
     }
     @Test fun homePreservesTvShelfNamesOrderAndPortraitRows() {
         val j=JSONObject("""{"contents":{"sectionListRenderer":{"contents":[

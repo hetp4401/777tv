@@ -33,7 +33,7 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
     private var youtubeValue:YouTubeModel?=null
     internal val youtube:YouTubeModel get()=youtubeValue?:createYouTube().also { youtubeValue=it }
     private fun createYouTube(origin:String="https://www.youtube.com",resolver:YouTubeStreamResolver=YouTubeResolver())=YouTubeModel(
-        YouTubeClient(store.youTubeCredentials(),origin=origin),viewModelScope,{changes.postValue(Unit)},
+        YouTubeClient(store.youTubeCredentials(),origin=origin,localHistory=store::youTubeHistory),viewModelScope,{changes.postValue(Unit)},
         { watch,replace -> if(replace && (route as? Route.Player)?.watch?.title?.type=="youtube")route=Route.Player(watch) else open(Route.Player(watch)) },
         { message -> android.widget.Toast.makeText(getApplication(),message,android.widget.Toast.LENGTH_LONG).show() },resolver)
     internal fun youTubeBackground(){youtubeValue?.deactivate()}
@@ -474,7 +474,7 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
         hiddenCategories = hiddenCategories - providerId
         store.hiddenCategories(hiddenCategories)
     }
-    fun clearHistory() { store.clearHistory(); progress = emptyList() }
+    fun clearHistory() { store.clearHistory(); youtubeValue?.historyCleared();progress = emptyList() }
     fun resetProviders() {
         try {
             store.resetProviders(); providers = emptyList(); providerStorageError = false; favorites = emptySet(); store.favorites(emptySet()); hiddenCategories = emptyMap(); providerDraft = null

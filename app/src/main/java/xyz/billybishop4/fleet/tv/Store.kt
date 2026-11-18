@@ -134,8 +134,15 @@ class Store(context: Context) {
     }
     internal fun youTubeProgress(id:String):Progress?=runCatching {
         val raw=JSONObject(prefs.getString("youtube-progress","{}")!!).optJSONObject(id)?:return@runCatching null
-        Progress(Decode.title(raw.getJSONObject("title")),null,raw.getLong("position"),raw.getLong("duration"),raw.getLong("updated"))
+        decodeYouTubeProgress(raw)
     }.getOrNull()
+    private fun decodeYouTubeProgress(raw:JSONObject)=Progress(Decode.title(raw.getJSONObject("title")),null,raw.getLong("position"),raw.getLong("duration"),raw.getLong("updated"))
+    internal fun youTubeHistory():List<Progress> = runCatching {
+        val data=JSONObject(prefs.getString("youtube-progress","{}")!!)
+        data.keys().asSequence().mapNotNull { id->runCatching{decodeYouTubeProgress(data.getJSONObject(id))}.getOrNull() }
+            .filter{it.title.type=="youtube" && YouTubeDecode.validId(it.title.id) && it.positionMs>0}
+            .sortedByDescending{it.updated}.take(50).toList()
+    }.getOrDefault(emptyList())
     internal fun youTubeProgress(value:Progress) {
         val data=runCatching { JSONObject(prefs.getString("youtube-progress","{}")!!) }.getOrDefault(JSONObject())
         data.put(value.title.id,JSONObject().put("title",value.title.json()).put("position",value.positionMs.coerceAtLeast(0))

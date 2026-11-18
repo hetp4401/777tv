@@ -38,6 +38,8 @@ internal class YouTubeRailIcon(private val kind:String,private val size:Int):Dra
             "Search"->{canvas.drawCircle(10f,10f,6f,paint);canvas.drawLine(15f,15f,21f,21f,paint)}
             "Home"->{path.reset();path.moveTo(3f,11f);path.lineTo(12f,3f);path.lineTo(21f,11f);path.lineTo(21f,21f);path.lineTo(15f,21f);path.lineTo(15f,14f);path.lineTo(9f,14f);path.lineTo(9f,21f);path.lineTo(3f,21f);path.close();canvas.drawPath(path,paint)}
             "Shorts"->{rect.set(6f,2f,18f,22f);canvas.drawRoundRect(rect,4f,4f,paint);path.reset();path.moveTo(10f,8f);path.lineTo(16f,12f);path.lineTo(10f,16f);path.close();canvas.drawPath(path,paint)}
+            "Subscriptions"->{canvas.drawLine(7f,3f,17f,3f,paint);canvas.drawLine(4f,6f,20f,6f,paint);rect.set(3f,9f,21f,22f);canvas.drawRoundRect(rect,2f,2f,paint);path.reset();path.moveTo(10f,12f);path.lineTo(16f,15f);path.lineTo(10f,19f);path.close();canvas.drawPath(path,paint)}
+            "Library"->{rect.set(3f,3f,8f,21f);canvas.drawRoundRect(rect,1f,1f,paint);rect.set(11f,3f,16f,21f);canvas.drawRoundRect(rect,1f,1f,paint);canvas.drawLine(19f,4f,23f,21f,paint)}
             else->{canvas.drawCircle(12f,8f,4f,paint);rect.set(4f,14f,20f,24f);canvas.drawArc(rect,180f,180f,false,paint)}
         }
         canvas.restoreToCount(save)
@@ -158,7 +160,7 @@ internal class YouTubeShelfView(
 ):LinearLayout(context) {
     var shelfKey="";private set
     private var items:List<YouTubeVideo> = emptyList()
-    private val heading=context.text("",19f,bold=true)
+    private val heading=context.text("",19f,bold=true).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END }
     val list=RecyclerView(context)
     private val width=context.dp(when(kind){2->128;1->288;else->218})
     private val select:(YouTubeVideo)->Unit={play(it,items)}
