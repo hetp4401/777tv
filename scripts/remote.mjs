@@ -14,7 +14,7 @@ const state=path.join(root,'.tools/shellbox-remote');
 const config=JSON.parse(await fs.readFile(process.env.FLEET_REMOTE_CONFIG||path.join(state,'worker-access.json'),'utf8'));
 const args=process.argv.slice(2), command=args[0]||'doctor';
 const defaultUiClasses=['TvFlowTest','EngineLayoutTest','CategoryVisibilityTest','OptimizationRegressionTest',
-    'SettingsNavigationTest','LiveNavigationTest','BrowseNavigationTest','SearchCatalogTest','NavigationRobustnessTest','VodControlsTest','YouTubeNavigationTest','YouTubeWatchUiTest','ArtworkMemoryCacheTest','FluidityRegressionTest']
+    'SettingsNavigationTest','LiveNavigationTest','BrowseNavigationTest','SearchCatalogTest','NavigationRobustnessTest','VodControlsTest','YouTubeNavigationTest','YouTubeWatchUiTest','YouTubeTvLayoutTest','ArtworkMemoryCacheTest','FluidityRegressionTest']
     .map(name=>'xyz.billybishop4.fleet.tv.'+name).join(',');
 const headers={Authorization:'Bearer '+config.token};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));

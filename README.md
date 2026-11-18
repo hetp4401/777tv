@@ -6,32 +6,36 @@ and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
 ## Development candidate
 
-**0.16.1 · version code 21 · Android 7.0 / API 24 or later**
+**0.17.0 · version code 22 · Android 7.0 / API 24 or later**
 
-This branch contains the YouTube candidate. The YouTube additions have not been
-installed or tested on the physical TCL; the user requested holding TV testing.
+This branch contains the YouTube TV layout candidate. Version 0.17.0 was
+installed on the TCL under prior authorization, preserving app data. Further
+physical TV testing is now held at the user’s request; work continues locally
+and on worker emulators. The release record tracks installation and test scope.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Candidate verification](releases/0.16.1/verification.json) records the APK checksum,
+[Candidate verification](releases/0.17.0/verification.json) records the APK checksum,
 source/build checksums and validation scope.
-[SHA256SUMS](releases/0.16.1/SHA256SUMS) identifies the candidate APK. The last
+[SHA256SUMS](releases/0.17.0/SHA256SUMS) identifies the candidate APK. The last
 published production snapshot remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
 
 ## Features
 
-- A **YouTube** section beside On-Demand: native Home recommendations, search,
-  portrait Shorts and Google TV code/QR sign-in. The same ExoPlayer plays videos;
-  no browser engine or second player is bundled. Home personalizes after sign-in.
+- A **YouTube** section beside On-Demand: horizontal recommendation shelves, a
+  collapsible left rail, a native TV search keyboard and portrait Shorts. Home
+  preserves YouTube’s own row names and grouping, with 777tv colors and corners.
+  Google TV code/QR sign-in personalizes recommendations. The same ExoPlayer plays videos;
+  no browser engine or second player is bundled.
   Public videos play signed out; private/restricted video playback and Google
   watch-history synchronization are not claimed. Details and APK investigation:
   [YouTube integration](docs/tizentube-investigation.md).
 - Read-only YouTube comments, replies and horizontal related videos during
   playback. A faint **Most replayed** graph appears above the thin seek line
   when YouTube provides replay data. Comments load on opening; the player keeps
-  playing while browsing the native sheet.
+  playing while browsing related videos below it or comments beside it.
 - On-Demand opens by default; Settings → Appearance → Startup screen can select
   Live TV or YouTube instead. Compact catalog shelves, grouped search, continue watching,
   recently watched titles and My list.
@@ -101,9 +105,12 @@ adb -s emulator-5554 shell am start -n xyz.billybishop4.fleet.tv/.MainActivity
 
 ## Tests and verification
 
-Version 0.16.1 passes **95 JVM tests**, Android lint with no errors, and **123
-unique worker Android TV scenarios**. The candidate verification records the
-source versions and two corrected test assertions with passing reruns.
+Version 0.17.0 passes **98 JVM checks**, Android lint with no errors, and **43
+worker emulator scenarios**. They cover TV shelf grouping, bounded Home data,
+feed-versus-row continuations, the remote keyboard, focus restoration, portrait
+cards and side comments, alongside YouTube and playback regressions. The release verification
+records exact source versions and results. The preceding 0.16.1 performance
+checkpoint passed 95 JVM checks and 123 unique worker scenarios.
 A matched emulator workload reduced encoded movie buffering from 48.3 to
 25.1 MiB, and movie-process PSS from 156.4 to 130.2 MiB. Artwork now counts
 hardware bitmap pixels correctly and stays within an 8 MiB cache budget
@@ -156,6 +163,6 @@ historical artifact paths in that file refer to untracked local evidence.
 | `app/src/androidTest/` | Android TV navigation, rendering, playback and performance tests |
 | `scripts/` | Toolchain bootstrap, fixtures and optional remote client |
 | `remote/` | Optional build/test worker service and pinned toolchain |
-| `releases/0.16.1/` | Candidate verification and APK checksum |
+| `releases/0.17.0/` | Candidate verification and APK checksum |
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency notices.

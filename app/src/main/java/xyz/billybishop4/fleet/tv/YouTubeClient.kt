@@ -89,7 +89,7 @@ internal class YouTubeClient(
         else if(feed==YouTubeFeed.SEARCH)body.put("query",query.trim().take(200))
         else body.put("browseId","default")
         val result=api(if(feed==YouTubeFeed.SEARCH)"search" else "browse",body)
-        return withContext(Dispatchers.Default){YouTubeDecode.page(result)}
+        return withContext(Dispatchers.Default){if(feed==YouTubeFeed.HOME)YouTubeDecode.home(result) else YouTubeDecode.page(result)}
     }
     suspend fun watchDetails(videoId:String):YouTubeWatchDetails {
         require(YouTubeDecode.validId(videoId))

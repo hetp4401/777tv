@@ -1,8 +1,12 @@
 # 777tv Android TV workflow (formerly Fleet)
 
-- Latest instruction: do not install or test on the physical TCL until Het says
-  to do so again. Keep current YouTube work and testing local or on worker emulators.
-  This supersedes the earlier TV testing authorization below.
+- Latest instruction: "Continue, but don’t test on tv" holds all physical TCL
+  testing again. Continue development and testing locally or on worker emulators.
+  0.17.0 was already installed in place under the earlier "Put it on tcl when
+  done" authorization. Its previously started live probe completed; after the
+  new hold the app was stopped to halt any remaining instrumentation. Do not
+  launch, install or run further tests on the TCL until Het authorizes it again.
+  Preserve app data, sign-ins, profiles, add-ons and history. No default IPTV profiles.
 - 0.16.0 adds a native YouTube tab beside On-Demand, read-only comments/replies,
   related videos and an optional replay graph. Its API/parser, account flow
   and ExoPlayer resolver are described in `docs/tizentube-investigation.md`.
@@ -10,8 +14,8 @@
   suites use generated YouTube fixtures. `YouTubeProductionProbeTest` requires
   explicit `youtubeLive=true`; it never provisions IPTV profiles or supplies
   Google account credentials. Preserve existing account approvals and app data.
-- Het now authorizes local Mac development/builds/tests and direct deployment
-  to the TCL for testing. Preserve watch history, add-ons and other app data. ExoPlayer is now the only player; no engine
+- Earlier authorization covered local Mac development/builds/tests and direct
+  deployment to the TCL; the latest physical-TV hold above takes precedence. Preserve watch history, add-ons and other app data. ExoPlayer is now the only player; no engine
   setting remains. The app is named 777tv; its application ID stays unchanged for
   in-place updates. The user subsequently requested deleting the saved IPTV
   profile on the TCL and shipping no default profiles. The profile was deleted;

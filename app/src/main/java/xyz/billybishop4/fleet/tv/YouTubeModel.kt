@@ -16,6 +16,8 @@ internal class YouTubeModel(
     var feed by state(YouTubeFeed.HOME);private set
     var query by state("");private set
     var videos by state<List<YouTubeVideo>>(emptyList());private set
+    var homeShelves by state<List<YouTubeShelf>>(emptyList());private set
+    var recentQueries by state<List<String>>(emptyList());private set
     var continuation by state<String?>(null);private set
     var message by state("");private set
     var busy by state(false);private set
@@ -39,6 +41,7 @@ internal class YouTubeModel(
     fun activate() {
         active=true
         if(query.trim().length>=2)feed=YouTubeFeed.SEARCH
+        if(feed==YouTubeFeed.SEARCH && query.trim().length<2)return
         if(!busy && (videos.isEmpty() || displayedKey!=key()))load()
     }
     fun deactivate() {
@@ -46,20 +49,27 @@ internal class YouTubeModel(
         cancelPlayback();cancelSignIn()
     }
     fun select(next:YouTubeFeed) {
+        if(next==YouTubeFeed.SEARCH){showSearch();return}
         if(next==feed && query.isEmpty() && error==null) { if(videos.isEmpty() && !busy)load(force=true);return }
         queryJob?.cancel();query="";feed=next;load()
+    }
+    fun showSearch() {
+        if(feed==YouTubeFeed.SEARCH)return
+        queryJob?.cancel();pageJob?.cancel();pageGeneration++;cancelPlayback()
+        query="";feed=YouTubeFeed.SEARCH;videos=emptyList();homeShelves=emptyList();continuation=null;message="";error=null;busy=false
     }
     fun editQuery(value:String) {
         if(query==value)return
         query=value.take(200);queryJob?.cancel();pageJob?.cancel();pageGeneration++;busy=false;cancelPlayback()
         if(query.trim().length<2) {
-            feed=YouTubeFeed.HOME;load()
+            feed=YouTubeFeed.SEARCH;videos=emptyList();homeShelves=emptyList();continuation=null;message="";error=null
             return
         }
         queryJob=scope.launch { delay(400);feed=YouTubeFeed.SEARCH;load() }
     }
     fun submitSearch() {
         if(query.trim().length<2)return
+        recentQueries=(listOf(query.trim())+recentQueries).distinct().take(5)
         queryJob?.cancel();feed=YouTubeFeed.SEARCH;load()
     }
     fun refresh(){load(force=true)}
@@ -77,8 +87,8 @@ internal class YouTubeModel(
         error=null
         if(!append) {
             val cached=pages[key]?.takeIf { !force && System.currentTimeMillis()-it.at in 0..120_000L }
-            if(cached!=null) { videos=cached.page.videos;continuation=cached.page.continuation;message=cached.page.message;displayedKey=key;busy=false;return }
-            videos=emptyList();continuation=null;message=""
+            if(cached!=null) { videos=cached.page.videos;homeShelves=cached.page.shelves;continuation=cached.page.continuation;message=cached.page.message;displayedKey=key;busy=false;return }
+            videos=emptyList();homeShelves=emptyList();continuation=null;message=""
         }
         val cursor=continuation;busy=true
         pageJob=scope.launch {
@@ -87,21 +97,34 @@ internal class YouTubeModel(
                 val page=client.page(f,q,if(append)cursor else null)
                 if(generation!=pageGeneration)return@launch
                 account=client.account()
-                val combined=if(append)(videos+page.videos).distinctBy { it.id }.take(120) else page.videos
+                val combined=if(append)(videos+page.videos).distinctBy { it.id }.take(120) else page.videos.take(120)
+                homeShelves=if(f==YouTubeFeed.HOME)mergeShelves(if(append)homeShelves else emptyList(),page.shelves,combined) else emptyList()
                 videos=combined;continuation=if(combined.size>=120 || append && page.continuation==cursor)null else page.continuation;message=page.message;displayedKey=key
                 if(f==YouTubeFeed.SEARCH)pages.keys.filter { it.startsWith("SEARCH/") && it!=key }.forEach(pages::remove)
-                pages[key]=Cached(YouTubePage(videos,continuation,message),System.currentTimeMillis())
+                pages[key]=Cached(YouTubePage(videos,continuation,message,homeShelves),System.currentTimeMillis())
                 while(pages.size>3)pages.remove(pages.keys.first())
             } catch(e:CancellationException){throw e}
             catch(e:Exception) { if(generation==pageGeneration) {
                 error=failure(e);account=client.account()
-                if(e is YouTubeAuthError) { pages.clear();videos=emptyList();continuation=null;displayedKey=null }
+                if(e is YouTubeAuthError) { pages.clear();videos=emptyList();homeShelves=emptyList();continuation=null;displayedKey=null }
             } }
             finally { if(generation==pageGeneration)busy=false }
         }
     }
-    fun play(video:YouTubeVideo) {
-        queue=videos;queueFeed=feed;queueContinuation=continuation
+    private fun mergeShelves(old:List<YouTubeShelf>,fresh:List<YouTubeShelf>,allowed:List<YouTubeVideo>):List<YouTubeShelf> {
+        val ids=allowed.mapTo(HashSet()){it.id};val rows=linkedMapOf<String,YouTubeShelf>();var remaining=120
+        for(row in old+fresh) {
+            val previous=rows[row.key]
+            rows[row.key]=row.copy(videos=(previous?.videos.orEmpty()+row.videos).distinctBy{it.id}.filter{it.id in ids})
+        }
+        return rows.values.take(10).mapNotNull { row->
+            val items=row.videos.take(remaining);remaining-=items.size
+            if(items.isEmpty())null else row.copy(videos=items)
+        }.ifEmpty { if(allowed.isEmpty())emptyList() else listOf(YouTubeShelf("recommended/0","Recommended",allowed)) }
+    }
+    fun play(video:YouTubeVideo,group:List<YouTubeVideo>?=null) {
+        queryJob?.cancel()
+        queue=group?:videos;queueFeed=feed;queueContinuation=continuation.takeIf{group==null}
         resolve(video,false)
     }
     fun playRelated(video:YouTubeVideo,related:List<YouTubeVideo>,done:()->Unit) {
@@ -169,7 +192,7 @@ internal class YouTubeModel(
     }
     fun cancelSignIn(){signInJob?.cancel();signInJob=null;loginGeneration++;signInCode=null;signInBusy=false;signInError=null}
     fun signOut() {
-        cancelSignIn();cancelPlayback();pageJob?.cancel();pageGeneration++;pages.clear();videos=emptyList();continuation=null
+        cancelSignIn();cancelPlayback();pageJob?.cancel();pageGeneration++;pages.clear();videos=emptyList();homeShelves=emptyList();recentQueries=emptyList();continuation=null
         scope.launch {
             try { client.signOut();account=null;if(active)load(force=true) }
             catch(e:CancellationException){throw e}
@@ -179,9 +202,9 @@ internal class YouTubeModel(
     fun trimMemory(keepPage:Boolean=false) {
         pages.clear()
         if(!keepPage){queue=emptyList();queueContinuation=null}
-        if(!active && !keepPage){videos=emptyList();continuation=null;message=""}
+        if(!active && !keepPage){videos=emptyList();homeShelves=emptyList();continuation=null;message=""}
     }
     internal fun installFixturePage(feed:YouTubeFeed,page:YouTubePage) {
-        pageJob?.cancel();queryJob?.cancel();pageGeneration++;this.feed=feed;query="";videos=page.videos;continuation=page.continuation;message=page.message;busy=false;error=null
+        pageJob?.cancel();queryJob?.cancel();pageGeneration++;this.feed=feed;query="";videos=page.videos;homeShelves=if(feed==YouTubeFeed.HOME)mergeShelves(emptyList(),page.shelves,page.videos) else emptyList();continuation=page.continuation;message=page.message;busy=false;error=null
     }
 }

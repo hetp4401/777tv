@@ -141,7 +141,11 @@ def handle_post(handler,path):
     if path.endswith('/browse'):
         if not handler.headers.get('Authorization'):
             return handler.send({'contents':{'feedNudgeRenderer':{'subtitle':{'simpleText':'Sign in for recommendations, or search.'}}}})
-        return handler.send({'contents':[video(n) for n in range(1,33)]})
+        rows=[]
+        for title,start,short in [('Recommended',1,False),('New to you',13,False),('Shorts',25,True)]:
+            rows.append({'shelfRenderer':{'title':{'simpleText':title},'content':{'horizontalListRenderer':{
+                'items':[video(n,short) for n in range(start,start+12)]}}}})
+        return handler.send({'contents':{'sectionListRenderer':{'contents':rows}}})
     if path.endswith('/search'):
         query=body.get('query','')
         if query=='nothing':return handler.send({'contents':[]})

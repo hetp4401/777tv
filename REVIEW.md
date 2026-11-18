@@ -601,3 +601,49 @@ the exact paused seek destination instead of assuming the previous resume was
 before it. Both reruns pass against unchanged production sources. The failed
 runs and their replacements remain recorded in `releases/0.16.1/verification.json`.
 The candidate was neither installed nor tested on the physical TCL.
+
+
+## Native YouTube TV layouts (0.17.0)
+
+YouTube Home now retains the TV feed’s shelf names and order instead of
+flattening recommendations into one grid. Large first-row landscape thumbnails,
+smaller subsequent shelves and portrait Shorts follow the TV layout loaded by
+TizenTube. A left icon rail expands over the content without moving it. The
+777tv navigation, colors, corners, thumbnail-only focus borders and ExoPlayer
+remain native. No browser engine or alternate player is included.
+
+Search has a field above recent queries and a single Canvas TV keyboard.
+Selecting a result gives the grid the full browsing area; Up from its first row
+restores the keyboard. Deleting text handles Unicode code points and clearing
+the field keeps Search open. Session-only recent queries are bounded and cleared
+by sign-out. System input remains available. Completing Google fixture pairing
+exercises the account transition and moves focus into recommendations.
+
+Related videos stay below playback. Comments occupy the right side, with the
+video fitted beside them, separate page/reply cursors, and a direct Close action.
+Opening, switching and closing these panels preserves the ExoPlayer instance
+and video decoder. Artwork changes in measured fixed frames avoid redundant
+parent measurement; dynamic frames retain normal layout requests.
+
+The final complete production sources pass 98 JVM checks, lint with no errors,
+and 43 worker scenarios: 15 existing YouTube navigation checks, nine layout and
+remote checks, 11 watch-panel checks, three idle/memory regressions, three cache
+checks and two generated-media performance workloads. Rapid and held scrolling
+accept all 18 delivered keys; the retained image cache stays within 8 MiB. A
+Search focus race found during development is fixed by waiting for attached
+result cards after the adapter commits. The initial failed jobs and fixture
+setup corrections remain recorded, with final passing replacements.
+
+The 0.16.1 controlled memory comparison is retained separately. The 0.17.0 smoke
+workload verifies memory bounds and navigation after the redesign; it does not
+establish a matched frame-rate gain or a universal TV performance guarantee.
+See `releases/0.17.0/verification.json` for exact source, APK and test records.
+
+
+0.17.0 was installed in place on the TCL under the user’s earlier authorization;
+the package UID remained unchanged and app data was not cleared. The already
+started opt-in live probe’s local instrumentation log records one passing test.
+The user subsequently requested local-only work again; the app was stopped to
+halt any remaining instrumentation, and no further TV checks or report retrieval
+were performed. That hold remains active. This bounded probe does not establish
+a general physical-device performance guarantee or real Google owner approval.

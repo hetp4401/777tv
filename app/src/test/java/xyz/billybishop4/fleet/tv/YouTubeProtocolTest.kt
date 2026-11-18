@@ -104,6 +104,36 @@ class YouTubeProtocolTest {
         client.page(YouTubeFeed.HOME)
         assertEquals("default",t.requests.last().body!!.getString("browseId"));assertTrue(t.requests.last().path.endsWith("browse"))
     }
+    @Test fun homePreservesTvShelfNamesOrderAndPortraitRows() {
+        val j=JSONObject("""{"contents":{"sectionListRenderer":{"contents":[
+            {"shelfRenderer":{"title":{"simpleText":"Recommended"},"content":{}}},
+            {"richShelfRenderer":{"title":{"runs":[{"text":"Shorts"}]},"content":{}}}
+        ]}}}""")
+        val rows=j.getJSONObject("contents").getJSONObject("sectionListRenderer").getJSONArray("contents")
+        rows.getJSONObject(0).getJSONObject("shelfRenderer").put("content",page(card(),card("22222222222")))
+        rows.getJSONObject(1).getJSONObject("richShelfRenderer").put("content",page(card("33333333333",true)))
+        val result=YouTubeDecode.home(j)
+        assertEquals(listOf("Recommended","Shorts"),result.shelves.map{it.name})
+        assertEquals(listOf(false,true),result.shelves.map{it.portrait})
+        assertEquals(listOf("abcdefghijk","22222222222","33333333333"),result.videos.map{it.id})
+    }
+    @Test fun homeDoesNotUseAShelfsHorizontalCursorForVerticalPagination() {
+        val shelf=JSONObject().put("shelfRenderer",page(card()).put("title","A row").put("continuations",
+            JSONArray().put(JSONObject().put("nextContinuationData",JSONObject().put("continuation","wrong-row-token")))))
+        val section=JSONObject().put("contents",JSONArray().put(shelf)).put("continuations",
+            JSONArray().put(JSONObject().put("nextContinuationData",JSONObject().put("continuation","outer-feed-token"))))
+        val j=JSONObject().put("contents",JSONObject().put("sectionListRenderer",section))
+        assertEquals("outer-feed-token",YouTubeDecode.home(j).continuation)
+        section.remove("continuations");assertNull(YouTubeDecode.home(j).continuation)
+    }
+    @Test fun homeBoundsShelfMetadataAndNeverFabricatesSignedOutRows() {
+        val rows=(0..19).map { n->JSONObject().put("shelfRenderer",page(*(0..39).map{card((n*40+it).toString().padStart(11,'0'))}.toTypedArray()).put("title","Row $n")) }
+        val result=YouTubeDecode.home(JSONObject().put("contents",JSONArray(rows)))
+        assertEquals(120,result.shelves.sumOf{it.videos.size});assertTrue(result.shelves.size<=10)
+        val empty=YouTubeDecode.home(JSONObject("""{"feedNudgeRenderer":{"subtitle":"Sign in"}}"""))
+        assertTrue(empty.shelves.isEmpty());assertTrue(empty.videos.isEmpty());assertEquals("Sign in",empty.message)
+        val flat=YouTubeDecode.home(page(card()));assertEquals(listOf("Recommended"),flat.shelves.map{it.name})
+    }
     @Test fun expiredSessionsRefreshOnceForConcurrentRequests()=runBlocking {
         val store=MemoryYouTubeCredentials(YouTubeSession("expired-access","refresh",0));val t=FixtureYouTubeTransport()
         t.respond={r->if(r.path.endsWith("/token")){delay(30);YouTubeHttpResponse(200,"""{"access_token":"fresh-access","expires_in":3600}""")}else YouTubeHttpResponse(200,"{}")}

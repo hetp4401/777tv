@@ -57,7 +57,10 @@ successful user approval. YouTube watch progress is local and separate from
 movie/show progress; this feature does not claim to synchronize YouTube watch
 history or implement subscriptions, posting comments, likes or casting.
 
-While a YouTube video plays, Related and Comments open a compact native sheet.
+While a YouTube video plays, Related opens a horizontal row below the video.
+Comments open a full-height panel on the right, with the same active video
+fitted into the remaining space. Switching panels preserves the player and
+decoder; closing restores the full video surface.
 Down from the hidden controls or bottom transport buttons opens Related (Shorts
 retain Up/Down clip navigation when their controls are hidden). Selecting a
 related video replaces the current player route. Back dismisses the sheet before
@@ -95,8 +98,44 @@ account needs its owner to approve the code shown on the TV.
 The base 0.15.0 candidate passed a focused physical TCL check before the user's
 subsequent instruction to stop TV testing: native video playback and seek,
 portrait Shorts, and code issuance/cancellation. No real account was approved.
-The 0.16.0 comments/related/replay additions are being validated off the physical
-TV. Do not install or test that candidate on the TCL until the user authorizes it.
+The 0.16.0 and 0.16.1 candidates were held off the physical TV at the user’s
+request. Het subsequently authorized installing 0.17.0 when completed; it was
+installed in place and a previously started live probe completed. The latest
+instruction holds physical TV testing again. No further TV tests or installation
+should run without new authorization. The release verification records the
+installation and existing local test log; no report was pulled after the hold.
 
 YouTube's TV endpoints and response formats can change. The client exposes
 recoverable failures; the pinned extractor can be updated independently of UI.
+
+
+## TV layout (0.17.0)
+
+The visual reference is YouTube’s TV application, which the inspected TizenTube
+APK loads. The official [YouTube for Android TV listing](https://play.google.com/store/apps/details?id=com.google.android.youtube.tv)
+shows its horizontal Home shelves, an expanding icon rail, search field above
+an on-screen keyboard with recent searches, and portrait Shorts. 777tv follows
+those arrangements while keeping its own typography, rounded controls and
+neutral colors. There is no oversized promotional hero. The global 777tv tabs
+remain available above the YouTube section.
+
+Home keeps server-provided shelf names and order. A bounded parser retains at
+most ten shelves and 120 video references, discarding the JSON response. A row’s
+horizontal cursor never becomes the outer Home cursor. Nested RecyclerViews
+share a small card pool; only visible shelves own views. Focus restoration keeps
+the shelf and selected video across playback. The rail expands over the content
+without resizing or shifting it. Focus outlines enclose thumbnails only.
+
+The remote keyboard is one native Canvas view, with letters, numbers, punctuation,
+space, delete, clear and search. Its current key has a spoken accessibility label;
+the system keyboard remains available for Unicode entry and alternative input.
+Delete handles Unicode code points. Explicit search keeps five recent queries
+in memory for this app session, cleared by sign-out. Clearing search leaves the
+search screen open. Focusing results collapses the keyboard for a full-height
+browsing area; Up from the first row restores it. Search still debounces requests
+and cancels stale responses.
+
+Artwork is decoded for its displayed frame with a pixel-accounted 8 MiB budget
+(4 MiB on low-memory devices). Replacing an image in an already measured, fixed
+frame invalidates its pixels without remeasuring the browsing hierarchy. Normal
+layout requests remain enabled for parent resizing and wrap-content artwork.

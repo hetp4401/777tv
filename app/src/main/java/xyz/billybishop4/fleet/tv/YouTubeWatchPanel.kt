@@ -14,9 +14,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-/** A single native sheet over the existing player. Comments and replies load only when opened. */
+/** Related videos sit below playback; comments occupy a TV-style panel on its right. */
 internal class YouTubeWatchPanel(
-    private val a:MainActivity,private val watch:Watch,private val dismissed:()->Unit,
+    private val a:MainActivity,private val watch:Watch,private val resized:(Int)->Unit={},private val dismissed:()->Unit,
 ) {
     private val model=a.model.youtube
     private var details:YouTubeWatchDetails?=null
@@ -39,9 +39,9 @@ internal class YouTubeWatchPanel(
     val visible get()=view.visibility==View.VISIBLE
     private val relatedButton=a.action("Related","Related videos tab"){select(false)}.quiet()
     private val commentsButton=a.action("Comments","Comments tab"){select(true)}.quiet()
-    private val backButton=a.action("Back","Back to comments"){backThread()}.quiet().apply{visibility=View.GONE}
+    private val backButton=a.action("‹","Back to comments"){backThread()}.quiet().apply{visibility=View.GONE;textSize=24f;setPadding(0,0,0,0)}
     private val heading=a.text(watch.title.name,13f,MUTED).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END }
-    private val closeButton=a.action("Close","Close video panel"){hidePanel()}.quiet()
+    private val closeButton=a.action("×","Close video panel"){hidePanel()}.quiet().apply{textSize=24f;setPadding(0,0,0,0)}
     private val progress=ProgressBar(a,null,android.R.attr.progressBarStyleHorizontal).apply {
         tag="youtube-panel-loading";isIndeterminate=true;visibility=View.INVISIBLE;importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
     }
@@ -52,17 +52,16 @@ internal class YouTubeWatchPanel(
     private val relatedLayout by lazy { LinearLayoutManager(a,RecyclerView.HORIZONTAL,false).apply{initialPrefetchItemCount=1} }
     private val commentsLayout by lazy { LinearLayoutManager(a,RecyclerView.VERTICAL,false).apply{initialPrefetchItemCount=1} }
     private val more=a.action("More comments","Load more comments"){load(append=true)}.quiet().apply { visibility=View.GONE }
-    private val related=NativeAdapter<YouTubeVideo>({it.id},{parent,_->YouTubeCard(parent.context,a.artwork,false).apply {
-        layoutParams=RecyclerView.LayoutParams(a.dp(220),a.dp(199)).apply { marginEnd=a.dp(8) }
-    }},{v,value,_->(v as YouTubeCard).bind(value,::play)},type={101},recycle={(it as YouTubeCard).release()})
+    private val related=NativeAdapter<YouTubeVideo>({it.id},{parent,_->YouTubeCard(parent.context,a.artwork,false,a.dp(218),true)},
+        {v,value,_->(v as YouTubeCard).bind(value,::play)},type={101},recycle={(it as YouTubeCard).release()})
     private val commentRows=NativeAdapter<YouTubeComment>({it.id},{_,_->CommentRow(a)},
         {v,value,_->(v as CommentRow).bind(value,::readComment)},type={102},recycle={(it as CommentRow).release()})
     init {
         view.add(a.row().apply {
-            add(relatedButton,width=a.dp(92),height=a.dp(40));add(commentsButton,width=a.dp(118),height=a.dp(40))
-            add(backButton,width=a.dp(76),height=a.dp(40))
+            add(relatedButton,width=a.dp(84),height=a.dp(40));add(commentsButton,width=a.dp(108),height=a.dp(40))
+            add(backButton,width=a.dp(36),height=a.dp(40))
             addView(heading,LinearLayout.LayoutParams(0,-2,1f).apply { marginStart=a.dp(12);marginEnd=a.dp(12) })
-            add(closeButton,width=a.dp(78),height=a.dp(40))
+            add(closeButton,width=a.dp(40),height=a.dp(40))
         },height=a.dp(44))
         view.add(progress,height=a.dp(2));view.add(feedback)
         view.addView(list,LinearLayout.LayoutParams(-1,0,1f));view.add(more,width=a.dp(164),height=a.dp(36))
@@ -85,6 +84,15 @@ internal class YouTubeWatchPanel(
     private fun currentPage()=if(thread==null)commentsPage else repliesPage
     private fun setPage(page:YouTubeCommentsPage) { if(thread==null)commentsPage=page else repliesPage=page }
     private fun bindList() {
+        val parent=view.parent as? View
+        val width=parent?.width?.takeIf{it>0}?:a.resources.displayMetrics.widthPixels
+        val height=parent?.height?.takeIf{it>0}?:a.resources.displayMetrics.heightPixels
+        val sideWidth=minOf(a.dp(360),(width*.44f).toInt())
+        view.layoutParams=if(comments)FrameLayout.LayoutParams(sideWidth,-1,Gravity.END)
+            else FrameLayout.LayoutParams(-1,minOf(a.dp(320),(height*.6f).toInt()),Gravity.BOTTOM)
+        view.setPadding(a.dp(if(comments)14 else 28),a.dp(10),a.dp(if(comments)14 else 28),a.dp(16))
+        heading.visibility=if(comments)View.GONE else View.VISIBLE
+        resized(if(comments)sideWidth else 0)
         val adapter=if(comments)commentRows else related
         val layout=if(comments)commentsLayout else relatedLayout
         if(list.adapter!==adapter) {
@@ -149,9 +157,9 @@ internal class YouTubeWatchPanel(
     private fun hidePanel():Boolean {
         if(!visible)return false
         cancelRequest();if(opening){model.cancelPlayback();opening=false}
-        releaseCards();list.adapter=null;list.recycledViewPool.clear();view.visibility=View.GONE;dismissed();return true
+        releaseCards();list.adapter=null;list.recycledViewPool.clear();view.visibility=View.GONE;resized(0);dismissed();return true
     }
-    fun close(){closed=true;cancelRequest();commentDialog?.dismiss();commentDialog=null;if(opening)model.cancelPlayback();releaseCards();list.adapter=null;list.recycledViewPool.clear();details=null;commentsPage=null;repliesPage=null}
+    fun close(){closed=true;cancelRequest();commentDialog?.dismiss();commentDialog=null;if(opening)model.cancelPlayback();releaseCards();list.adapter=null;list.recycledViewPool.clear();details=null;commentsPage=null;repliesPage=null;resized(0)}
 }
 
 private class CommentRow(private val a:MainActivity):LinearLayout(a) {

@@ -381,7 +381,9 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     fun dismissControls():Boolean = youtubePanel?.dismiss()==true || controls?.dismiss()==true
     private fun showYouTubePanel(watch:Watch,comments:Boolean) {
         if(closed || mediaPlayer==null)return
-        val panel=youtubePanel?:YouTubeWatchPanel(a,watch){playerView?.requestFocus()}.also {
+        val panel=youtubePanel?:YouTubeWatchPanel(a,watch,resized={width->playerView?.let {
+            if(it.paddingRight!=width)it.setPadding(0,0,width,0)
+        }}){playerView?.requestFocus()}.also {
             youtubePanel=it
             view.addView(it.view,FrameLayout.LayoutParams(-1,minOf(a.dp(320),(a.resources.displayMetrics.heightPixels*.6f).toInt()),Gravity.BOTTOM))
         }

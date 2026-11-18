@@ -32,7 +32,9 @@ class YouTubeProductionProbeTest {
             assertTrue("Live YouTube condition timed out",condition())
         }
         fun youtube():YouTubeModel = activity.model.javaClass.methods.first { it.name.startsWith("getYoutube") && it.parameterCount==0 }.invoke(activity.model) as YouTubeModel
-        val report=JSONObject().put("version","0.15.0").put("usesFixtureBackend",false)
+        fun playback():NativePlayback = activity.javaClass.methods.first { it.name.startsWith("getPlayback$") && it.parameterCount==0 }.invoke(activity) as NativePlayback
+        val context=instrumentation.targetContext
+        val report=JSONObject().put("version",context.packageManager.getPackageInfo(context.packageName,0).versionName).put("usesFixtureBackend",false)
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             scenario.onActivity { activity=it }
             try {
@@ -53,6 +55,23 @@ class YouTubeProductionProbeTest {
                 ui{activity.player!!.seekTo(from+10000);activity.player!!.play()}
                 await{ui{activity.player?.let{it.isPlaying && it.currentPosition>=from+9000}==true}}
                 report.put("pauseResumeSeek",true)
+                report.put("stage","side comments")
+                ui {
+                    playback().dispatchKey(KeyEvent(KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_CENTER))
+                    playback().dispatchKey(KeyEvent(KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_CENTER))
+                }
+                val currentPlayer=ui{activity.player!!}
+                val decoderInitializations=ui{currentPlayer.videoDecoderCounters!!.decoderInitCount}
+                await{ui{activity.window.decorView.findTag("button:Video comments")?.isShown==true}}
+                ui{activity.window.decorView.findTag("button:Video comments")!!.performClick()}
+                await{ui{activity.window.decorView.findTag("youtube-watch-panel")?.let{it.isShown && it.width>0}==true}}
+                val side=ui{activity.window.decorView.findTag("youtube-watch-panel")!!}
+                report.put("rightCommentsPanel",ui{side.height==(side.parent as android.view.View).height && side.width<(side.parent as android.view.View).width/2})
+                SystemClock.sleep(3000)
+                ui{playback().dismissControls()}
+                assertSame(currentPlayer,ui{activity.player})
+                assertEquals(decoderInitializations,ui{currentPlayer.videoDecoderCounters!!.decoderInitCount})
+                report.put("commentsPreserveDecoder",true)
                 ui{activity.model.back()}
                 await{ui{activity.model.route==Route.Browse(Section.YOUTUBE) && activity.player==null}}
                 report.put("stage","Shorts")

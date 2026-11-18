@@ -11,7 +11,11 @@ internal data class YouTubeVideo(
 ) {
     fun title() = Title(id, name, "youtube", poster = thumbnail, description = listOf(channel, metadata).filter(String::isNotBlank).joinToString(" · "))
 }
-internal data class YouTubePage(val videos: List<YouTubeVideo>, val continuation: String? = null, val message: String = "")
+internal data class YouTubeShelf(val key:String, val name:String, val videos:List<YouTubeVideo>, val portrait:Boolean=false)
+internal data class YouTubePage(
+    val videos: List<YouTubeVideo>, val continuation: String? = null, val message: String = "",
+    val shelves:List<YouTubeShelf> = emptyList(),
+)
 internal data class YouTubeDeviceCode(
     val deviceCode: String, val userCode: String, val verificationUrl: String,
     val expiresAtMs: Long, val intervalSeconds: Int,
@@ -101,6 +105,30 @@ internal object YouTubeDecode {
         val nudge=find(j,setOf("feedNudgeRenderer", "messageRenderer"),1).firstOrNull() as? JSONObject
         val message=nudge?.let { text(it.opt("subtitle")).ifBlank { text(it.opt("text")) }.ifBlank { text(it.opt("title")) } }.orEmpty()
         return YouTubePage(videos,continuation,message)
+    }
+    /** Preserve the TV feed's shelves, without retaining its response tree or inventing categories. */
+    fun home(j:JSONObject):YouTubePage {
+        val rows=ArrayList<YouTubeShelf>();val occurrences=HashMap<String,Int>();var remaining=120
+        for(node in find(j,setOf("shelfRenderer","richShelfRenderer"),10).filterIsInstance<JSONObject>()) {
+            if(remaining==0)break
+            val items=page(node).videos.take(remaining);if(items.isEmpty())continue
+            val header=node.optJSONObject("headerRenderer")?.optJSONObject("shelfHeaderRenderer")
+            val name=text(node.opt("title")).ifBlank { text(header?.opt("title")) }.ifBlank { "Recommended" }.take(160)
+            val key=node.optString("identifier").ifBlank { name }
+            val number=occurrences.getOrDefault(key,0);occurrences[key]=number+1
+            rows+=YouTubeShelf("$key/$number",name,items,items.all{it.isShort});remaining-=items.size
+        }
+        if(rows.isEmpty()) {
+            val flat=page(j)
+            return flat.copy(shelves=if(flat.videos.isEmpty())emptyList() else listOf(YouTubeShelf("recommended/0","Recommended",flat.videos)))
+        }
+        // A shelf's horizontal continuation is not the next page of the vertical Home feed.
+        val container=(find(j,setOf("sectionListRenderer","sectionListContinuation"),1).firstOrNull() as? JSONObject)
+        val token=container?.optJSONArray("continuations")?.let {
+            find(it,setOf("nextContinuationData","reloadContinuationData"),1).firstOrNull() as? JSONObject
+        }?.optString("continuation")?.takeIf { it.isNotBlank() && it.length<20_000 }
+        val videos=rows.flatMap{it.videos}.distinctBy{it.id}
+        return YouTubePage(videos,token,shelves=rows)
     }
     private fun video(j:JSONObject,kind:String):YouTubeVideo? {
         val type=j.optString("contentType")
