@@ -49,12 +49,14 @@ internal class YouTubeWatchPanel(
     private val retry=a.action("Retry","Retry video details"){load(append=currentPage()!=null)}.quiet()
     private val feedback=a.row().apply { addView(status,LinearLayout.LayoutParams(0,-2,1f));add(retry,width=-2);visibility=View.GONE }
     private val list=RecyclerView(a).apply { tag="youtube-panel-list";tune(cachedViews=1) }
+    private val relatedLayout by lazy { LinearLayoutManager(a,RecyclerView.HORIZONTAL,false).apply{initialPrefetchItemCount=1} }
+    private val commentsLayout by lazy { LinearLayoutManager(a,RecyclerView.VERTICAL,false).apply{initialPrefetchItemCount=1} }
     private val more=a.action("More comments","Load more comments"){load(append=true)}.quiet().apply { visibility=View.GONE }
     private val related=NativeAdapter<YouTubeVideo>({it.id},{parent,_->YouTubeCard(parent.context,a.artwork,false).apply {
         layoutParams=RecyclerView.LayoutParams(a.dp(220),a.dp(199)).apply { marginEnd=a.dp(8) }
-    }},{v,value,_->(v as YouTubeCard).bind(value,::play)},recycle={(it as YouTubeCard).release()})
+    }},{v,value,_->(v as YouTubeCard).bind(value,::play)},type={101},recycle={(it as YouTubeCard).release()})
     private val commentRows=NativeAdapter<YouTubeComment>({it.id},{_,_->CommentRow(a)},
-        {v,value,_->(v as CommentRow).bind(value,::readComment)})
+        {v,value,_->(v as CommentRow).bind(value,::readComment)},type={102},recycle={(it as CommentRow).release()})
     init {
         view.add(a.row().apply {
             add(relatedButton,width=a.dp(92),height=a.dp(40));add(commentsButton,width=a.dp(118),height=a.dp(40))
@@ -69,6 +71,7 @@ internal class YouTubeWatchPanel(
         list.setOnKeyListener { _,key,event ->
             if(event.action==android.view.KeyEvent.ACTION_DOWN && key==android.view.KeyEvent.KEYCODE_DPAD_UP && !comments)relatedButton.requestFocus() else false
         }
+        list.recycledViewPool.setMaxRecycledViews(101,2);list.recycledViewPool.setMaxRecycledViews(102,3)
     }
     fun show(showComments:Boolean=false) {
         if(closed)return
@@ -76,24 +79,29 @@ internal class YouTubeWatchPanel(
         bindList();render();load();if(comments)commentsButton.requestFocus() else relatedButton.requestFocus()
     }
     private fun select(value:Boolean) {
+        if(comments==value && thread==null)return
         cancelRequest();comments=value;thread=null;repliesPage=null;error=null;bindList();render();load()
     }
     private fun currentPage()=if(thread==null)commentsPage else repliesPage
     private fun setPage(page:YouTubeCommentsPage) { if(thread==null)commentsPage=page else repliesPage=page }
     private fun bindList() {
-        releaseCards();list.adapter=null;list.recycledViewPool.clear()
-        list.layoutManager=LinearLayoutManager(a,if(comments)RecyclerView.VERTICAL else RecyclerView.HORIZONTAL,false).apply { initialPrefetchItemCount=1 }
-        list.adapter=if(comments)commentRows else related
+        val adapter=if(comments)commentRows else related
+        val layout=if(comments)commentsLayout else relatedLayout
+        if(list.adapter!==adapter) {
+            // Distinct view types let the sheet reuse plain rows safely across tab switches.
+            releaseCards();list.swapAdapter(null,true);list.layoutManager=layout;list.swapAdapter(adapter,true)
+        }
+        layout.scrollToPositionWithOffset(0,0)
     }
     private fun render() {
         if(closed || !visible)return
         relatedButton.isSelected=!comments;commentsButton.isSelected=comments
         backButton.visibility=if(thread!=null)View.VISIBLE else View.GONE
-        heading.text=thread?.let { "Replies to ${it.author}" }?:watch.title.name
+        heading.textIfChanged(thread?.let { "Replies to ${it.author}" }?:watch.title.name)
         progress.visibility=if(busy || opening)View.VISIBLE else View.INVISIBLE
         val page=currentPage()
         val text=error?:if(busy)"" else if(comments)page?.message.orEmpty() else if(details!=null && details!!.related.videos.isEmpty())"No related videos available." else ""
-        status.text=text;retry.visibility=if(error!=null)View.VISIBLE else View.GONE;feedback.visibility=if(text.isNotBlank())View.VISIBLE else View.GONE
+        status.textIfChanged(text);retry.visibility=if(error!=null)View.VISIBLE else View.GONE;feedback.visibility=if(text.isNotBlank())View.VISIBLE else View.GONE
         if(comments)commentRows.submitList(page?.comments.orEmpty()) else related.submitList(details?.related?.videos.orEmpty())
         more.visibility=if(comments && page?.continuation!=null && page.comments.size<120)View.VISIBLE else View.GONE
         more.isEnabled=!busy;more.nextFocusUpId=list.getChildAt(list.childCount-1)?.id?:commentsButton.id
@@ -159,8 +167,9 @@ private class CommentRow(private val a:MainActivity):LinearLayout(a) {
     }
     fun bind(comment:YouTubeComment,open:(YouTubeComment)->Unit) {
         if(id==View.NO_ID)id=View.generateViewId()
-        tag="youtube-comment:${comment.id}";author.text=comment.author;body.text=comment.body
-        meta.text=listOf(comment.metadata,comment.repliesLabel).filter(String::isNotBlank).joinToString(" · ")
+        tag="youtube-comment:${comment.id}";author.textIfChanged(comment.author);body.textIfChanged(comment.body)
+        meta.textIfChanged(listOf(comment.metadata,comment.repliesLabel).filter(String::isNotBlank).joinToString(" · "))
         contentDescription="${comment.author}. ${comment.body}. ${meta.text}";setOnClickListener{open(comment)}
     }
+    fun release(){setOnClickListener(null);contentDescription=null;author.textIfChanged("");body.textIfChanged("");meta.textIfChanged("")}
 }

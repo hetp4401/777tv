@@ -1,7 +1,7 @@
 # 777tv Android TV workflow (formerly Fleet)
 
 - Latest instruction: do not install or test on the physical TCL until Het says
-  to do so again. Keep current 0.16.0 work and testing local or on worker emulators.
+  to do so again. Keep current YouTube work and testing local or on worker emulators.
   This supersedes the earlier TV testing authorization below.
 - 0.16.0 adds a native YouTube tab beside On-Demand, read-only comments/replies,
   related videos and an optional replay graph. Its API/parser, account flow

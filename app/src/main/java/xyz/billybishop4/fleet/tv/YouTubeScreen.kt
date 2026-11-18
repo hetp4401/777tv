@@ -80,9 +80,10 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
     private val emptyTitle=a.text("",22f,bold=true)
     private val emptyBody=a.text("",14f,MUTED).apply { maxLines=3;gravity=Gravity.CENTER }
     private val empty=a.column().apply { gravity=Gravity.CENTER;add(emptyTitle,width=-2);gap(10);add(emptyBody,width=-2) }
+    private val openVideo:(YouTubeVideo)->Unit={hideKeyboard();restore.cancel();m.play(it)}
     private val adapter=NativeAdapter<YouTubeVideo>({it.id},
         {parent,type->YouTubeCard(parent.context,a.artwork,type==1)},
-        {v,value,_->(v as YouTubeCard).bind(value){hideKeyboard();restore.cancel();m.play(it)}},
+        {v,value,_->(v as YouTubeCard).bind(value,openVideo)},
         type={if(m.feed==YouTubeFeed.SHORTS)1 else 0},recycle={(it as YouTubeCard).release()})
     private var lastFeed:YouTubeFeed?=null;private var lastQuery=""
     private var submitted:List<YouTubeVideo>?=null
@@ -164,7 +165,7 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
     override fun update() {
         if(closed)return
         home.isSelected=m.feed==YouTubeFeed.HOME;shorts.isSelected=m.feed==YouTubeFeed.SHORTS
-        account.text=if(m.account==null)"Sign in" else "Account"
+        account.textIfChanged(if(m.account==null)"Sign in" else "Account")
         if(input.text.toString()!=m.query) { syncing=true;input.setText(m.query);input.setSelection(input.text.length);syncing=false }
         if(lastFeed!=m.feed || lastQuery!=m.query && m.feed==YouTubeFeed.SEARCH) {
             requestedFocusIndex=null;restore.cancel()
@@ -179,13 +180,13 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
             adapter.submitList(m.videos) { if(restoreState!=null)grid.onRestoreInstanceState(restoreState) }
         }
         val text=m.error.orEmpty()
-        feedback.visibility=if(text.isNotBlank())View.VISIBLE else View.GONE;status.visibility=View.VISIBLE;status.text=text
+        feedback.visibility=if(text.isNotBlank())View.VISIBLE else View.GONE;status.visibility=View.VISIBLE;status.textIfChanged(text)
         retry.visibility=if(m.error!=null)View.VISIBLE else View.GONE
         progress.visibility=if(m.busy || m.resolving)View.VISIBLE else View.INVISIBLE
         progress.contentDescription=if(m.resolving)"Opening YouTube video" else "Loading YouTube"
         empty.visibility=if(m.videos.isEmpty() && !m.busy && m.error==null)View.VISIBLE else View.GONE
-        emptyTitle.text=when(m.feed){YouTubeFeed.HOME->if(m.account==null)"Make YouTube yours" else "Your YouTube home";YouTubeFeed.SHORTS->"No Shorts right now";YouTubeFeed.SEARCH->"No videos found"}
-        emptyBody.text=when(m.feed){YouTubeFeed.HOME->if(m.account==null)"Sign in for your recommendations, or search without an account." else m.message.ifBlank{"Try refreshing your home feed."};YouTubeFeed.SHORTS->"Try again in a moment, or search for a video.";YouTubeFeed.SEARCH->"Try a different search."}
+        emptyTitle.textIfChanged(when(m.feed){YouTubeFeed.HOME->if(m.account==null)"Make YouTube yours" else "Your YouTube home";YouTubeFeed.SHORTS->"No Shorts right now";YouTubeFeed.SEARCH->"No videos found"})
+        emptyBody.textIfChanged(when(m.feed){YouTubeFeed.HOME->if(m.account==null)"Sign in for your recommendations, or search without an account." else m.message.ifBlank{"Try refreshing your home feed."};YouTubeFeed.SHORTS->"Try again in a moment, or search for a video.";YouTubeFeed.SEARCH->"Try a different search."})
         updateSignIn()
     }
     private fun account() {
@@ -245,7 +246,11 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
     @Suppress("DEPRECATION") override fun restoreState(state:Parcelable?) { (state as? Bundle)?.getParcelable<Parcelable>("scroll")?.let { pendingScroll=it } }
     override fun foreground(){m.activate()}
     override fun background(){m.deactivate()}
-    override fun close(){closed=true;restore.cancel();qrJob?.cancel();signInDialog?.dismiss();signInDialog=null;m.deactivate();list.adapter=null;list.recycledViewPool.clear()}
+    override fun close(){
+        closed=true;restore.cancel();qrJob?.cancel();signInDialog?.dismiss();signInDialog=null;m.deactivate()
+        for(i in 0 until list.childCount)(list.getChildAt(i) as? YouTubeCard)?.release()
+        list.adapter=null;list.recycledViewPool.clear()
+    }
 }
 
 internal class YouTubeCard(context:Context,private val loader:ArtworkLoader,private val portrait:Boolean):LinearLayout(context) {
@@ -254,6 +259,8 @@ internal class YouTubeCard(context:Context,private val loader:ArtworkLoader,priv
     private val channel=context.text("",12f,MUTED).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END }
     private val duration=context.text("",11f).apply { background=context.round(0xCC000000.toInt(),radius=5);pad(3) }
     private var video:YouTubeVideo?=null;private var click:((YouTubeVideo)->Unit)?=null
+    private val imageWidth=context.dp(if(portrait)142 else 228)
+    private val imageHeight=context.dp(if(portrait)245 else 126)
     init {
         orientation=VERTICAL;pad(4);isFocusable=true;isFocusableInTouchMode=true;isClickable=true;stateListAnimator=null
         if(android.os.Build.VERSION.SDK_INT>=26)defaultFocusHighlightEnabled=false
@@ -270,11 +277,13 @@ internal class YouTubeCard(context:Context,private val loader:ArtworkLoader,priv
         setOnClickListener { video?.let { click?.invoke(it) } }
     }
     fun bind(value:YouTubeVideo,open:(YouTubeVideo)->Unit) {
+        click=open
+        if(video==value)return
         id=if(id==View.NO_ID)View.generateViewId() else id
-        video=value;click=open;tag="youtube-video:${value.id}";contentDescription=listOf(value.name,value.channel).filter(String::isNotBlank).joinToString(", ")
-        title.text=value.name;channel.text=value.channel.ifBlank { value.metadata };duration.text=if(value.live)"LIVE" else value.duration.ifBlank { if(value.isShort)"Shorts" else "" }
+        video=value;tag="youtube-video:${value.id}";contentDescription=if(value.channel.isBlank())value.name else "${value.name}, ${value.channel}"
+        title.textIfChanged(value.name);channel.textIfChanged(value.channel.ifBlank { value.metadata });duration.textIfChanged(if(value.live)"LIVE" else value.duration.ifBlank { if(value.isShort)"Shorts" else "" })
         duration.visibility=if(duration.text.isNotEmpty())View.VISIBLE else View.GONE;image.refreshDrawableState()
-        loader.show(image,value.thumbnail,context.dp(if(portrait)142 else 228),context.dp(if(portrait)245 else 126))
+        loader.show(image,value.thumbnail,imageWidth,imageHeight)
     }
     fun release(){image.dispose();image.setImageDrawable(null);image.tag=null;video=null;click=null}
 }

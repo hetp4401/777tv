@@ -18,7 +18,6 @@ import androidx.recyclerview.widget.RecyclerView
 import coil.ImageLoader
 import coil.load
 import coil.dispose
-import coil.memory.MemoryCache
 import coil.disk.DiskCache
 import java.io.File
 
@@ -41,6 +40,8 @@ internal fun Context.text(value: String, size: Float = 16f, color: Int = WHITE, 
     text = value; textSize = size; setTextColor(color); includeFontPadding = false
     if (bold) typeface = Typeface.DEFAULT_BOLD
 }
+/** TextView.setText can schedule layout even when a model update did not change this label. */
+internal fun TextView.textIfChanged(value:CharSequence) { if(!android.text.TextUtils.equals(text,value))text=value }
 internal fun Context.column() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
 internal fun Context.row() = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
 internal fun ViewGroup.add(view: View, width: Int = ViewGroup.LayoutParams.MATCH_PARENT, height: Int = ViewGroup.LayoutParams.WRAP_CONTENT) {
@@ -167,15 +168,17 @@ internal class ArtworkLoader private constructor(context: Context) {
         @Volatile private var shared: ArtworkLoader? = null
         fun get(context: Context): ArtworkLoader = shared ?: synchronized(this) { shared ?: ArtworkLoader(context.applicationContext).also { shared = it } }
     }
+    private val lowRam=(context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager).isLowRamDevice
     val loader = ImageLoader.Builder(context.applicationContext)
-        .memoryCache { MemoryCache.Builder(context).maxSizeBytes((if((context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager).isLowRamDevice)8 else 16) * 1024 * 1024).build() }
+        .memoryCache { ArtworkMemoryCache((if(lowRam)4 else 8)*1024*1024) }
         .diskCache { DiskCache.Builder().directory(File(context.cacheDir, "artwork")).maxSizeBytes(64L * 1024 * 1024).build() }
+        .bitmapFactoryMaxParallelism(if(lowRam)1 else 2)
         .crossfade(false).allowHardware(true).build()
     fun show(view: ImageView, url: String, width: Int, height: Int) {
         if (view.tag == url) return
         view.tag = url
         if (url.isBlank()) { view.dispose();view.setImageDrawable(null); return }
-        view.load(url, loader) { size(width, height); addHeader("User-Agent", "FleetTV/0.5 (Android TV)"); crossfade(false); allowHardware(true) }
+        view.load(url, loader) { size(width, height);precision(coil.size.Precision.EXACT);addHeader("User-Agent", "FleetTV/0.5 (Android TV)"); crossfade(false); allowHardware(true) }
     }
 }
 internal fun RecyclerView.tune(cachedViews:Int=2) {

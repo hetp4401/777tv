@@ -5,6 +5,7 @@ import json
 import subprocess
 import threading
 import time
+import performance_fixture
 
 _lock=threading.Lock()
 _state={}
@@ -48,6 +49,7 @@ def reel(index):
 
 
 def handle_get(handler,path,query,root):
+    if path.startswith('/youtube/performance/'):return performance_fixture.handle(handler,path,root)
     if path=='/youtube/control':
         q=parse_qs(query)
         if q.get('reset')==['1']:reset()

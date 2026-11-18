@@ -573,3 +573,31 @@ The base 0.15.0 candidate was checked on the physical TCL before the user's
 later instruction to hold TV testing. The 0.16.0 candidate is not installed or
 tested there. No physical-TV memory or frame-rate improvement is claimed for
 the new YouTube feature. IPTV defaults remain empty and existing data is kept.
+
+
+## Bounded memory and idle work (0.16.1)
+
+The artwork cache uses the greater of Android's allocation report and the actual
+pixel footprint. The worker's hardware bitmaps reported 4 KiB for 456×257 pixels;
+trusting that report retained far more artwork than the configured budget. The
+new strong LRU retains at most 8 MiB (4 MiB on low-memory devices), decodes at
+the display size with at most two simultaneous decoders, and never recycles an
+image still displayed by a view.
+
+Movie buffering now targets 24 MiB (16 MiB on low-memory devices), prioritizing
+the byte budget over filling a long forward buffer. Playback controls stop their
+ticker while steadily paused, unchanged progress does not rewrite history, and
+YouTube comments/related UI is created on first opening and released on trim.
+
+A controlled pair on the same worker, with identical generated media and test
+bytes, measured 48.3 → 25.1 MiB in the encoded movie allocator and 156.4 → 130.2
+MiB in movie-process PSS. Retained artwork pixel bytes fell from 13.0 to 7.6 MiB.
+Overall browsing PSS stayed around 145 MiB. Frame p95 remained dominated by the
+software renderer; this comparison does not establish a frame-rate or CPU gain.
+
+95 JVM checks, lint, and 123 unique worker scenarios pass. Two first-run assertions
+were corrected: waiting for the coalesced episode header frame, and asserting
+the exact paused seek destination instead of assuming the previous resume was
+before it. Both reruns pass against unchanged production sources. The failed
+runs and their replacements remain recorded in `releases/0.16.1/verification.json`.
+The candidate was neither installed nor tested on the physical TCL.

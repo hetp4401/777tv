@@ -6,16 +6,16 @@ and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
 ## Development candidate
 
-**0.16.0 · version code 20 · Android 7.0 / API 24 or later**
+**0.16.1 · version code 21 · Android 7.0 / API 24 or later**
 
-This branch contains the YouTube candidate. The 0.16.0 additions have not been
+This branch contains the YouTube candidate. The YouTube additions have not been
 installed or tested on the physical TCL; the user requested holding TV testing.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Candidate verification](releases/0.16.0/verification.json) records the APK checksum,
+[Candidate verification](releases/0.16.1/verification.json) records the APK checksum,
 source/build checksums and validation scope.
-[SHA256SUMS](releases/0.16.0/SHA256SUMS) identifies the candidate APK. The last
+[SHA256SUMS](releases/0.16.1/SHA256SUMS) identifies the candidate APK. The last
 published production snapshot remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
@@ -101,10 +101,14 @@ adb -s emulator-5554 shell am start -n xyz.billybishop4.fleet.tv/.MainActivity
 
 ## Tests and verification
 
-Version 0.16.0 passes **95 JVM tests**, Android lint with no errors, and **115
+Version 0.16.1 passes **95 JVM tests**, Android lint with no errors, and **123
 unique worker Android TV scenarios**. The candidate verification records the
-source versions, the resolved test-only Back-release wait, and the controlled
-before/after pagination regression. A separate
+source versions and two corrected test assertions with passing reruns.
+A matched emulator workload reduced encoded movie buffering from 48.3 to
+25.1 MiB, and movie-process PSS from 156.4 to 130.2 MiB. Artwork now counts
+hardware bitmap pixels correctly and stays within an 8 MiB cache budget
+(4 MiB on low-memory devices). Overall browsing PSS and frame timing were
+essentially unchanged in this software-rendered workload. A separate
 opt-in live probe checks real search, Shorts, code issuance, public media,
 comments, related videos and replay markers. Real Google approval requires the
 account owner; its completion is covered by generated fixtures.
@@ -152,6 +156,6 @@ historical artifact paths in that file refer to untracked local evidence.
 | `app/src/androidTest/` | Android TV navigation, rendering, playback and performance tests |
 | `scripts/` | Toolchain bootstrap, fixtures and optional remote client |
 | `remote/` | Optional build/test worker service and pinned toolchain |
-| `releases/0.16.0/` | Candidate verification and APK checksum |
+| `releases/0.16.1/` | Candidate verification and APK checksum |
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency notices.

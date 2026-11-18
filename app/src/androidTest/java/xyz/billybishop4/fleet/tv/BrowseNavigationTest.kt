@@ -603,7 +603,8 @@ class BrowseNavigationTest:NativeTestBase() {
         }
         sendRemoteKey(android.view.KeyEvent.KEYCODE_DPAD_CENTER)
         awaitEpisodeStreams(rolloverEpisode(3,1))
-        assertEquals("Rollover fixture season 3 episode 1.",ui { (tagged("episode-description") as TextView).text.toString() })
+        // Stream completion precedes the coalesced UI frame; wait for the visible header too.
+        await { ui { (tagged("episode-description") as TextView).text.toString()=="Rollover fixture season 3 episode 1." } }
         assertSame(page,shownTag("series-details"));assertEquals(header,rectangle("series-header"))
         screenshot("episode-season-rollover")
     }

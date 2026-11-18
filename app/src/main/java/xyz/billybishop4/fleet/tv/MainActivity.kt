@@ -302,7 +302,7 @@ class MainActivity : ComponentActivity() {
         live.isSelected = model.section == Section.LIVE; search.isSelected = model.section == Section.SEARCH;youtube.isSelected=model.section==Section.YOUTUBE
         settings.visibility = if (route == Route.Settings) View.INVISIBLE else View.VISIBLE
         val localFeedback=route is Route.Channels || route==Route.Settings || route==Route.Addons || route==Route.AddProvider || route is Route.EditProvider || route==Route.Browse(Section.YOUTUBE)
-        error.text = model.error.orEmpty();errorRow.visibility=if(!localFeedback && model.error!=null)View.VISIBLE else View.GONE
+        error.textIfChanged(model.error.orEmpty());errorRow.visibility=if(!localFeedback && model.error!=null)View.VISIBLE else View.GONE
         loading.visibility = if (model.busy && !localFeedback) View.VISIBLE else View.GONE
         if (changed || screen == null) {
             retireScreen(); screenKey = next;screenRoute=route
@@ -349,7 +349,7 @@ class MainActivity : ComponentActivity() {
         super.onTrimMemory(level)
         if (level >= TRIM_MEMORY_RUNNING_LOW) {
             if(artworkDelegate.isInitialized())artwork.loader.memoryCache?.clear()
-            posterPool.clear();model.trimMemory()
+            posterPool.clear();playback?.trimMemory();model.trimMemory()
         }
     }
 }

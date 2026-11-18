@@ -176,7 +176,11 @@ internal class YouTubeModel(
             catch(e:Exception) { error="Couldn't remove YouTube sign-in. Try again.";busy=false }
         }
     }
-    fun trimMemory(keepPage:Boolean=false) { pages.clear();if(!active && !keepPage){videos=emptyList();continuation=null;message=""} }
+    fun trimMemory(keepPage:Boolean=false) {
+        pages.clear()
+        if(!keepPage){queue=emptyList();queueContinuation=null}
+        if(!active && !keepPage){videos=emptyList();continuation=null;message=""}
+    }
     internal fun installFixturePage(feed:YouTubeFeed,page:YouTubePage) {
         pageJob?.cancel();queryJob?.cancel();pageGeneration++;this.feed=feed;query="";videos=page.videos;continuation=page.continuation;message=page.message;busy=false;error=null
     }

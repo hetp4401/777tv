@@ -98,7 +98,9 @@ internal class VodControls(
     private val ticker = object : Runnable {
         override fun run() {
             if (closed || view.visibility != View.VISIBLE || !view.isAttachedToWindow) return
-            update(); main.postDelayed(this, 250)
+            update()
+            if(player.isPlaying || (player.playWhenReady && player.playbackState==Player.STATE_BUFFERING) ||
+                player.isLoading || touchPosition!=null || queuedSeek!=null)main.postDelayed(this,250)
         }
     }
     private val hideLater = Runnable {
@@ -115,6 +117,10 @@ internal class VodControls(
         override fun onIsPlayingChanged(isPlaying: Boolean) = changed()
         override fun onPlaybackStateChanged(playbackState: Int) = changed()
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) = changed()
+        override fun onIsLoadingChanged(isLoading:Boolean) { if(!closed && view.isShown){update();startTicker()} }
+        override fun onPositionDiscontinuity(oldPosition:Player.PositionInfo,newPosition:Player.PositionInfo,reason:Int) {
+            if(!closed && view.isShown)update()
+        }
         override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) { if (!closed && view.isShown) update() }
         private fun changed() {
             if (closed) return
@@ -122,7 +128,7 @@ internal class VodControls(
             val ended = priorState != Player.STATE_ENDED && player.playbackState == Player.STATE_ENDED
             priorPlayIntent = player.playWhenReady; priorState = player.playbackState
             if ((paused || ended) && view.visibility != View.VISIBLE) show(false)
-            else if (view.visibility == View.VISIBLE) { update(); scheduleHide() }
+            else if (view.visibility == View.VISIBLE) { update();startTicker(); scheduleHide() }
         }
     }
     init {
