@@ -102,7 +102,7 @@ class StalkerTest {
             assertTrue(watch.live); assertTrue(watch.stream.url.contains("/media/live.m3u8?token=signed"))
             assertNull(watch.headers["Cookie"]); assertNull(watch.headers["Authorization"])
             assertEquals(c.command, f.requests.last().requestUrl!!.queryParameter("cmd"))
-            assertEquals(2, f.tokens)
+            assertEquals(1, f.tokens)
         }
     }
     @Test fun `root URL falls back from load endpoint to portal endpoint`() = runBlocking {
@@ -170,8 +170,26 @@ class StalkerTest {
             val client=StalkerClient(Http());val p=f.provider();val c=Channel("1","News","",command="ffmpeg http://localhost/ch/1")
             awaitAll(async { client.guide(p,c) },async { client.watch(p,c,false) })
             val actions=f.requests.map { it.requestUrl!!.queryParameter("action") }
-            assertEquals(2,f.tokens);assertEquals(listOf(0,3),actions.indices.filter { actions[it]=="handshake" })
+            assertEquals(1,f.tokens);assertEquals(listOf(0),actions.indices.filter { actions[it]=="handshake" })
             assertTrue("create_link" in actions);assertTrue("get_short_epg" in actions)
+        }
+    }
+    @Test fun `cached session expires renews after unauthorized and force refresh authenticates again`()=runBlocking {
+        Portal().use{f->
+            var now=1000L;val client=StalkerClient(Http()){now};val p=f.provider()
+            val channel=client.channels(p).single();client.watch(p,channel,false);assertEquals(1,f.tokens)
+            now+=60_001;client.watch(p,channel,false);assertEquals(2,f.tokens)
+            f.expire=1;client.watch(p,channel,false);assertEquals(3,f.tokens)
+            client.watch(p,channel,true);assertEquals(4,f.tokens)
+            assertNull(f.requests.last().getHeader("Proxy-Authorization"))
+        }
+    }
+    @Test fun `editing device identity never reuses the previous session`()=runBlocking {
+        Portal().use{f->
+            val client=StalkerClient(Http());val p=f.provider();val channel=client.channels(p).single()
+            client.watch(p.copy(deviceId="different-device"),channel,false)
+            assertEquals(2,f.tokens)
+            assertEquals("different-device",f.requests.first{it.requestUrl!!.queryParameter("device_id")=="different-device"}.requestUrl!!.queryParameter("device_id"))
         }
     }
 }

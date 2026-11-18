@@ -65,7 +65,13 @@ open class NativeTestBase {
         val found=target()
         if(found!=null)ui{found.requestFocus();found.performClick()}else device.findObject(selector).click()
     }
-    protected fun sendRemoteKey(code:Int) { InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(code) }
+    protected fun sendRemoteKey(code:Int) {
+        val instrumentation=InstrumentationRegistry.getInstrumentation();instrumentation.waitForIdleSync()
+        val down=SystemClock.uptimeMillis()
+        // A real remote keeps one downTime across DOWN/UP; avoid synthetic zero-time pairs.
+        for(action in intArrayOf(KeyEvent.ACTION_DOWN,KeyEvent.ACTION_UP))instrumentation.sendKeySync(
+            KeyEvent(down,SystemClock.uptimeMillis(),action,code,0,0,KeyCharacterMap.VIRTUAL_KEYBOARD,0,0,InputDevice.SOURCE_DPAD))
+    }
     @Suppress("UNCHECKED_CAST") protected fun firstMovieCard():View?=ui {
         val home=a.window.decorView.findTag("search-home") as? androidx.recyclerview.widget.RecyclerView?:return@ui null
         val shelf=descendants(home).filterIsInstance<ShelfCard>().firstOrNull { it.shelfName=="Popular · Movies" }

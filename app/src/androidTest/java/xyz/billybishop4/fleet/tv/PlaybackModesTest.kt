@@ -3,6 +3,7 @@ package xyz.billybishop4.fleet.tv
 
 import android.os.SystemClock
 import android.view.KeyEvent
+import android.view.KeyCharacterMap
 import android.view.View
 import android.widget.SeekBar
 import android.widget.TextView
@@ -50,6 +51,16 @@ class PlaybackModesTest:NativeTestBase() {
         assertFalse("One center press should pause a Short",observations.getJSONObject(3).getBoolean("play"))
         assertFalse(ui{p.playWhenReady})
     }
+    @Test fun shortsAcceptAnOrphanCenterReleaseOnceAndIgnoreCancelledReleases() {
+        click("YouTube Shorts");await{ui{!a.model.youtube.busy && a.model.youtube.videos.isNotEmpty()}}
+        ui{a.model.youtube.play(a.model.youtube.videos.first())};playing()
+        ui{a.playback!!.dismissControls()};val at=SystemClock.uptimeMillis()
+        val release=KeyEvent(at,at+1,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_CENTER,0)
+        assertTrue(ui{a.playback!!.dispatchKey(release)});assertFalse(ui{a.player!!.playWhenReady})
+        assertTrue(ui{a.playback!!.dispatchKey(release)});assertFalse("Duplicate release must not resume",ui{a.player!!.playWhenReady})
+        val cancelled=KeyEvent(at+10,at+11,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_CENTER,0,0,KeyCharacterMap.VIRTUAL_KEYBOARD,0,KeyEvent.FLAG_CANCELED)
+        assertTrue(ui{a.playback!!.dispatchKey(cancelled)});assertFalse(ui{a.player!!.playWhenReady})
+    }
     @Test fun shortsHavePortraitLoopingPlaybackAReadOnlyLineAndDirectRemoteClipChanges() {
         ui{a.model.updatePreferences(Preferences(videoFit="Zoom"))}
         click("YouTube Shorts");await{ui{!a.model.youtube.busy && a.model.youtube.videos.size>=2}}
@@ -60,7 +71,7 @@ class PlaybackModesTest:NativeTestBase() {
         assertEquals(AspectRatioFrameLayout.RESIZE_MODE_FIT,ui{(tagged("native-player") as PlayerView).resizeMode})
         ui{a.playback!!.dismissControls()}
         await{ui{a.hasWindowFocus() && tagged("native-player")!!.hasFocus() && tagged("shorts-actions")!!.isShown==false}}
-        sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
+        device.waitForIdle(1000);device.pressDPadCenter()
         await{ui{!a.player!!.playWhenReady}};assertTrue(tagged("shorts-actions")!!.isShown)
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER);playing()
         ui{a.player!!.seekTo(a.player!!.duration-700)}

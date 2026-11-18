@@ -66,6 +66,8 @@ def handle_get(handler,path,query,root):
         return handler.send(b'clientId:"fixture.apps.googleusercontent.com",secret:"fixtureSecret"','application/javascript')
     if path.startswith('/youtube/resolve/'):
         identifier=path.rsplit('/',1)[-1]
+        if identifier=='B0000000009':
+            return handler.send({'url':'http://10.0.2.2:8878/startup/media/master.m3u8'})
         with _lock:_state['resolved'].append(identifier);fail=_state['fail_playback'];slow=_state['slow'];split=_state['split_media']
         if slow:time.sleep(1)
         if fail:return handler.send({'error':'fixture unavailable'},status=503)

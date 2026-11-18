@@ -39,7 +39,16 @@ internal class YouTubeHttp : YouTubeTransport {
     companion object {
         const val USER_AGENT="Mozilla/5.0 (ChromiumStylePlatform) Cobalt/25.lts.3.1062949-gold (unlike Gecko) v8/8.8.278.8-jit gles Starboard/15"
         internal val client by lazy { OkHttpClient.Builder().connectTimeout(15,TimeUnit.SECONDS).readTimeout(25,TimeUnit.SECONDS)
-            .callTimeout(45,TimeUnit.SECONDS).connectionPool(okhttp3.ConnectionPool(2,60,TimeUnit.SECONDS)).build() }
+            .callTimeout(45,TimeUnit.SECONDS).connectionPool(okhttp3.ConnectionPool(5,60,TimeUnit.SECONDS)).build() }
+        // Share DNS/TLS/HTTP2 connections with playback. Streaming calls have no total
+        // duration deadline; read/connect timeouts still detect a broken connection.
+        internal val mediaClient by lazy { client.newBuilder().readTimeout(20,TimeUnit.SECONDS).callTimeout(0,TimeUnit.SECONDS)
+            .addNetworkInterceptor { chain->
+                val request=chain.request()
+                val safe=if(sameOrigin(chain.call().request().url.toString(),request.url.toString()))request else request.newBuilder()
+                    .removeHeader("Authorization").removeHeader("Cookie").removeHeader("Proxy-Authorization").build()
+                chain.proceed(safe)
+            }.build() }
         internal fun readBounded(response:Response):String {
             val body=response.body ?: return ""
             if(body.contentLength()>8*1024*1024)throw IOException("YouTube response is too large")

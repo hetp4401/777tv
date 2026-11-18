@@ -12,6 +12,7 @@ import struct
 import zlib
 import re
 import youtube_fixture
+import startup_fixture
 
 
 def logo_png():
@@ -98,6 +99,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path); path = unquote(u.path)
+        if path.startswith('/startup/'):return startup_fixture.handle(self,path,u.query,ROOT)
         if path.startswith('/youtube/'):return youtube_fixture.handle_get(self,path,u.query,ROOT)
         if path=='/media/multitrack.mkv':return self.media()
         if path == '/logo.png':

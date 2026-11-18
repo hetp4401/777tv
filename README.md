@@ -6,18 +6,18 @@ and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
 ## Development candidate
 
-**0.18.0 · version code 23 · Android 7.0 / API 24 or later**
+**0.18.1 · version code 24 · Android 7.0 / API 24 or later**
 
 This branch contains the native YouTube and source-specific player update.
-The latest user instruction holds TCL testing and deployment. Version 0.18.0
+The latest user instruction holds TCL testing and deployment. Version 0.18.1
 is validated locally and on worker emulators; it has not been installed
 on the physical TV. The release record tracks the exact validation scope.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Candidate verification](releases/0.18.0/verification.json) records the APK checksum,
+[Candidate verification](releases/0.18.1/verification.json) records the APK checksum,
 source/build checksums and validation scope.
-[SHA256SUMS](releases/0.18.0/SHA256SUMS) identifies the candidate APK. The last
+[SHA256SUMS](releases/0.18.1/SHA256SUMS) identifies the candidate APK. The last
 published production snapshot remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
@@ -65,6 +65,13 @@ are excluded from Git.
   **No IPTV profiles are installed by default.**
 - Encrypted provider/add-on configuration using Android Keystore, bounded
   artwork and channel caches, recycled lists and one shared player.
+- Faster explicit playback: YouTube resolves playback data without waiting for
+  unrelated thumbnails or watch-next. Three recent URL records expire after
+  60 seconds; a running next-Short request is reused when selected. All sources
+  share reusable HTTP connections and start loading alongside controls. Initial
+  buffers are 250 ms for Shorts, 350 ms for Live TV and 500 ms otherwise; ongoing buffering budgets
+  and rebuffer protection are retained. Stalker reuses a briefly authenticated
+  session and renews it after expiry, rejection, identity changes or explicit refresh.
 
 New installations include these public add-ons:
 
@@ -115,14 +122,30 @@ adb -s emulator-5554 shell am start -n xyz.billybishop4.fleet.tv/.MainActivity
 
 ## Tests and verification
 
-The candidate passes 108 ordinary JVM checks, 145 unique worker emulator
-scenarios and Android lint. Two opt-in public YouTube checks verify real
+The candidate passes 119 ordinary JVM checks, 147 unique worker emulator
+scenarios and Android lint. Three opt-in public YouTube checks verify real
 signed-out recommendations, search, Shorts, media,
 comments, replay data and device-code issuance without account approval.
 Worker Android TV suites cover navigation, account fixtures, all four player
 presentations, seeking, picture adjustments, failure recovery and bounded memory.
 Exact counts, source scopes, resolved development failures and physical-device
 checks are recorded in the candidate verification.
+
+In a paired Mac check, median public YouTube source resolution fell from 811 ms
+to 153 ms. A matched worker test measures Play until both a video frame and
+active playback are available, with resume disabled and constrained bandwidth:
+
+| Source | Before | 0.18.1 |
+| --- | ---: | ---: |
+| Shorts | 1.18 s | 1.03 s |
+| YouTube | 1.47 s | 1.10 s |
+| On-demand | 1.24 s | 0.87 s |
+| Live TV | 1.32 s | 0.95 s |
+
+These are four-trial medians per source on the same software-rendered emulator,
+using generated media; neither build rebuffers during the controlled observation.
+Real public YouTube source timings are measured separately. These results compare
+777tv builds; TizenTube and the physical TCL have not been benchmarked for this update.
 
 Artwork stays within an 8 MiB cache budget (4 MiB on low-memory devices), counting
 actual hardware-bitmap pixels. Encoded movie buffering targets 24/16 MiB;

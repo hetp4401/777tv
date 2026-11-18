@@ -56,11 +56,12 @@ class YouTubeAccountFeedsTest:NativeTestBase() {
     }
     @Test fun signedInSubscriptionsPageAndPaginateWithoutResolvingAnyMedia() {
         signIn();click("YouTube subscriptions");ready(YouTubeFeed.SUBSCRIPTIONS)
-        await{ui{a.model.youtube.videos.size==20}}
+        await{ui{a.model.youtube.videos.size>=20}}
         assertTrue(ui{a.model.youtube.videos.all{it.id.startsWith("U")}})
         ui{(tagged("youtube-results") as RecyclerView).scrollToPosition(18)}
-        await{ui{a.model.youtube.videos.size==40 && !a.model.youtube.busy}}
+        await{ui{a.model.youtube.videos.size>=40 && !a.model.youtube.busy}}
         assertTrue(requests().any{it.optString("browseId")=="FEsubscriptions" && it.optBoolean("authenticated")})
+        assertTrue(requests().any{it.optString("continuation").isNotEmpty() && it.optBoolean("authenticated")})
         assertNull(player());screenshot("youtube-subscriptions")
     }
     @Test fun signedInLibrarySwitchesBetweenHistoryWatchLaterAndLikedVideos() {

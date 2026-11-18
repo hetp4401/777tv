@@ -694,3 +694,50 @@ memory workload is a smoke check, not a physical-TV frame-rate claim.
 The latest user instruction holds all TCL deployment and testing again.
 0.18.0 has not been installed or tested on the physical TV. The earlier 0.17.0
 installation remains; no IPTV profile was provisioned or other TV app changed.
+
+## Playback startup (0.18.1)
+
+Public YouTube playback no longer waits for WEB thumbnail metadata and watch-next
+before creating the player. The pinned NewPipe library supplies its anonymous
+visitor/player response directly, including captions; matching, playable HLS
+responses use this path and other responses retain the full extractor fallback.
+One cancellable resolver worker remains. In alternating comparisons of the same
+three public videos from the Mac, median source resolution fell from 810.5 ms to
+152.5 ms. The manifests remained accessible. These are source-resolution timings,
+not physical-TV first-frame measurements or a matched TizenTube comparison.
+
+Three recently selected URL records expire after 60 seconds. Retry resolves a
+fresh source; sign-out, history clearing and memory pressure release the cache.
+An explicit next-Short selection adopts an already resolving warmup instead of
+discarding and repeating its requests. A warmup still in its delay is cancelled,
+and changing the explicit selection cancels any adopted work. No media resolves
+on browsing focus and no additional decoder or media buffer is preloaded.
+
+All four players use the Media3 OkHttp data source and reuse API/media HTTP
+connections. Credentials stay with their origin across redirects. Media loading
+starts while controls and the media session are being built. Initial buffering
+is 250 ms for Shorts, 350 ms for Live TV and 500 ms otherwise; steady-state duration/byte
+budgets and rebuffer thresholds are unchanged. Stalker reuses one authenticated
+session for 60 seconds, keyed by the complete validated provider identity.
+Expiry, rejection, changed credentials and explicit refresh authenticate again;
+concurrent guide and tune requests remain serialized to avoid invalidating tokens.
+
+The matched worker workload disables resume so every trial begins at the same
+media position. It records both the first rendered frame and active playback,
+using their maximum as playable latency. Generated HLS is limited to 204800
+bytes/second and portal RPCs each take 160 ms. The versioned verification contains
+the raw samples, source checksums, worker instance and regression results.
+Physical TCL testing and deployment remain on hold.
+
+The matched run uses the same worker instance and identical timing/fixture code.
+Median playable latency improves from 1178 to 1027.5 ms for Shorts, 1465.5 to
+1096.5 ms for regular YouTube, 1239 to 871 ms for on-demand, and 1319 to 951.5 ms
+for Live TV. All 32 before/after samples retain playback without rebuffering.
+An earlier 150/250 ms buffer experiment stalled on the constrained connection;
+the final 250/350/500 ms settings retain more startup protection.
+
+The faster path also exposed an Android input transition that consumes an initial
+OK DOWN but still delivers its UP. The focused Shorts surface accepts that
+unmatched release once, ignores duplicates/cancellation and keeps normal pairs
+at one action. The actual remote-flow, duplicate-release and cancelled-release
+checks pass alongside the existing seeking, pause and focus scenarios.

@@ -68,6 +68,7 @@ internal class VodControls(
         }
     }
     private val playIcon = ControlIcon(ControlIcon.PAUSE)
+    private var lastCenterRelease=Long.MIN_VALUE
     private val heatmap=if(watch.playbackMode==PlaybackMode.YOUTUBE)YouTubeHeatmapView(a,bar) else null
     private val play = iconButton("Pause", "vod-play-pause", playIcon) { togglePlayback() }
     private val rewind = iconButton("Back $seekSeconds seconds", "vod-rewind", ControlIcon(ControlIcon.REWIND, seekSeconds)) { skip(-1) }
@@ -372,7 +373,16 @@ internal class VodControls(
     fun dispatchKey(event: KeyEvent): Boolean {
         if (closed) return false
         val code = event.keyCode
-        if (event.action == KeyEvent.ACTION_UP && consumedKeys.remove(code) != null) return true
+        val center=code==KeyEvent.KEYCODE_DPAD_CENTER || code==KeyEvent.KEYCODE_ENTER
+        if (event.action == KeyEvent.ACTION_UP) {
+            if(consumedKeys.remove(code)!=null){if(center)lastCenterRelease=event.downTime;return true}
+            // Android can consume the first DOWN when leaving touch/focus mode and
+            // still deliver its UP. Activate the focused Shorts surface once in that case.
+            if(watch.short && center && (view.visibility!=View.VISIBLE || !view.hasFocus())) {
+                if(!event.isCanceled && lastCenterRelease!=event.downTime)togglePlayback()
+                lastCenterRelease=event.downTime;return true
+            }
+        }
         consumedKeys[code]?.let { down ->
             if (event.repeatCount > 0 || event.downTime == down) return true
             consumedKeys.remove(code) // The preceding UP may have gone to a dialog/window.

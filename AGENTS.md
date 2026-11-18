@@ -2,7 +2,7 @@
 
 - Latest instruction: "don’t test or deploy to tcl now I’ll tell you to do it
   later" holds all physical TCL testing and installation again. Continue local
-  development and worker emulator checks. 0.18.0 has not been deployed to the TCL;
+  development and worker emulator checks. 0.18.0 and 0.18.1 have not been deployed to the TCL;
   the earlier 0.17.0 installation remains. Do not contact, launch, install, run
   instrumentation, or make changes on the TCL without fresh authorization.
   Preserve app data, sign-ins, profiles, add-ons and history. No default IPTV profiles.
@@ -10,6 +10,12 @@
   Shorts, YouTube, on-demand and Live TV presentations. Keep ExoPlayer as the only
   engine, native views, bounded caches/buffers, no seek/transport UI for live TV,
   and no frame-history graph or movie transport panel for Shorts.
+- 0.18.1 optimizes explicit Play to first frame: playback-only public YouTube
+  requests with the full extractor as fallback, three URL records for 60 seconds,
+  adoption of in-progress Shorts warmups, shared HTTP connections and short initial
+  buffers with unchanged rebuffer protection. Stalker reuses one authenticated
+  session for up to 60 seconds, bound to the complete provider identity; expiry,
+  rejection and explicit refresh reauthenticate. Tokens stay in memory.
 - 0.16.0 adds a native YouTube tab beside On-Demand, read-only comments/replies,
   related videos and an optional replay graph. Its API/parser, account flow
   and ExoPlayer resolver are described in `docs/tizentube-investigation.md`.
@@ -26,9 +32,6 @@
   Existing remote runs can finish; use local or remote tools as useful.
 - `remote/README.md` documents the three `fleet-tv-dev` build/test replicas.
   Use native Node fetch for Shellbox/Fleet access; no browser is needed.
-- For the current Android TV updates, Het's later "Install it on the tcl now"
-  authorizes installation and focused checks on the physical TCL. Preserve app
-  data and saved profiles. Run automated fixture/performance suites on workers.
 - Use generated media and Stalker fixtures remotely. Never upload real IPTV
   credentials, `.tools/stalker-private.json`, signing keys, `.env` or the private
   worker-access configuration in source archives, logs or app artifacts.

@@ -9,7 +9,7 @@ import android.view.*
 import android.widget.*
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.*
-import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.*
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -23,7 +23,7 @@ import kotlinx.coroutines.*
 internal data class PlaybackSnapshot(val engine:String, val playing:Boolean, val positionMs:Long,
     val width:Int,val height:Int,val audio:Boolean,val dropped:Long=0,val decoder:String="",
     val audioTrack:String="",val subtitleText:String="",val frameRateHint:Float=0f,val forwardCapMiB:Int=0,
-    val displayFps:Double=0.0,val effectsActive:Boolean=false)
+    val displayFps:Double=0.0,val effectsActive:Boolean=false,val firstFrameMs:Long=0,val sourceMs:Long=0,val playbackMs:Long=0)
 
 /** One hardware-decoded player per visible attachment; direct add-on URLs. */
 internal class NativePlayback(private val a: MainActivity, private val m: FleetModel, private val original: Watch, private var fullscreen: Boolean = true, private val exit: () -> Unit) {
@@ -50,12 +50,16 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     private var bufferBudgetBytes=0
     private var buffering: View? = null
     private var exoDecoder=""
+    private val requestedAtMs=original.playRequestedAtMs.takeIf{it>0}?:playbackNowMs()
+    private var firstFrameMs=0L
+    private var sourceMs=0L
+    private var playbackMs=0L
     val snapshot: PlaybackSnapshot? get() = player?.let { exo ->
         val audio=exo.currentTracks.groups.firstOrNull { it.type==C.TRACK_TYPE_AUDIO && it.isSelected }
         val language=audio?.let { group -> (0 until group.length).firstOrNull { group.isTrackSelected(it) }?.let { group.getTrackFormat(it).language } }.orEmpty()
         PlaybackSnapshot("ExoPlayer",exo.isPlaying,exo.currentPosition,exo.videoSize.width,exo.videoSize.height,audio!=null,
             exo.videoDecoderCounters?.droppedBufferCount?.toLong()?:0,decoder=exoDecoder,audioTrack=language,
-            subtitleText=exo.currentCues.cues.mapNotNull{it.text}.joinToString("\n"),effectsActive=pictureEffect!=null,forwardCapMiB=bufferBudgetBytes/(1024*1024))
+            subtitleText=exo.currentCues.cues.mapNotNull{it.text}.joinToString("\n"),effectsActive=pictureEffect!=null,forwardCapMiB=bufferBudgetBytes/(1024*1024),firstFrameMs=firstFrameMs,sourceMs=sourceMs,playbackMs=playbackMs)
     }
     fun setFullscreen(value:Boolean) {
         fullscreen=value
@@ -92,13 +96,14 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         }
     }
     private fun attach(w:Watch) {
+        if(firstFrameMs==0L)sourceMs=playbackNowMs()-requestedAtMs
         attached=w;transitioning=false
         val prefs=m.preferences
         val url=w.stream.url
         val p: Player
         view.removeAllViews()
-            val source=DefaultHttpDataSource.Factory().setUserAgent(w.headers["User-Agent"]?:"FleetTV/0.11 (Android TV)")
-                .setDefaultRequestProperties(w.headers).setConnectTimeoutMs(15000).setReadTimeoutMs(20000)
+            val source=OkHttpDataSource.Factory(YouTubeHttp.mediaClient).setUserAgent(w.headers["User-Agent"]?:"777tv/0.18 (Android TV)")
+                .setDefaultRequestProperties(w.headers)
             val tracks=DefaultTrackSelector(a).apply{parameters=buildUponParameters().setPreferredAudioLanguage(prefs.audioLanguage.takeIf{it.isNotBlank()})
                 .setPreferredTextLanguage(prefs.subtitleLanguage.takeIf{it.isNotBlank()}).setTrackTypeDisabled(C.TRACK_TYPE_TEXT,!prefs.subtitles).setSelectUndeterminedTextLanguage(prefs.subtitles).build()}
             if(w.title.type=="youtube")tracks.parameters=tracks.buildUponParameters().setMaxVideoSize(1920,1080).setPreferredVideoMimeTypes(MimeTypes.VIDEO_H264).build()
@@ -109,9 +114,11 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             // Bound encoded samples for every source, including high-bitrate on-demand files.
             // Decoder surfaces are separate; the byte target can overshoot by a media chunk.
             val load=DefaultLoadControl.Builder().setTargetBufferBytes(bufferBudgetBytes).setPrioritizeTimeOverSizeThresholds(false)
-            if(w.live){val min=prefs.liveBufferSeconds*1000;load.setBufferDurationsMs(min,maxOf(15000,min*2),500,1000)}
-            else if(w.short)load.setBufferDurationsMs(5000,15000,500,1000)
-            else load.setBufferDurationsMs(10000,30000,1000,2000)
+            // Start with a short playable window, then retain the existing steady-state
+            // and rebuffer thresholds. Faster startup must not shrink ongoing protection.
+            if(w.live){val min=prefs.liveBufferSeconds*1000;load.setBufferDurationsMs(min,maxOf(15000,min*2),350,1000)}
+            else if(w.short)load.setBufferDurationsMs(5000,15000,250,1000)
+            else load.setBufferDurationsMs(10000,30000,500,2000)
             builder.setLoadControl(load.build())
             val exo=builder.build();player=exo
             if(w.playbackMode==PlaybackMode.SHORTS)exo.repeatMode=Player.REPEAT_MODE_ONE
@@ -134,6 +141,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                     if(player===exo && pictureEffect!=null && reason!=null)view.post { rejectPicture(exo,reason) }
                 }
                 override fun onRenderedFirstFrame(eventTime:AnalyticsListener.EventTime,output:Any,renderTimeMs:Long) {
+                    if(player===exo && firstFrameMs==0L)firstFrameMs=(playbackNowMs()-requestedAtMs).coerceAtLeast(1L)
                     if(player===exo && pendingPictureFrame) { pendingPictureFrame=false;pictureResult?.invoke(null) }
                 }
             })
@@ -146,6 +154,18 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             };playerView=pv
             view.removeAllViews();view.addView(pv,FrameLayout.LayoutParams(-1,-1));if(fullscreen)pv.requestFocus()
         mediaPlayer=p
+        // Start source loading while the main thread builds controls and the media session.
+        val item=MediaItem.Builder().setUri(url).apply { if(w.videoMimeType.isNotBlank())setMimeType(w.videoMimeType) }
+            .setMediaMetadata(MediaMetadata.Builder().setTitle(w.title.name).setSubtitle(w.episode?.label?:w.title.description.takeIf{w.title.type=="youtube"}).build())
+            .setSubtitleConfigurations(w.captions.map { caption->MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(caption.url))
+                .setMimeType(caption.mimeType).setLanguage(caption.language).build() }).build()
+        if(w.audioUrl.isNotBlank()) {
+            val factory=DefaultMediaSourceFactory(source)
+            val audio=MediaItem.Builder().setUri(w.audioUrl).apply { if(w.audioMimeType.isNotBlank())setMimeType(w.audioMimeType) }.build()
+            exo.setMediaSource(MergingMediaSource(factory.createMediaSource(item),factory.createMediaSource(audio)),startMs)
+        } else p.setMediaItem(item,if(w.live)C.TIME_UNSET else startMs)
+        if(w.short)p.repeatMode=Player.REPEAT_MODE_ONE
+        p.setPlaybackParameters(savedPlaybackParameters?:PlaybackParameters(if(w.live)1f else prefs.speed));p.prepare();p.playWhenReady=playIntent
         view.tag="playback-mode:${w.playbackMode.name.lowercase()}"
         buffering=a.column().apply {
             tag="playback-buffering";gravity=Gravity.CENTER;pad(12);background=a.round(0xB0080808.toInt())
@@ -193,7 +213,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                 }
                 if(state==Player.STATE_ENDED){m.saveProgress(w,p.duration.coerceAtLeast(0),p.duration);if(w.live)recover()}
             }
-            override fun onIsPlayingChanged(isPlaying:Boolean){if(mediaPlayer===p)keepAwake(p)}
+            override fun onIsPlayingChanged(isPlaying:Boolean){if(mediaPlayer===p){if(isPlaying && playbackMs==0L)playbackMs=(playbackNowMs()-requestedAtMs).coerceAtLeast(1L);keepAwake(p)}}
             override fun onPlayWhenReadyChanged(playWhenReady:Boolean,reason:Int) {
                 if(mediaPlayer===p && playWhenReady)cancelPictureRefresh()
             }
@@ -208,17 +228,6 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             }
 
         })
-        val item=MediaItem.Builder().setUri(url).apply { if(w.videoMimeType.isNotBlank())setMimeType(w.videoMimeType) }
-            .setMediaMetadata(MediaMetadata.Builder().setTitle(w.title.name).setSubtitle(w.episode?.label?:w.title.description.takeIf{w.title.type=="youtube"}).build())
-            .setSubtitleConfigurations(w.captions.map { caption->MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(caption.url))
-                .setMimeType(caption.mimeType).setLanguage(caption.language).build() }).build()
-        if(w.audioUrl.isNotBlank()) {
-            val factory=DefaultMediaSourceFactory(source)
-            val audio=MediaItem.Builder().setUri(w.audioUrl).apply { if(w.audioMimeType.isNotBlank())setMimeType(w.audioMimeType) }.build()
-            exo.setMediaSource(MergingMediaSource(factory.createMediaSource(item),factory.createMediaSource(audio)),startMs)
-        } else p.setMediaItem(item,if(w.live)C.TIME_UNSET else startMs)
-        if(w.short)p.repeatMode=Player.REPEAT_MODE_ONE
-        p.setPlaybackParameters(savedPlaybackParameters?:PlaybackParameters(if(w.live)1f else prefs.speed));p.prepare();p.playWhenReady=playIntent
         keepAwake(p)
         progressJob=a.lifecycleScope.launch{
             var lastPosition=p.currentPosition;var movedAt=SystemClock.elapsedRealtime()

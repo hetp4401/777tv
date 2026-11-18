@@ -5,8 +5,8 @@ replicas. Existing Shellboxes remain separate. Each development container has
 two CPUs, a 7 GiB memory limit and access to `/dev/kvm` for its Android TV
 emulator. The workflow below runs compilation, lint, unit tests, fixture
 generation and emulator tests remotely, with local APK signing. Local Mac
-development/builds/tests and direct TCL deployment are also authorized; the
-remote replicas remain useful for independent generated-media regression tests.
+development/builds/tests remain authorized. The latest instruction holds TCL
+testing and deployment; these workers only run generated-media emulator checks.
 
 Run from the project root using Node 18+ and Python 3.11+:
 

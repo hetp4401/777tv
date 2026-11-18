@@ -3,6 +3,8 @@ package xyz.billybishop4.fleet.tv
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -37,8 +39,19 @@ internal class YouTubeModel(
     private var queueFeed=YouTubeFeed.HOME
     private var requestedVideo:String?=null
     private var displayedKey:String?=null
-    private var preloadJob:Job?=null;private var preloadId:String?=null;private var preloadGeneration=0
+    private var preloadJob:Deferred<Watch?>?=null;private var preloadId:String?=null;private var preloadGeneration=0
+    private var preloadStarted=false
     private var preloaded:Watch?=null
+    // Three short-lived URL records, never decoded video or a second media buffer.
+    private val sources=linkedMapOf<String,Watch>()
+    private fun cachedSource(id:String):Watch? {
+        val watch=sources.remove(id)?:return null
+        return watch.takeIf{System.currentTimeMillis()-it.resolvedAtMs in 0..60_000L}?.also{sources[id]=it}
+    }
+    private fun rememberSource(watch:Watch) {
+        sources.remove(watch.title.id);sources[watch.title.id]=watch.copy(playRequestedAtMs=0)
+        while(sources.size>3)sources.remove(sources.keys.first())
+    }
     private fun key()="$feed/${if(feed==YouTubeFeed.SEARCH)query.trim() else ""}"
     fun activate() {
         active=true
@@ -136,19 +149,23 @@ internal class YouTubeModel(
         resolve(video,true,done)
     }
     private fun resolve(video:YouTubeVideo,replace:Boolean,done:(()->Unit)?=null) {
-        val warm=preloaded?.takeIf{it.title.id==video.id && System.currentTimeMillis()-it.resolvedAtMs in 0..60_000L}
-        cancelShortPreload()
+        val requestedAt=playbackNowMs()
+        val warm=preloaded?.takeIf{it.title.id==video.id && System.currentTimeMillis()-it.resolvedAtMs in 0..60_000L}?:cachedSource(video.id)
+        // Adopt an already running next-Short request instead of repeating its RPCs.
+        // A warmup still in its initial delay is cancelled so explicit Play never waits for that delay.
+        val pending=preloadJob?.takeIf{warm==null && preloadId==video.id && preloadStarted}
+        if(pending==null)cancelShortPreload() else {preloadJob=null;preloadId=null;preloaded=null;preloadGeneration++;preloadStarted=false}
         resolveJob?.cancel();val generation=++resolveGeneration;resolving=true;requestedVideo=video.id;error=null
         resolveJob=scope.launch {
             try {
-                val watch=warm?:resolver.resolve(video)
-                if(generation==resolveGeneration) { resolving=false;requestedVideo=null;open(watch,replace) }
+                val watch=(warm?:pending?.await()?:resolver.resolve(video)).copy(title=video.title(),short=video.isShort)
+                if(generation==resolveGeneration) { rememberSource(watch);resolving=false;requestedVideo=null;open(watch.copy(playRequestedAtMs=requestedAt),replace) }
             } catch(e:CancellationException){throw e}
             catch(e:Exception) { if(generation==resolveGeneration) {
                 val text=(e as? UserMessage)?.message?:"YouTube couldn't play this video. Try again or choose another video."
                 if(replace)notice(text) else error=text
             } }
-            finally { if(generation==resolveGeneration){resolving=false;requestedVideo=null};done?.invoke() }
+            finally { pending?.cancel();if(generation==resolveGeneration){resolving=false;requestedVideo=null};done?.invoke() }
         }
     }
     fun cancelPlayback() { resolveJob?.cancel();resolveJob=null;resolveGeneration++;resolving=false;requestedVideo=null;cancelShortPreload() }
@@ -157,16 +174,18 @@ internal class YouTubeModel(
         if(!watch.short)return
         val index=queue.indexOfFirst{it.id==watch.title.id};if(index<0)return
         val next=queue.getOrNull(index+1)?:return
+        cachedSource(next.id)?.let{cancelShortPreload();preloaded=it;return}
         if(preloadId==next.id || preloaded?.let{it.title.id==next.id && System.currentTimeMillis()-it.resolvedAtMs in 0..60_000L}==true)return
         cancelShortPreload();preloadId=next.id;val generation=preloadGeneration
-        preloadJob=scope.launch {
-            try { delay(600);val resolved=resolver.resolve(next);if(generation==preloadGeneration)preloaded=resolved }
+        preloadJob=scope.async {
+            try { delay(600);if(generation==preloadGeneration)preloadStarted=true
+                val resolved=resolver.resolve(next);if(generation==preloadGeneration)preloaded=resolved;resolved }
             catch(e:CancellationException){throw e}
-            catch(_:Exception){ /* An optional warmup never delays or fails the current clip. */ }
-            finally{if(generation==preloadGeneration)preloadId=null}
+            catch(_:Exception){null /* Optional warmup never interrupts the current clip. */ }
+            finally{if(generation==preloadGeneration){preloadId=null;preloadStarted=false}}
         }
     }
-    fun cancelShortPreload(){preloadJob?.cancel();preloadJob=null;preloadGeneration++;preloadId=null;preloaded=null}
+    fun cancelShortPreload(){preloadJob?.cancel();preloadJob=null;preloadGeneration++;preloadId=null;preloaded=null;preloadStarted=false}
     fun step(watch:Watch,direction:Int) {
         if(!watch.short || queue.isEmpty())return
         val id=requestedVideo?:watch.title.id
@@ -189,7 +208,11 @@ internal class YouTubeModel(
             }
         }
     }
-    suspend fun refreshWatch(watch:Watch):Watch=resolver.resolve(YouTubeVideo(watch.title.id,watch.title.name,watch.title.poster,isShort=watch.short,live=watch.live)).copy(title=watch.title)
+    suspend fun refreshWatch(watch:Watch):Watch {
+        sources.remove(watch.title.id)
+        return resolver.resolve(YouTubeVideo(watch.title.id,watch.title.name,watch.title.poster,isShort=watch.short,live=watch.live))
+            .copy(title=watch.title).also(::rememberSource)
+    }
     fun startSignIn() {
         cancelSignIn();val generation=++loginGeneration;signInBusy=true;signInError=null
         signInJob=scope.launch {
@@ -213,6 +236,7 @@ internal class YouTubeModel(
     }
     fun cancelSignIn(){signInJob?.cancel();signInJob=null;loginGeneration++;signInCode=null;signInBusy=false;signInError=null}
     fun signOut() {
+        sources.clear()
         cancelSignIn();cancelPlayback();pageJob?.cancel();pageGeneration++;pages.clear();videos=emptyList();homeShelves=emptyList();recentQueries=emptyList();continuation=null
         scope.launch {
             try { client.signOut();account=null;if(active)load(force=true) }
@@ -221,11 +245,12 @@ internal class YouTubeModel(
         }
     }
     fun trimMemory(keepPage:Boolean=false) {
-        pages.clear();cancelShortPreload()
+        pages.clear();sources.clear();cancelShortPreload()
         if(!keepPage){queue=emptyList();queueContinuation=null}
         if(!active && !keepPage){videos=emptyList();homeShelves=emptyList();continuation=null;message=""}
     }
     fun historyCleared() {
+        sources.clear()
         pages.remove("HOME/");pages.remove("HISTORY/")
         if(feed==YouTubeFeed.HOME || feed==YouTubeFeed.HISTORY){videos=emptyList();homeShelves=emptyList();displayedKey=null;if(active)load(force=true)}
     }

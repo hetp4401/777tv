@@ -56,7 +56,7 @@ Discover and separate topic rows. When a locally recorded video has been watched
 for at least 30 seconds, public watch-next also supplies a related-video row.
 Account-personalized recommendations require successful Google approval. YouTube watch progress is local and separate from
 movie/show progress; this feature does not claim to synchronize YouTube watch
-history or implement subscriptions, posting comments, likes or casting.
+history or implement subscription changes, posting comments, likes or casting.
 
 While a YouTube video plays, Related opens a horizontal row below the video.
 Comments open a full-height panel on the right, with the same active video
@@ -191,3 +191,35 @@ Regular movie buffering targets 24 MiB (16 MiB on low-memory devices). Shorts us
 8/6 MiB and a 500 ms startup threshold. Artwork keeps the same pixel-accounted
 8/4 MiB cache. No additional video engine, browser runtime or native library is
 included, and neutral playback retains direct hardware decoding.
+
+## Playback startup (0.18.1)
+
+The normal public-video path calls the pinned, unmodified NewPipe library’s
+`YoutubeStreamHelper.getVisionOsPlayerResponse` and accepts a matching, playable
+HLS response. This needs the anonymous visitor and player requests, omitting the
+full extractor’s WEB metadata and watch-next work. Captions come from the same
+player response; menus, comments and replay information keep loading separately.
+Unsupported or failed responses retain the full extractor fallback. Cancellation
+still interrupts its active socket on the single resolver worker.
+
+The model keeps at most three already-selected URLs for 60 seconds. Retry bypasses
+these entries; sign-out, history clearing and memory pressure release them. A
+next-Short request already resolving is adopted on explicit selection; a warmup
+still waiting in its 600 ms delay is cancelled so it cannot delay Play. This retains
+one speculative URL, without another media buffer or decoder and without resolving
+videos merely because a card gains focus.
+
+Media3’s OkHttp data source shares DNS/TLS/HTTP2 connection reuse with the API
+client. Streaming has connect/read timeouts without a total-video duration limit;
+private headers are removed on redirects to another origin. Source preparation
+starts before constructing the transport and media session, overlapping their
+main-thread work with network loading. Initial playback thresholds are 250 ms for
+Shorts, 350 ms for Live TV and 500 ms for regular YouTube/on-demand. Existing steady-state
+buffer durations, byte budgets and rebuffer thresholds remain intact.
+
+`YouTubeStartupProbeTest` compares both resolver paths against the same public
+videos in alternating order on the Mac. `PlaybackStartupBenchmarkTest` records
+explicit Play to the actual rendered first frame and active playback for all four modes using the
+same generated bandwidth-limited HLS and delayed Stalker portal on one worker.
+These measurements compare 777tv implementations; no matched TizenTube or physical
+TCL performance comparison is claimed. The TCL deployment/testing hold remains active.
