@@ -4,6 +4,9 @@ import java.net.URI
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -14,17 +17,23 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /** TV JSON requests and device pairing, without retaining a browser or the TV site's JavaScript. */
 internal class YouTubeClient(
     private val credentials:YouTubeCredentials, private val transport:YouTubeTransport=YouTubeHttp(),
     internal val origin:String="https://www.youtube.com", private val now:()->Long=System::currentTimeMillis,
     private val localHistory:()->List<Progress> = { emptyList() },
-) {
+) : YouTubeHistoryBackend {
     private val configMutex=Mutex();private var config:YouTubeBootstrap?=null;private var configAt=0L
     private val accountMutex=Mutex();private var loaded=false;private var session:YouTubeSession?=null
     private var accountEpoch=0
+    @Volatile private var publishedAccountEpoch:Int?=null
+    private val refreshMutex=Mutex()
+    private val accountRequests=mutableSetOf<Job>()
+    private val trackingTransport:YouTubeTransport=if(transport is YouTubeHttp)YouTubeHttp(YouTubeHttp.trackingClient) else transport
     private val webMutex=Mutex();private var webConfig:Pair<String,String>?=null;private var webAt=0L
+    private var emptyGuestHomeAt:Long?=null
     var accountStorageError=false;private set
     private suspend fun bootstrap(signIn:Boolean=false):YouTubeBootstrap=configMutex.withLock {
         var cached=config
@@ -45,47 +54,95 @@ internal class YouTubeClient(
     private suspend fun loadLocked():YouTubeSession? {
         if(!loaded) {
             session=withContext(Dispatchers.IO) { runCatching { credentials.read() }.getOrElse { accountStorageError=true;null } }
-            loaded=true
+            loaded=true;publishedAccountEpoch=accountEpoch.takeIf{session!=null}
         }
         return session
     }
     suspend fun account():YouTubeSession?=accountMutex.withLock { loadLocked() }
-    suspend fun signOut()=accountMutex.withLock {
-        withContext(Dispatchers.IO) { credentials.write(null) }
-        accountEpoch++;session=null;loaded=true;accountStorageError=false
+    suspend fun accountScope():YouTubeAccountScope?=accountMutex.withLock { loadLocked()?.let{YouTubeAccountScope(accountEpoch)} }
+    suspend fun accountScopeCurrent(scope:YouTubeAccountScope):Boolean=accountMutex.withLock { loadLocked()!=null && accountEpoch==scope.epoch }
+    private fun requireAccountLocked(scope:YouTubeAccountScope):YouTubeSession {
+        if(session==null || accountEpoch!=scope.epoch)throw YouTubeAuthError("unauthorized")
+        return session!!
     }
-    private suspend fun access(force:Boolean=false):String?=accountMutex.withLock {
-        val current=loadLocked()?:return@withLock null
+    private suspend fun <T> scoped(scope:YouTubeAccountScope,action:suspend ()->T):T {
+        val job=currentCoroutineContext()[Job]
+        accountMutex.withLock { requireAccountLocked(scope);if(job!=null)accountRequests.add(job) }
+        try {
+            val result=action()
+            accountMutex.withLock { requireAccountLocked(scope) }
+            return result
+        } finally {
+            withContext(NonCancellable) { accountMutex.withLock { if(job!=null)accountRequests.remove(job) } }
+        }
+    }
+    suspend fun signOut() {
+        val pending=accountMutex.withLock {
+            withContext(Dispatchers.IO) { credentials.write(null) }
+            accountEpoch++;session=null;loaded=true;accountStorageError=false;publishedAccountEpoch=null
+            accountRequests.toList().also{accountRequests.clear()}
+        }
+        val own=currentCoroutineContext()[Job];pending.filter{it!==own}.forEach{it.cancel()}
+    }
+    private suspend fun revoke(scope:YouTubeAccountScope) {
+        val pending=accountMutex.withLock {
+            if(accountEpoch!=scope.epoch)return@withLock emptyList<Job>()
+            withContext(Dispatchers.IO) { runCatching{credentials.write(null)}.onFailure{accountStorageError=true} }
+            accountEpoch++;session=null;loaded=true;publishedAccountEpoch=null
+            accountRequests.toList().also{accountRequests.clear()}
+        }
+        val own=currentCoroutineContext()[Job];pending.filter{it!==own}.forEach{it.cancel()}
+    }
+    private suspend fun access(scope:YouTubeAccountScope,force:Boolean=false):String=refreshMutex.withLock {
+        val current=accountMutex.withLock { requireAccountLocked(scope) }
         if(!force && current.expiresAtMs>now()+60_000)return@withLock current.accessToken
+        // Network I/O never holds accountMutex: sign-out can immediately cancel
+        // an old account's refresh/request and prevent its result being committed.
         val client=bootstrap(true)
         val result=oauth("token",JSONObject().put("client_id",client.clientId).put("client_secret",client.clientSecret)
             .put("refresh_token",current.refreshToken).put("grant_type","refresh_token"))
         val reason=result.opt("error") as? String
-        if(reason!=null) {
-            if(reason=="invalid_grant") { withContext(Dispatchers.IO){credentials.write(null)};session=null;accountEpoch++ }
-            throw YouTubeAuthError(reason)
-        }
+        if(reason!=null) { if(reason=="invalid_grant")revoke(scope);throw YouTubeAuthError(reason) }
         val next=current.copy(accessToken=result.getString("access_token"),expiresAtMs=now()+result.optLong("expires_in",3600).coerceIn(60,86400)*1000)
-        withContext(Dispatchers.IO){credentials.write(next)};session=next
+        accountMutex.withLock {
+            requireAccountLocked(scope)
+            withContext(Dispatchers.IO){credentials.write(next)};session=next
+        }
         next.accessToken
     }
     private fun context(client:YouTubeBootstrap)=JSONObject().put("client",JSONObject()
         .put("clientName","TVHTML5").put("clientVersion",client.version).put("hl","en").put("gl","US")
         .put("userAgent",YouTubeHttp.USER_AGENT).put("browserName","Cobalt").put("browserVersion","25.lts.3.1062949-gold")
         .put("visitorData",client.visitor).put("tvAppInfo",JSONObject().put("appQuality","TV_APP_QUALITY_FULL_ANIMATION").put("zylonLeftNav",true)))
-    private suspend fun api(method:String,body:JSONObject,retry:Boolean=true,authenticated:Boolean=true):JSONObject {
-        val client=bootstrap();val token=if(authenticated)access() else null
-        val headers=buildMap { put("Origin",origin);put("Referer","$origin/tv");put("X-Youtube-Client-Name","7");put("X-Youtube-Client-Version",client.version)
-            if(token!=null)put("Authorization","Bearer $token") }
-        val response=transport.request("$origin/youtubei/v1/$method?prettyPrint=false",body.put("context",context(client)).toString(),headers)
-        if(response.status==401 && token!=null && retry) { access(true);return api(method,body,false,authenticated) }
-        if(response.status==401 && token!=null)throw YouTubeAuthError("unauthorized")
-        if(response.status !in 200..299)throw HttpFailure(response.status)
-        return withContext(Dispatchers.Default){JSONObject(response.text)}
+    private suspend fun api(method:String,body:JSONObject,authenticated:Boolean=true,required:YouTubeAccountScope?=null,web:Boolean=false):JSONObject {
+        val scope=required?:if(authenticated)accountScope() else null
+        suspend fun request():JSONObject {
+            val client=if(web)null else bootstrap();val webClient=if(web)webBootstrap() else null
+            var token=scope?.let{access(it)}
+            repeat(2) { attempt->
+                val headers=buildMap {
+                    put("Origin",origin);put("Referer",if(web)"$origin/" else "$origin/tv")
+                    put("X-Youtube-Client-Name",if(web)"1" else "7");put("X-Youtube-Client-Version",client?.version?:webClient!!.first)
+                    if(web)put("User-Agent",WEB_AGENT)
+                    if(token!=null)put("Authorization","Bearer $token")
+                }
+                body.put("context",if(web)webContext(webClient!!) else context(client!!))
+                val response=transport.request("$origin/youtubei/v1/$method?prettyPrint=false",body.toString(),headers)
+                if(response.status==401 && scope!=null) {
+                    if(attempt==0)token=access(scope,true)
+                    else { revoke(scope);throw YouTubeAuthError("unauthorized") }
+                } else {
+                    if(response.status !in 200..299)throw HttpFailure(response.status)
+                    return withContext(Dispatchers.Default){JSONObject(response.text)}
+                }
+            }
+            error("Unreachable")
+        }
+        return if(scope==null)request() else scoped(scope){request()}
     }
     suspend fun page(feed:YouTubeFeed,query:String="",continuation:String?=null):YouTubePage {
         val signedIn=account()!=null
-        if(feed==YouTubeFeed.HOME && !signedIn)return guestHome()
+        if(feed==YouTubeFeed.HOME && !signedIn)return guestHome(continuation)
         if(feed==YouTubeFeed.HISTORY && !signedIn)return YouTubePage(history().map(::historyVideo),message="History on this TV")
         if(feed.requiresAccount && !signedIn)return YouTubePage(emptyList(),message="Sign in to see this part of your YouTube account.")
         if(feed==YouTubeFeed.SHORTS)return shorts(continuation)
@@ -100,20 +157,38 @@ internal class YouTubeClient(
             else->body.put("browseId","default")
         }
         val result=api(if(feed==YouTubeFeed.SEARCH)"search" else "browse",body)
-        return withContext(Dispatchers.Default){if(feed==YouTubeFeed.HOME)YouTubeDecode.home(result) else YouTubeDecode.page(result)}
+        return withContext(Dispatchers.Default){when(feed){YouTubeFeed.HOME->YouTubeDecode.home(result);YouTubeFeed.SEARCH->YouTubeSearchPages.decode(result);else->YouTubeDecode.page(result)}}
     }
     private suspend fun history():List<Progress> = withContext(Dispatchers.IO) {
         localHistory().filter{YouTubeDecode.validId(it.title.id) && it.title.type=="youtube" && it.positionMs>0}
             .sortedByDescending{it.updated}.distinctBy{it.title.id}.take(50)
     }
     private fun historyVideo(value:Progress)=YouTubeVideo(value.title.id,value.title.name,value.title.poster,metadata=value.title.description)
-    /** YouTube's guest Home is a sign-in nudge. Public TV topics and watch-next still supply real suggestions. */
-    private suspend fun guestHome():YouTubePage=coroutineScope {
+    private suspend fun guestHome(continuation:String?):YouTubePage {
+        if(continuation!=null)return withContext(Dispatchers.Default) {
+            YouTubeDecode.home(api("browse",JSONObject().put("continuation",continuation),authenticated=false))
+        }
+        // Try the actual TV Home before fallback. A successful empty/sign-in
+        // nudge is remembered briefly, so Refresh does not add another empty
+        // round-trip before the public topics. Failed requests are not cached.
+        if(emptyGuestHomeAt?.let{now()-it in 0..300_000L}!=true) {
+            try {
+                val result=api("browse",JSONObject().put("browseId","default"),authenticated=false)
+                val page=withContext(Dispatchers.Default){YouTubeDecode.home(result)}
+                if(page.videos.isNotEmpty())return page
+                emptyGuestHomeAt=now()
+            }catch(e:CancellationException){throw e}
+            catch(_:Exception){/* Public topics can still work when default Home is unavailable. */}
+        }
+        return guestSuggestions()
+    }
+    /** Public TV topic shelves and a real watch-next seed; no fabricated account personalization. */
+    private suspend fun guestSuggestions():YouTubePage=coroutineScope {
         val watched=history();val seen=watched.mapTo(HashSet()){it.title.id}
         val seed=watched.firstOrNull{it.positionMs>=30_000}
         val semaphore=Semaphore(2)
         suspend fun request(method:String,body:JSONObject):YouTubePage?=semaphore.withPermit {
-            try { val j=api(method,body,authenticated=false);withContext(Dispatchers.Default){YouTubeDecode.page(j)} }
+            try { val j=api(method,body,authenticated=false);withContext(Dispatchers.Default){if(method=="browse")YouTubeDecode.home(j) else YouTubeDecode.page(j)} }
             catch(e:CancellationException){throw e}
             catch(_:Exception){null}
         }
@@ -122,45 +197,151 @@ internal class YouTubeClient(
         val pages=topics.map { (_,id)->async { request("browse",JSONObject().put("browseId",id)) } }.awaitAll()
         val because=related?.await()?.videos.orEmpty().filter{it.id !in seen}.take(20)
         if(pages.all{it==null} && because.isEmpty())throw UserMessage("Recommendations couldn't load. Check your connection and try again.")
-        val rows=ArrayList<YouTubeShelf>()
-        if(seed!=null && because.isNotEmpty())rows+=YouTubeShelf("guest/because/${seed.title.id}","Because you watched ${seed.title.name.take(80)}",because)
-        val groups=pages.map{it?.videos.orEmpty().filter{v->v.id !in seen}.take(20)}
-        val discover=(0 until 20).flatMap { i->groups.mapNotNull{it.getOrNull(i)} }.distinctBy{it.id}.take(18)
-        if(discover.isNotEmpty())rows+=YouTubeShelf("guest/discover","Discover",discover)
-        for((i,topic) in topics.withIndex())if(groups[i].isNotEmpty())rows+=YouTubeShelf("guest/${topic.second}",topic.first,groups[i])
+        val rows=ArrayList<YouTubeShelf>();val shown=HashSet(seen)
+        if(seed!=null && because.isNotEmpty()) {
+            rows+=YouTubeShelf("guest/because/${seed.title.id}","Because you watched ${seed.title.name.take(80)}",because);shown.addAll(because.map{it.id})
+        }
+        for((i,topic) in topics.withIndex()) {
+            var remaining=20
+            for(row in pages[i]?.shelves.orEmpty()) {
+                if(remaining==0 || rows.size==10)break
+                val items=row.videos.filter{it.id !in shown}.take(remaining);if(items.isEmpty())continue
+                shown.addAll(items.map{it.id});remaining-=items.size
+                rows+=row.copy(key="guest/${topic.second}/${row.key}",name=if(row.key=="recommended/0")topic.first else row.name,videos=items)
+            }
+        }
         val videos=rows.flatMap{it.videos}.distinctBy{it.id}.take(120)
         YouTubePage(videos,message=if(videos.isEmpty())"No recommendations available right now. Try search or refresh." else "",shelves=rows)
     }
-    suspend fun watchDetails(videoId:String):YouTubeWatchDetails {
+    suspend fun watchDetails(videoId:String,expectedScope:YouTubeAccountScope?=null):YouTubeWatchDetails {
         require(YouTubeDecode.validId(videoId))
-        val result=api("next",JSONObject().put("videoId",videoId))
+        val result=api("next",JSONObject().put("videoId",videoId),required=expectedScope)
         return withContext(Dispatchers.Default){YouTubeWatchDecode.details(result,videoId)}
+    }
+    suspend fun interaction(videoId:String,expectedScope:YouTubeAccountScope?=null)=watchDetails(videoId,expectedScope)
+    private suspend fun signedScope(expected:YouTubeAccountScope?=null):YouTubeAccountScope {
+        val current=accountScope()?:throw YouTubeAuthError("unauthorized")
+        if(expected!=null && current!=expected)throw YouTubeAuthError("unauthorized")
+        return expected?:current
+    }
+    /** Only explicit user actions reach these RPCs; loading a tile never mutates an account. */
+    suspend fun rate(videoId:String,rating:YouTubeRating,previous:YouTubeRating?=null,expectedScope:YouTubeAccountScope?=null) {
+        require(YouTubeDecode.validId(videoId))
+        val scope=signedScope(expectedScope)
+        val existing=if(rating==YouTubeRating.NONE)previous?:YouTubeSocialDecode.rating(api("next",JSONObject().put("videoId",videoId),required=scope)) else null
+        val endpoint=when(rating) {
+            YouTubeRating.LIKE->"like/like";YouTubeRating.DISLIKE->"like/dislike"
+            YouTubeRating.NONE->when(existing){YouTubeRating.DISLIKE->"like/removedislike";YouTubeRating.LIKE->"like/removelike"
+                YouTubeRating.NONE->return;null->throw UserMessage("YouTube couldn't verify your rating. Reopen video actions and try again.")}
+        }
+        YouTubeSocialDecode.requireAccepted(api(endpoint,JSONObject().put("target",JSONObject().put("videoId",videoId)),required=scope))
+    }
+    suspend fun subscribe(channel:YouTubeChannel,subscribed:Boolean,expectedScope:YouTubeAccountScope?=null) {
+        require(YouTubeSocialDecode.validChannelId(channel.id))
+        val params=if(subscribed)channel.subscribeParams else channel.unsubscribeParams
+        require(params.length<=20_000)
+        val body=JSONObject().put("channelIds",JSONArray().put(channel.id))
+        if(params.isNotBlank())body.put("params",params)
+        YouTubeSocialDecode.requireAccepted(api(if(subscribed)"subscription/subscribe" else "subscription/unsubscribe",body,required=signedScope(expectedScope)))
+    }
+    suspend fun playlists(videoId:String,expectedScope:YouTubeAccountScope?=null):List<YouTubePlaylist> {
+        require(YouTubeDecode.validId(videoId))
+        val result=api("playlist/get_add_to_playlist",JSONObject().put("videoIds",JSONArray().put(videoId)),required=signedScope(expectedScope))
+        YouTubeSocialDecode.requireAccepted(result)
+        return withContext(Dispatchers.Default){YouTubeSocialDecode.playlists(result)}
+    }
+    suspend fun playlistCollection(continuation:String?=null):YouTubePlaylistCollection {
+        require(continuation==null || continuation.length in 1..20_000)
+        val scope=signedScope()
+        val body=if(continuation==null)JSONObject().put("browseId","FEplaylist_aggregation") else JSONObject().put("continuation",continuation)
+        val response=api("browse",body,required=scope)
+        YouTubeSocialDecode.requireAccepted(response)
+        return withContext(Dispatchers.Default){YouTubeLibraryDecode.collection(response)}
+    }
+    suspend fun playlistVideos(playlistId:String,continuation:String?=null):YouTubePage {
+        require(YouTubeSocialDecode.validPlaylistId(playlistId) && (continuation==null || continuation.length in 1..20_000))
+        val scope=signedScope()
+        val body=if(continuation==null)JSONObject().put("browseId","VL$playlistId") else JSONObject().put("continuation",continuation)
+        val response=api("browse",body,required=scope)
+        YouTubeSocialDecode.requireAccepted(response)
+        return withContext(Dispatchers.Default){YouTubeDecode.page(response,limit=120)}
+    }
+    suspend fun setSaved(videoId:String,playlistId:String,saved:Boolean,expectedScope:YouTubeAccountScope?=null) {
+        require(YouTubeDecode.validId(videoId) && YouTubeSocialDecode.validPlaylistId(playlistId))
+        val action=JSONObject().put("action",if(saved)"ACTION_ADD_VIDEO" else "ACTION_REMOVE_VIDEO_BY_VIDEO_ID")
+            .put(if(saved)"addedVideoId" else "removedVideoId",videoId)
+        YouTubeSocialDecode.requireAccepted(api("browse/edit_playlist",JSONObject().put("playlistId",playlistId)
+            .put("actions",JSONArray().put(action)),required=signedScope(expectedScope)))
+    }
+    suspend fun createPlaylist(name:String,videoId:String?=null,expectedScope:YouTubeAccountScope?=null):String {
+        val title=name.trim();require(title.isNotEmpty() && title.length<=150 && (videoId==null || YouTubeDecode.validId(videoId)))
+        val body=JSONObject().put("title",title).put("privacyStatus","PRIVATE")
+        if(videoId!=null)body.put("videoIds",JSONArray().put(videoId))
+        val result=api("playlist/create",body,required=signedScope(expectedScope),web=true)
+        YouTubeSocialDecode.requireAccepted(result)
+        return result.optString("playlistId").takeIf(YouTubeSocialDecode::validPlaylistId)
+            ?:throw UserMessage("YouTube didn't return the new playlist. Check your account before trying again.")
+    }
+    suspend fun channel(channelId:String,tab:YouTubeChannelTab?=null,continuation:String?=null):YouTubeChannelPage {
+        require(YouTubeSocialDecode.validChannelId(channelId) && (continuation==null || continuation.length in 1..20_000))
+        require(tab==null || tab.params.length<=20_000)
+        val body=if(continuation!=null)JSONObject().put("continuation",continuation) else JSONObject().put("browseId",channelId).apply {
+            if(tab?.params?.isNotBlank()==true)put("params",tab.params)
+        }
+        val result=api("browse",body)
+        return withContext(Dispatchers.Default){YouTubeSocialDecode.channel(result,channelId,tab)}
+    }
+    override fun historyAccountEpoch():Int?=publishedAccountEpoch
+    override suspend fun historySession(videoId:String,nonce:String,expectedEpoch:Int):YouTubeHistorySession? {
+        require(YouTubeDecode.validId(videoId) && Regex("[A-Za-z0-9_-]{16}").matches(nonce))
+        val scope=accountScope()?.takeIf{it.epoch==expectedEpoch}?:return null
+        val response=api("player",JSONObject().put("videoId",videoId).put("cpn",nonce)
+            .put("contentCheckOk",true).put("racyCheckOk",true),required=scope)
+        if(!accountScopeCurrent(scope))return null
+        return withContext(Dispatchers.Default){decodeHistorySession(response,scope.epoch,videoId,nonce,origin)}
+    }
+    override suspend fun historySessionCurrent(session:YouTubeHistorySession)=accountScopeCurrent(YouTubeAccountScope(session.epoch))
+    override suspend fun sendHistory(session:YouTubeHistorySession,url:String):Boolean {
+        if(!validHistoryTrackingUrl(url,origin))return false
+        val target=url.toHttpUrlOrNull()?:return false
+        if(target.queryParameterValues("docid")!=listOf(session.videoId) || target.queryParameterValues("cpn")!=listOf(session.nonce))return false
+        val scope=YouTubeAccountScope(session.epoch)
+        if(!accountScopeCurrent(scope))return false
+        return scoped(scope) {
+            val token=access(scope)
+            val response=trackingTransport.request(url,headers=mapOf("Authorization" to "Bearer $token","Origin" to origin,"Referer" to "$origin/tv"))
+            response.status in 200..299
+        }
     }
     suspend fun comments(continuation:String):YouTubeCommentsPage {
         require(continuation.isNotBlank() && continuation.length<=20_000)
         val result=api("next",JSONObject().put("continuation",continuation))
         return withContext(Dispatchers.Default){YouTubeWatchDecode.comments(result)}
     }
-    suspend fun heatmap(videoId:String):List<YouTubeHeatMarker> {
-        require(YouTubeDecode.validId(videoId))
-        // Replay markers are supplied by WEB, independently of the TV account. No credentials go to this request.
-        val config=webMutex.withLock {
+    private suspend fun webBootstrap():Pair<String,String> = webMutex.withLock {
             if(webConfig==null || now()-webAt !in 0..900_000L) {
                 val response=transport.request("$origin/",headers=mapOf("User-Agent" to WEB_AGENT))
                 if(response.status !in 200..299)throw HttpFailure(response.status)
                 val parsed=withContext(Dispatchers.Default) {
                     val version=Regex("\"INNERTUBE_CLIENT_VERSION\"\\s*:\\s*\"([^\"]+)\"").find(response.text)?.groupValues?.get(1)
-                        ?:throw UserMessage("Replay data is unavailable.")
+                        ?:throw UserMessage("YouTube web data is unavailable.")
                     val visitor=Regex("\"VISITOR_DATA\"\\s*:\\s*\"([^\"]*)\"").find(response.text)?.groupValues?.get(1).orEmpty()
                     version to visitor
                 }
                 webConfig=parsed;webAt=now()
             }
             webConfig!!
-        }
+    }
+    private fun webContext(config:Pair<String,String>):JSONObject {
         val client=JSONObject().put("clientName","WEB").put("clientVersion",config.first).put("hl","en").put("gl","US")
             .put("visitorData",config.second).put("userAgent",WEB_AGENT)
-        val body=JSONObject().put("context",JSONObject().put("client",client)).put("videoId",videoId)
+        return JSONObject().put("client",client)
+    }
+    suspend fun heatmap(videoId:String):List<YouTubeHeatMarker> {
+        require(YouTubeDecode.validId(videoId))
+        // Replay markers are supplied by WEB, independently of the TV account. No credentials go to this request.
+        val config=webBootstrap()
+        val body=JSONObject().put("context",webContext(config)).put("videoId",videoId)
         val response=transport.request("$origin/youtubei/v1/next?prettyPrint=false",body.toString(),mapOf("User-Agent" to WEB_AGENT,
             "Origin" to origin,"Referer" to "$origin/watch?v=$videoId","X-Youtube-Client-Name" to "1","X-Youtube-Client-Version" to config.first))
         if(response.status !in 200..299)throw HttpFailure(response.status)
@@ -221,7 +402,7 @@ internal class YouTubeClient(
     }
     suspend fun pollSignIn(code:YouTubeDeviceCode):YouTubeSession? {
         if(now()>=code.expiresAtMs)throw YouTubeAuthError("expired_token")
-        val epoch=accountEpoch
+        val epoch=accountMutex.withLock { loadLocked();accountEpoch }
         val client=bootstrap(true)
         val result=oauth("token",JSONObject().put("code",code.deviceCode).put("client_id",client.clientId)
             .put("client_secret",client.clientSecret).put("grant_type","http://oauth.net/grant_type/device/1.0"))
@@ -231,10 +412,12 @@ internal class YouTubeClient(
             else -> throw YouTubeAuthError(error)
         }
         val next=YouTubeSession(result.getString("access_token"),result.getString("refresh_token"),now()+result.optLong("expires_in",3600).coerceIn(60,86400)*1000)
-        accountMutex.withLock {
+        val pending=accountMutex.withLock {
             if(epoch!=accountEpoch)throw YouTubeAuthError("access_denied")
-            withContext(Dispatchers.IO){credentials.write(next)};session=next;loaded=true;accountStorageError=false
+            withContext(Dispatchers.IO){credentials.write(next)};session=next;loaded=true;accountStorageError=false;accountEpoch++;publishedAccountEpoch=accountEpoch
+            accountRequests.toList().also{accountRequests.clear()}
         }
+        val own=currentCoroutineContext()[Job];pending.filter{it!==own}.forEach{it.cancel()}
         return next
     }
 }

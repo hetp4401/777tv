@@ -6,36 +6,49 @@ and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
 ## Development candidate
 
-**0.19.0 · version code 25 · Android 7.0 / API 24 or later**
+**0.21.0 · version code 27 · Android 7.0 / API 24 or later**
 
-This branch contains the native YouTube and whole-app UI review update.
-The latest user instruction holds TCL testing and deployment. Version 0.19.0
-is validated locally and on worker emulators; it has not been installed
-on the physical TV. The release record tracks the exact validation scope.
+This branch contains the native YouTube integration and continuing TizenTube
+functional review. The TCL has the previously requested 0.20.0 preview; further
+physical-TV access is held. This candidate is developed and checked locally and
+on worker emulators. The release record tracks the exact validation scope.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Candidate verification](releases/0.19.0/verification.json) records the APK checksum,
+[Candidate verification](releases/0.21.0/verification.json) records the APK checksum,
 source/build checksums and validation scope.
-[SHA256SUMS](releases/0.19.0/SHA256SUMS) identifies the candidate APK. The last
+[SHA256SUMS](releases/0.21.0/SHA256SUMS) identifies the candidate APK. The last
 published production snapshot remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
 
 ## Features
 
-- A **YouTube** section beside On-Demand: horizontal recommendation shelves, a
-  collapsible left rail, a native TV search keyboard and portrait Shorts. Home
-  preserves signed-in recommendation rows, with 777tv colors and corners.
-  Signed-out Home also works: public Music, Gaming and News suggestions populate
-  Discover, with a related-video row based on locally watched videos.
-  Subscriptions and Library add account history, Watch Later and Liked videos;
-  signed-out history uses this TV’s saved playback records. Google TV code/QR
-  sign-in personalizes the account feeds. The same ExoPlayer plays videos;
-  no browser engine or second player is bundled.
-  Public videos play signed out; private/restricted video playback and Google
-  watch-history synchronization are not claimed. Details and APK investigation:
-  [YouTube integration](docs/tizentube-investigation.md).
+- A **YouTube** section beside On-Demand: a collapsible left rail, native TV
+  keyboard and platform voice search. Home preserves real TV recommendation
+  shelves. Guest Home tries the public Home feed first, with bounded Music,
+  Gaming and News fallback shelves when YouTube requires sign-in. Search puts
+  regular video shelves first, followed by one horizontal portrait Shorts row.
+  Channel pages provide the real available video tabs and subscriptions.
+- Google TV code/QR sign-in, account Subscriptions, History, Watch Later, Liked
+  videos and browseable playlists. Explicit Like, Dislike, Subscribe, Save,
+  remove and private-playlist creation wait for server confirmation and refresh
+  affected lists. Signed-in watched spans can update Google history after a real
+  frame; paused-history policy, account changes and seeks are respected.
+  Signed-out history remains local. Clearing this TV's history leaves Google
+  history intact. Restricted/private media authorization is not claimed.
+- Link a phone through YouTube's **Link with TV code** flow. While 777tv is open,
+  phone commands use the existing native player for video selection, queues,
+  pause, seek, volume, captions and speed. Disconnect retires pending handoffs;
+  a new local selection retires the old phone queue. This is a TV-code receiver,
+  not certified Chromecast or outbound casting to another TV.
+- Regular YouTube supports Next, Previous, a bounded explicit queue and saved
+  Autoplay preference. Actual watch-next metadata loads after a rendered frame
+  and is shared with Related; the next media URL/player loads only when chosen
+  or when enabled autoplay reaches the end. Google account actions and a real
+  phone pairing still require an account-owner-led acceptance check. See the
+  [functional review](docs/youtube-parity-0.21.md) and
+  [implementation investigation](docs/tizentube-investigation.md).
 - Read-only YouTube comments, replies and horizontal related videos during
   playback. A faint **Most replayed** graph appears above the thin seek line
   when YouTube provides replay data. Comments load on opening; the player keeps
@@ -48,7 +61,7 @@ are excluded from Git.
   avoid unnecessary rebuilds and layout work. See the [team UI review](docs/ui-review-0.19.0.md).
 - Four native player presentations: Shorts have portrait framing, a read-only
   progress line, looping playback and direct Up/Down clip navigation. Regular
-  YouTube has quality, comments and related-video actions; movies and episodes
+  YouTube has quality, comments and related-video actions, without Picture controls; movies and episodes
   keep the thin transport with audio/subtitle selection. Live TV shows channel
   information and available guide data without transport or seeking controls.
   Shorts warm at most one upcoming URL without a second player or media buffer.
@@ -62,7 +75,10 @@ are excluded from Git.
   crosses season boundaries; OK selects an episode and loads its streams.
 - ExoPlayer with hardware decoding by default. Slim, unboxed playback controls,
   auto-hide, accelerating held-key seeking, audio/subtitle selection, resume and
-  optional SDR brightness, contrast and saturation controls.
+  optional SDR brightness, contrast and saturation controls for movies and IPTV.
+  YouTube omits Picture controls in regular, Shorts and live presentations.
+  Single-tap seek intervals stay predictable; held Left/Right accelerates earlier
+  through larger steps, resetting on release, reversal or timeline focus loss.
 - Optional Stalker Live TV: categories on the left, channels in the middle, and
   preview plus available schedule on the right. First OK previews a channel;
   a second OK opens fullscreen. Live playback has no seek bar.
@@ -128,20 +144,22 @@ adb -s emulator-5554 shell am start -n xyz.billybishop4.fleet.tv/.MainActivity
 
 ## Tests and verification
 
-The candidate passes 121 ordinary JVM checks, 169 unique worker emulator
-scenarios, and Android lint. Three opt-in public YouTube
-checks from 0.18.1 verify the unchanged API code against real
-signed-out recommendations, search, Shorts, media,
-comments, replay data and device-code issuance without account approval.
-Worker Android TV suites cover navigation, account fixtures, all four player
-presentations, seeking, picture adjustments, failure recovery and bounded memory.
-Exact counts, source scopes, resolved development failures and physical-device
-checks are recorded in the candidate verification.
+The candidate passes 211 ordinary JVM tests, 218 unique TV-emulator scenarios
+and Android lint. Three opt-in JVM probes are skipped in the ordinary run; two
+separate public YouTube interoperability checks pass.
 
-The independent customer review covers every section, using the official YouTube
-TV layout as a reference. Supported flows are closer to that reference; voice,
-creator/channel pages, account mutations, casting and Google watch-history
-upload remain absent. The review does not claim complete YouTube feature parity.
+Candidate verification records native navigation/account/player, startup and
+bounded-memory results against the exact production source files. Normal
+suites use generated accounts, media and phone commands. They never mutate a
+personal Google account, install IPTV profiles or contact the TCL. Opt-in public
+YouTube probes are separately labeled; anonymous TV-code protocol checks do not
+prove a real owner-approved account or phone session.
+
+Independent reviewers use TizenTube's actual TV flows as the reference. The
+native app aims for the same everyday functionality while retaining 777tv's
+visual design. It does not claim every YouTube feature: comments are read-only,
+private/restricted media playback and Google account switching are not covered,
+and no certified Cast receiver or outbound casting is bundled.
 
 In a paired Mac check, median public YouTube source resolution fell from 811 ms
 to 153 ms. A matched worker test measures Play until both a video frame and
@@ -209,6 +227,6 @@ historical artifact paths in that file refer to untracked local evidence.
 | `app/src/androidTest/` | Android TV navigation, rendering, playback and performance tests |
 | `scripts/` | Toolchain bootstrap, fixtures and optional remote client |
 | `remote/` | Optional build/test worker service and pinned toolchain |
-| `releases/0.19.0/` | Candidate verification and APK checksum |
+| `releases/0.21.0/` | Candidate verification and APK checksum |
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency notices.

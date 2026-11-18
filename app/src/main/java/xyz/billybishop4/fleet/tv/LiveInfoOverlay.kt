@@ -26,6 +26,7 @@ internal class LiveInfoOverlay(private val a:MainActivity,private val watch:Watc
             add(a.text("LIVE",10f,0xFFFF7373.toInt(),bold=true));gap(5)
             add(a.text(watch.channel?.name?:watch.title.name,21f,bold=true).apply { tag="live-channel-name";maxLines=1;ellipsize=TextUtils.TruncateAt.END })
             gap(5);add(program)
+            if(watch.title.type=="youtube"){gap(4);add(a.text("Menu for video actions, comments and related videos",12f,MUTED))}
         },FrameLayout.LayoutParams(-1,-2,Gravity.BOTTOM).apply{setMargins(a.dp(36),0,a.dp(36),a.dp(24))})
     }
     private val hideLater=Runnable { hide() }

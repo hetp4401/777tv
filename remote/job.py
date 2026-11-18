@@ -113,7 +113,12 @@ def ui_tests():
             if run(adb+['shell','settings','put','global',name,'0'],check=False)==0:break
             time.sleep(1)
         else:print('Animation timing preference unavailable: '+name,flush=True)
-    run(adb+['shell','input','keyevent','82'])
+    # TV emulators have no lock screen; Menu is only a best-effort wake-up.
+    # The input service can still be starting just after boot_completed.
+    for attempt in range(3):
+        if run(adb+['shell','input','keyevent','82'],check=False)==0:break
+        time.sleep(1)
+    else:print('Optional emulator wake-up unavailable; continuing to APK install.',flush=True)
     run(adb+['install','-r','app/build/outputs/apk/debug/app-debug.apk'])
     run(adb+['install','-r','app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk'])
     with (OUT/'instrumentation.log').open('wb') as log:

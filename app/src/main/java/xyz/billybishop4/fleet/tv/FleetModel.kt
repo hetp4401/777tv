@@ -34,7 +34,11 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
     internal val youtube:YouTubeModel get()=youtubeValue?:createYouTube().also { youtubeValue=it }
     private fun createYouTube(origin:String="https://www.youtube.com",resolver:YouTubeStreamResolver=YouTubeResolver())=YouTubeModel(
         YouTubeClient(store.youTubeCredentials(),origin=origin,localHistory=store::youTubeHistory),viewModelScope,{changes.postValue(Unit)},
-        { watch,replace -> if(replace && (route as? Route.Player)?.watch?.title?.type=="youtube")route=Route.Player(watch) else open(Route.Player(watch)) },
+        { watch,replace ->
+            if(watch.requestedPositionMs!=null) {
+                section=Section.YOUTUBE;history.clear();history+=Location(Route.Browse(Section.YOUTUBE),Section.YOUTUBE);route=Route.Player(watch);load()
+            }else if(replace && (route as? Route.Player)?.watch?.title?.type=="youtube")route=Route.Player(watch) else open(Route.Player(watch))
+        },
         { message -> android.widget.Toast.makeText(getApplication(),message,android.widget.Toast.LENGTH_LONG).show() },resolver)
     internal fun youTubeBackground(){youtubeValue?.deactivate()}
     @androidx.annotation.VisibleForTesting
@@ -45,7 +49,7 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
         youtubeValue=createYouTube("$base/youtube",object:YouTubeStreamResolver {
             override suspend fun resolve(video:YouTubeVideo):Watch {
                 val result=org.json.JSONObject(Http().text("$base/youtube/resolve/${video.id}"))
-                return Watch(video.title(),Stream("YouTube fixture",result.getString("url")),short=video.isShort,resolvedAtMs=System.currentTimeMillis(),
+                return Watch(video.title(),Stream("YouTube fixture",result.getString("url")),short=video.isShort,live=video.live,resolvedAtMs=System.currentTimeMillis(),
                     audioUrl=result.optString("audioUrl"),videoMimeType=result.optString("videoMimeType"),audioMimeType=result.optString("audioMimeType"))
             }
         })

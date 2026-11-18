@@ -31,7 +31,7 @@ class YouTubeProductionProbeTest {
                 await{ui{!model().busy && model().videos.isNotEmpty()}}
                 report.put("signedIn",ui{model().account!=null}).put("recommendations",ui{model().videos.size}).put("shelves",ui{model().homeShelves.size})
                 if(ui{model().account==null}) {
-                    assertTrue(ui{model().homeShelves.any{it.name=="Discover"}})
+                    assertTrue(ui{model().homeShelves.isNotEmpty() && model().homeShelves.all{it.videos.isNotEmpty()}})
                     assertTrue(ui{model().videos.all{it.thumbnail.isNotBlank()}})
                 }
                 await{ui{a.window.decorView.findTag("youtube-video:${model().videos.first().id}")?.isShown==true}}

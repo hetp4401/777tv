@@ -87,25 +87,23 @@ class YouTubeTvLayoutTest:NativeTestBase() {
         await{ui{a.currentFocus?.isShown==true && generateSequence(a.currentFocus){it.parent as? View}.any{it===tagged("youtube-page")}}}
         screenshot("youtube-compact-home-search-navigation")
     }
-    @Test fun gridEdgesReachTheRailAndNativeScrollingKeepsEveryDeliveredMove() {
+    @Test fun horizontalSearchKeepsEveryMoveAndTheRailAndKeyboardReturnToTheSameVideo() {
         click("YouTube search");field("Search YouTube","fixture");click("Search YouTube videos")
         await{ui{!a.model.youtube.busy && a.model.youtube.videos.size>=32 && a.currentFocus?.tag=="youtube-video:V0000000001"}}
-        repeat(3){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
-        await{ui{a.currentFocus?.tag=="youtube-video:V0000000004"}}
-        repeat(4){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
-        assertEquals("youtube-video:V0000000004",ui{a.currentFocus?.tag})
-        sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
-        await{ui{a.currentFocus?.tag=="youtube-video:V0000000008"}}
-        repeat(3){sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)}
-        await{ui{a.currentFocus?.tag=="youtube-video:V0000000005"}}
+        repeat(8){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000009"}}
+        repeat(8){sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)}
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000001"}}
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)
         await{ui{a.currentFocus?.contentDescription=="YouTube search"}}
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
-        await{ui{a.currentFocus?.tag=="youtube-video:V0000000005"}}
-        repeat(4){sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)}
-        await{ui{a.currentFocus?.tag=="youtube-video:V0000000021"}}
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000001"}}
+        repeat(18){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000019"}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP);await{tagged("youtube-keyboard")?.hasFocus()==true}
+        ui{a.onBackPressedDispatcher.onBackPressed()};await{ui{a.currentFocus?.tag=="youtube-video:V0000000019"}}
         assertNull(player());assertFalse(ui{a.model.youtube.resolving})
-        screenshot("youtube-grid-native-focus-and-rail-return")
+        screenshot("youtube-search-horizontal-focus-and-return")
     }
     @Test fun homeCanScrollAcrossUnattachedCardsWithTheRemoteAndReturn() {
         home();ui{tagged("youtube-video:V0000000001")!!.requestFocus()}
@@ -136,7 +134,7 @@ class YouTubeTvLayoutTest:NativeTestBase() {
         assertEquals(View.GONE,ui{tagged("youtube-search-tools")!!.visibility})
         assertEquals(listOf("ab"),ui{a.model.youtube.recentQueries});screenshot("youtube-tv-search-results")
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP);await{ui{keyboard.isShown && keyboard.hasFocus()}}
-        assertTrue(bounds(keyboard).bottom<=bounds(tagged("youtube-results")!!).top);screenshot("youtube-tv-search-keyboard")
+        assertTrue(bounds(keyboard).bottom<=bounds(tagged("youtube-search-results")!!).top);screenshot("youtube-tv-search-keyboard")
     }
     @Test fun clearingAndDeletingUnicodeKeepSearchOpenWithoutLoadingHome() {
         click("YouTube search");field("Search YouTube","café😀")

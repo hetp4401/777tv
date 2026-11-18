@@ -41,7 +41,8 @@ data class GuideProgram(val name: String, val startMs: Long, val endMs: Long, va
 data class Watch(val title: Title, val stream: Stream, val episode: Episode? = null, val headers: Map<String, String> = emptyMap(), val live: Boolean = false,
     val provider: Provider? = null, val channel: Channel? = null,
     val audioUrl:String="", val videoMimeType:String="", val audioMimeType:String="", val resolvedAtMs:Long=0L,
-    val short:Boolean=false, val captions:List<VideoCaption> = emptyList(), val playRequestedAtMs:Long=0L)
+    val short:Boolean=false, val captions:List<VideoCaption> = emptyList(), val playRequestedAtMs:Long=0L,
+    val remoteResumePositionMs:Long?=null, val requestedPositionMs:Long?=null)
 internal fun playbackNowMs()=System.nanoTime()/1_000_000L
 data class VideoCaption(val url:String,val language:String,val mimeType:String)
 internal enum class PlaybackMode { SHORTS, YOUTUBE, ON_DEMAND, LIVE }

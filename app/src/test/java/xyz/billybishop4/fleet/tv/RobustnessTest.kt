@@ -61,7 +61,7 @@ class RobustnessTest {
         val expected=Preferences(startSection="On-Demand",largePosters=true,showRecent=false,showContinue=false,
             showMyList=false,resume=false,largestFirst=false,speed=1.5f,seekSeconds=30,audioLanguage="hi",
             subtitleLanguage="fr",subtitles=true,videoFit="Zoom",liveBufferSeconds=6,liveRetries=1,
-            liveSort="A–Z",defaultProfileId="living-room-default")
+            liveSort="A–Z",defaultProfileId="living-room-default",youtubeAutoplay=false)
         for(legacy in listOf("mpv","ExoPlayer","unknown")) {
             val decoded=Preferences.decode(expected.json().put("videoEngine",legacy))
             assertEquals(expected,decoded)

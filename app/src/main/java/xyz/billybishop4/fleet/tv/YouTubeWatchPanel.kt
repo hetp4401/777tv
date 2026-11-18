@@ -28,6 +28,7 @@ internal class YouTubeWatchPanel(
     private var busy=false;private var opening=false;private var closed=false
     private var error:String?=null;private var request:Job?=null;private var generation=0
     private var commentDialog:AlertDialog?=null
+    private var videoActions:YouTubeVideoActions?=null
     val view=object:LinearLayout(a) {
         init { orientation=VERTICAL;tag="youtube-watch-panel";setBackgroundColor(0xF20A0A0A.toInt());setPadding(a.dp(28),a.dp(10),a.dp(28),a.dp(16));visibility=View.GONE }
         override fun focusSearch(focused:View,direction:Int):View? {
@@ -43,6 +44,9 @@ internal class YouTubeWatchPanel(
     private val backButton=a.action("‹","Back to comments"){backThread()}.quiet().apply{visibility=View.GONE;textSize=24f;setPadding(0,0,0,0)}
     private val heading=a.text(watch.title.name,13f,MUTED).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END }
     private val closeButton=a.action("×","Close video panel"){hidePanel()}.quiet().apply{textSize=24f;setPadding(0,0,0,0)}
+    private val actionsButton=a.action("•••","Video panel actions") {
+        if(videoActions?.visible!=true)videoActions=YouTubeVideoActions(a,YouTubeVideo(watch.title.id,watch.title.name,watch.title.poster,isShort=watch.short,live=watch.live)).also{it.show()}
+    }.quiet().apply{setPadding(0,0,0,0)}
     private val progress=ProgressBar(a,null,android.R.attr.progressBarStyleHorizontal).apply {
         tag="youtube-panel-loading";isIndeterminate=true;visibility=View.INVISIBLE;importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
     }
@@ -73,12 +77,15 @@ internal class YouTubeWatchPanel(
             add(relatedButton,width=a.dp(84),height=a.dp(40));add(commentsButton,width=a.dp(108),height=a.dp(40))
             add(backButton,width=a.dp(36),height=a.dp(40))
             addView(heading,LinearLayout.LayoutParams(0,-2,1f).apply { marginStart=a.dp(12);marginEnd=a.dp(12) })
+            add(actionsButton,width=a.dp(40),height=a.dp(40))
             add(closeButton,width=a.dp(40),height=a.dp(40))
         },height=a.dp(44))
         view.add(progress,height=a.dp(2));view.add(feedback)
         view.addView(list,LinearLayout.LayoutParams(-1,0,1f));view.add(more,width=a.dp(164),height=a.dp(36))
         relatedButton.nextFocusLeftId=relatedButton.id;closeButton.nextFocusRightId=closeButton.id
         relatedButton.nextFocusRightId=commentsButton.id;commentsButton.nextFocusLeftId=relatedButton.id
+        commentsButton.nextFocusRightId=actionsButton.id;actionsButton.nextFocusLeftId=commentsButton.id
+        actionsButton.nextFocusRightId=closeButton.id;closeButton.nextFocusLeftId=actionsButton.id
         list.setOnKeyListener { _,key,event ->
             if(event.action==android.view.KeyEvent.ACTION_DOWN && key==android.view.KeyEvent.KEYCODE_DPAD_UP && !comments)relatedButton.requestFocus() else false
         }
@@ -165,7 +172,7 @@ internal class YouTubeWatchPanel(
         val version=++generation;busy=true;error=null;render()
         request=a.lifecycleScope.launch {
             try {
-                if(details==null)details=model.client.watchDetails(watch.title.id)
+                if(details==null)details=model.watchDetails(watch.title.id)
                 if(comments && (append || currentPage()==null)) {
                     val previous=currentPage()
                     val token=if(append)previous?.continuation else thread?.repliesToken?:details?.commentsToken
@@ -207,7 +214,7 @@ internal class YouTubeWatchPanel(
         rememberPosition();cancelRequest();if(opening){model.cancelPlayback();opening=false}
         releaseCards();list.adapter=null;list.recycledViewPool.clear();view.visibility=View.GONE;resized(0);dismissed();return true
     }
-    fun close(){closed=true;cancelRequest();commentDialog?.dismiss();commentDialog=null;if(opening)model.cancelPlayback();releaseCards();list.adapter=null;list.recycledViewPool.clear();details=null;commentsPage=null;repliesPage=null
+    fun close(){closed=true;cancelRequest();videoActions?.close();videoActions=null;commentDialog?.dismiss();commentDialog=null;if(opening)model.cancelPlayback();releaseCards();list.adapter=null;list.recycledViewPool.clear();details=null;commentsPage=null;repliesPage=null
         if(view.viewTreeObserver.isAlive)view.viewTreeObserver.removeOnGlobalFocusChangeListener(focusChanged)
         resized(0)}
 }

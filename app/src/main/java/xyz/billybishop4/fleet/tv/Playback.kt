@@ -25,8 +25,18 @@ internal data class PlaybackSnapshot(val engine:String, val playing:Boolean, val
     val audioTrack:String="",val subtitleText:String="",val frameRateHint:Float=0f,val forwardCapMiB:Int=0,
     val displayFps:Double=0.0,val effectsActive:Boolean=false,val firstFrameMs:Long=0,val sourceMs:Long=0,val playbackMs:Long=0)
 
+/** Explicit commands win, including zero. Account resume is a supplied hint, never a late seek. */
+internal fun playbackStartPosition(watch:Watch,resumeEnabled:Boolean,localPositionMs:Long):Long = when {
+    watch.live->0L
+    watch.requestedPositionMs!=null->watch.requestedPositionMs.coerceAtLeast(0L)
+    watch.short || !resumeEnabled->0L
+    localPositionMs>0L->localPositionMs
+    else->watch.remoteResumePositionMs?.coerceAtLeast(0L)?:0L
+}
+
 /** One hardware-decoded player per visible attachment; direct add-on URLs. */
 internal class NativePlayback(private val a: MainActivity, private val m: FleetModel, private val original: Watch, private var fullscreen: Boolean = true, private val exit: () -> Unit) {
+    internal val watch:Watch get()=original
     val view = FrameLayout(a).apply { setBackgroundColor(INK) }
     var player: ExoPlayer? = null; private set
     var mediaPlayer: Player? = null; private set
@@ -45,6 +55,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     private var liveInfo:LiveInfoOverlay?=null
     private var liveAnnounced=false
     private var youtubePanel:YouTubeWatchPanel?=null
+    private var liveYouTubeActions:YouTubeVideoActions?=null
     private var replayRequest:Job?=null
     private var replayRequested=false
     private var bufferBudgetBytes=0
@@ -73,11 +84,18 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     private var attached: Watch? = null
     private var resolution: Job? = null
     private var progressJob: Job? = null
+    private var historyPlayback:YouTubeHistoryPlayback?=null
+    private var historyAccountLoad:Job?=null
+    private var historyAccountLoadAttempted=false
+    private var historyLoadGeneration=0
+    private var historyFrameReady=false
+    private var nextPrepared=false
+    private var nextAccountEpoch:Int?=null
     private var running = false
     private var closed = false
     private var transitioning = false
     private var retries = 0
-    private var startMs = if (original.live || original.short) 0L else m.resume(original.title,original.episode)
+    private var startMs = playbackStartPosition(original,m.preferences.resume,m.resume(original.title,original.episode))
     private var playIntent=true
     fun start() { if (running || closed) return; if(original.live)playIntent=true;running=true; connect(false) }
     fun stop() { running=false; resolution?.cancel(); resolution=null; detach() }
@@ -97,7 +115,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     }
     private fun attach(w:Watch) {
         if(firstFrameMs==0L)sourceMs=playbackNowMs()-requestedAtMs
-        attached=w;transitioning=false
+        attached=w;transitioning=false;historyFrameReady=false
         val prefs=m.preferences
         val url=w.stream.url
         val p: Player
@@ -142,6 +160,12 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                 }
                 override fun onRenderedFirstFrame(eventTime:AnalyticsListener.EventTime,output:Any,renderTimeMs:Long) {
                     if(player===exo && firstFrameMs==0L)firstFrameMs=(playbackNowMs()-requestedAtMs).coerceAtLeast(1L)
+                    if(player===exo && w.title.type=="youtube") {
+                        // Optional account work begins after a real frame, then waits
+                        // for watched time. Nothing is requested by focus or source loading.
+                        historyFrameReady=true;mediaPlayer?.let{sampleHistory(w,it)}
+                        if(w.playbackMode==PlaybackMode.YOUTUBE)refreshYouTubeNext()
+                    }
                     if(player===exo && pendingPictureFrame) { pendingPictureFrame=false;pictureResult?.invoke(null) }
                 }
             })
@@ -154,6 +178,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             };playerView=pv
             view.removeAllViews();view.addView(pv,FrameLayout.LayoutParams(-1,-1));if(fullscreen)pv.requestFocus()
         mediaPlayer=p
+        a.youTubePhonePlaybackChanged()
         // Start source loading while the main thread builds controls and the media session.
         val item=MediaItem.Builder().setUri(url).apply { if(w.videoMimeType.isNotBlank())setMimeType(w.videoMimeType) }
             .setMediaMetadata(MediaMetadata.Builder().setTitle(w.title.name).setSubtitle(w.episode?.label?:w.title.description.takeIf{w.title.type=="youtube"}).build())
@@ -211,9 +236,19 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                         catch(_:Exception){ /* Replay metadata never interrupts playback. */ }
                     }
                 }
-                if(state==Player.STATE_ENDED){m.saveProgress(w,p.duration.coerceAtLeast(0),p.duration);if(w.live)recover()}
+                if(state==Player.STATE_ENDED){
+                    historyPlayback?.sample(p.currentPosition,p.duration,false,ended=true)
+                    m.saveProgress(w,p.duration.coerceAtLeast(0),p.duration);if(w.live)recover()
+                    else if(w.playbackMode==PlaybackMode.YOUTUBE && p.playWhenReady)m.youtube.onRegularEnded(w,m.preferences.youtubeAutoplay)
+                }
             }
-            override fun onIsPlayingChanged(isPlaying:Boolean){if(mediaPlayer===p){if(isPlaying && playbackMs==0L)playbackMs=(playbackNowMs()-requestedAtMs).coerceAtLeast(1L);keepAwake(p)}}
+            override fun onIsPlayingChanged(isPlaying:Boolean){if(mediaPlayer===p){
+                if(isPlaying && playbackMs==0L)playbackMs=(playbackNowMs()-requestedAtMs).coerceAtLeast(1L)
+                historyPlayback?.sample(p.currentPosition,p.duration,isPlaying);keepAwake(p)
+            }}
+            override fun onPositionDiscontinuity(oldPosition:Player.PositionInfo,newPosition:Player.PositionInfo,reason:Int) {
+                if(mediaPlayer===p)historyPlayback?.discontinuity(oldPosition.positionMs,newPosition.positionMs,p.duration,p.isPlaying)
+            }
             override fun onPlayWhenReadyChanged(playWhenReady:Boolean,reason:Int) {
                 if(mediaPlayer===p && playWhenReady)cancelPictureRefresh()
             }
@@ -236,6 +271,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             val diagnostics=a.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE!=0
             while(isActive&&mediaPlayer===p){
                 delay(4000);val position=p.currentPosition
+                sampleHistory(w,p)
                 if(position>lastPosition+100||!p.playWhenReady)movedAt=SystemClock.elapsedRealtime()
                 lastPosition=position
                 if(position!=savedPosition || p.duration!=savedDuration) {
@@ -249,8 +285,30 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             }
         }
     }
+    private fun sampleHistory(watch:Watch,p:Player) {
+        if(watch.title.type!="youtube" || mediaPlayer!==p || !historyFrameReady)return
+        youTubeAccountChanged()
+        if(historyPlayback?.matchesCurrentAccount()==false){historyPlayback?.finish();historyPlayback=null}
+        if(historyPlayback==null) {
+            historyPlayback=m.youtube.history.begin(watch.title.id)
+            if(historyPlayback==null && !historyAccountLoadAttempted) {
+                // Phone playback can bypass YouTubeScreen entirely. Load saved
+                // credentials once, after the frame, without polling signed-out disk.
+                historyAccountLoadAttempted=true;val generation=++historyLoadGeneration
+                historyAccountLoad=a.lifecycleScope.launch {
+                    try {
+                        withContext(Dispatchers.IO){m.youtube.client.account()}
+                        if(generation==historyLoadGeneration && mediaPlayer===p && running && !closed)sampleHistory(watch,p)
+                    }catch(e:CancellationException){throw e}
+                    catch(_:Exception){ /* Optional history never interrupts playback. */ }
+                    finally{if(generation==historyLoadGeneration)historyAccountLoad=null}
+                }
+            }
+        }
+        historyPlayback?.sample(p.currentPosition,p.duration,p.isPlaying)
+    }
     fun showPictureControls() {
-        if(closed || player==null || pictureDialog?.isShowing==true)return
+        if(closed || original.title.type=="youtube" || player==null || pictureDialog?.isShowing==true)return
         controls?.dismiss()
         pictureDialog=showPictureControls(a,picture,::setPicture,actualPicture={picture},restoreAnchor=false) {
             pictureDialog=null
@@ -259,6 +317,22 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                 view.post { (view.findTag("vod-options")?:playerView)?.requestFocus() }
             }
         }
+    }
+    internal fun refreshYouTubeNext() {
+        val p=mediaPlayer?:return
+        if(closed || !historyFrameReady || original.playbackMode!=PlaybackMode.YOUTUBE || (m.route as? Route.Player)?.watch!==original)return
+        nextPrepared=true;nextAccountEpoch=m.youtube.client.historyAccountEpoch()
+        m.youtube.prepareNext(original) {
+            if(!closed && running && mediaPlayer===p && (m.route as? Route.Player)?.watch===original) {
+                nextAccountEpoch=m.youtube.client.historyAccountEpoch()
+                controls?.metadataChanged()
+                // A short video may finish while its optional metadata is loading.
+                if(p.playbackState==Player.STATE_ENDED && p.playWhenReady)m.youtube.onRegularEnded(original,m.preferences.youtubeAutoplay)
+            }
+        }
+    }
+    internal fun youTubeAccountChanged() {
+        if(nextPrepared && m.youtube.client.historyAccountEpoch()!=nextAccountEpoch)refreshYouTubeNext()
     }
     internal fun setPicture(requested:VideoPicture,done:(String?)->Unit) {
         val exo=player
@@ -343,8 +417,12 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     }
     private fun keepAwake(p:Player){if(p.isPlaying||(p.playWhenReady&&p.playbackState==Player.STATE_BUFFERING))a.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)else a.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)}
     private fun detach(keepPictureControls:Boolean=false){
+        historyFrameReady=false;historyLoadGeneration++
+        if(historyAccountLoad?.isActive==true)historyAccountLoadAttempted=false
+        historyAccountLoad?.cancel();historyAccountLoad=null
         if(original.short)m.youtube.cancelShortPreload()
         replayRequest?.cancel();replayRequest=null;replayRequested=false;youtubePanel?.close();youtubePanel=null
+        liveYouTubeActions?.close();liveYouTubeActions=null
         cancelPictureRefresh()
         if(!keepPictureControls) { pictureDialog?.dismiss();pictureDialog=null;pictureResult=null;pendingPictureFrame=false }
         progressJob?.cancel();progressJob=null
@@ -352,6 +430,9 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         liveInfo?.close();liveInfo=null;liveAnnounced=false
         buffering=null
         val p=mediaPlayer;mediaPlayer=null;player=null;exoDecoder=""
+        a.youTubePhonePlaybackChanged()
+        if(p!=null)historyPlayback?.sample(p.currentPosition,p.duration,false)
+        if(!keepPictureControls){historyPlayback?.finish();historyPlayback=null}
         if(p!=null)playIntent=p.playWhenReady
         if(p!=null){attached?.let{m.saveProgress(it,p.currentPosition,p.duration)};if(!original.live)startMs=p.currentPosition.coerceAtLeast(0)}
         playerView?.player=null;playerView=null;session?.release();session=null;p?.release();pictureEffect=null;attached=null
@@ -397,11 +478,17 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         if(mediaPlayer==null)return false
         if(event.keyCode in setOf(KeyEvent.KEYCODE_MEDIA_PLAY,KeyEvent.KEYCODE_MEDIA_PAUSE,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))return true
         if(event.keyCode in setOf(KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER,KeyEvent.KEYCODE_INFO)) {
-            if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0)liveInfo?.show();return true
+            if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0 || event.action==KeyEvent.ACTION_UP && !event.isCanceled)liveInfo?.show()
+            return true
         }
         if(event.keyCode in listOf(KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,KeyEvent.KEYCODE_MEDIA_REWIND,KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD,KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD,KeyEvent.KEYCODE_MEDIA_NEXT,KeyEvent.KEYCODE_MEDIA_PREVIOUS,KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER))return true
         if(event.keyCode==KeyEvent.KEYCODE_MENU) {
-            if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0)showPictureControls()
+            if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0) {
+                if(original.title.type=="youtube")a.showActions("Live YouTube",listOf(
+                    "Video actions" to {liveYouTubeActions?.close();liveYouTubeActions=YouTubeVideoActions(a,YouTubeVideo(original.title.id,original.title.name,original.title.poster,live=true)).also{it.show()}},
+                    "Related videos" to {showYouTubePanel(original,false)},"Comments" to {showYouTubePanel(original,true)}))
+                else showPictureControls()
+            }
             return true
         }
         return false

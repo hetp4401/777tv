@@ -173,7 +173,7 @@ class YouTubeWatchUiTest:NativeTestBase() {
     @Test fun aLatePanelResponseDoesNotStealFocusFromTheCloseButton() {
         control("slow=1");play();click("Related videos")
         ui{find("Related videos tab")!!.requestFocus()}
-        sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT);sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
+        repeat(3){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
         await{ui{a.currentFocus?.contentDescription=="Close video panel"}}
         await{tagged("youtube-video:V0000000040")?.isShown==true}
         assertEquals("Close video panel",ui{a.currentFocus?.contentDescription});assertTrue(ui{a.player!!.isPlaying})

@@ -21,17 +21,19 @@ class YouTubeGuestTest {
         "FEtopics_music"->page("M0000000001","M0000000002")
         "FEtopics_gaming"->page("G0000000001","G0000000002")
         "FEtopics_news"->page("N0000000001","N0000000002")
+        "default"->YouTubeHttpResponse(200,"""{"feedNudgeRenderer":{"title":"Make YouTube your own","subtitle":"Sign in or search"}}""")
         else->page("R0000000001","R0000000002")
     }
-    @Test fun guestHomeUsesPublicSuggestionsWithoutAnAccountOrAnEmptyDefaultFeed()=runBlocking {
+    @Test fun emptyActualGuestHomeFallsBackToPublicShelvesWithoutCreatingAnAccount()=runBlocking {
         val transport=FixtureYouTubeTransport();transport.respond={topicReply(it)};val store=MemoryYouTubeCredentials()
         val client=YouTubeClient(store,transport);val home=client.page(YouTubeFeed.HOME)
-        assertEquals(listOf("Discover","Music","Gaming","News"),home.shelves.map{it.name})
-        assertEquals(listOf("M0000000001","G0000000001","N0000000001"),home.shelves.first().videos.take(3).map{it.id})
+        assertEquals(listOf("Music","Gaming","News"),home.shelves.map{it.name})
+        assertEquals(listOf("M0000000001","M0000000002"),home.shelves.first().videos.map{it.id})
         assertEquals(6,home.videos.size);assertNull(home.continuation);assertNull(client.account());assertEquals(0,store.writes)
         assertTrue(transport.requests.all{it.authorization==null})
-        assertEquals(3,transport.requests.count{it.path.endsWith("/browse")})
-        assertFalse(transport.requests.any{it.body?.optString("browseId")=="default" || it.path.endsWith("/token")})
+        assertEquals(4,transport.requests.count{it.path.endsWith("/browse")})
+        assertEquals("default",transport.requests.first{it.path.endsWith("/browse")}.body!!.getString("browseId"))
+        assertFalse(transport.requests.any{it.path.endsWith("/token")})
     }
     @Test fun guestSuggestionsUseARecentlyWatchedVideoAndExcludeAlreadyWatchedItems()=runBlocking {
         val seed=Progress(Title("W0000000001","A watched video","youtube"),null,45_000,120_000,10)
@@ -52,7 +54,7 @@ class YouTubeGuestTest {
     @Test fun oneUnavailableTopicDoesNotBlockTheOtherRecommendations()=runBlocking {
         val transport=FixtureYouTubeTransport();transport.respond={if(it.body?.optString("browseId")=="FEtopics_music")YouTubeHttpResponse(503,"{}") else topicReply(it)}
         val home=YouTubeClient(MemoryYouTubeCredentials(),transport).page(YouTubeFeed.HOME)
-        assertEquals(listOf("Discover","Gaming","News"),home.shelves.map{it.name});assertEquals(4,home.videos.size)
+        assertEquals(listOf("Gaming","News"),home.shelves.map{it.name});assertEquals(4,home.videos.size)
     }
     @Test fun allFailedTopicsProduceARetryableFailureInsteadOfASignInRequirement()=runBlocking {
         val transport=FixtureYouTubeTransport();transport.respond={YouTubeHttpResponse(503,"{}")}

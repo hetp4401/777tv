@@ -27,7 +27,7 @@ class YouTubeAccountFeedsTest:NativeTestBase() {
     private fun history()=Progress(Title("W0000000001","A watched fixture","youtube",poster="$base/logo.png"),null,45_000,120_000,System.currentTimeMillis())
     @Test fun freshHomeHasRealGuestCardsWithoutCreatingAnAccountOrPlayingOnFocus() {
         assertNull(ui{a.model.youtube.account});assertNull(ui{a.model.store.youTubeCredentials().read()})
-        assertEquals(listOf("Discover","Music","Gaming","News"),ui{a.model.youtube.homeShelves.map{it.name}})
+        assertEquals(listOf("Music","Gaming","News"),ui{a.model.youtube.homeShelves.map{it.name}})
         assertTrue(ui{a.model.youtube.videos.all{it.id.startsWith("G")}})
         val first=ui{a.model.youtube.videos.first()};await{tagged("youtube-video:${first.id}")?.isShown==true}
         ui{tagged("youtube-video:${first.id}")!!.requestFocus()};repeat(5){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
@@ -91,7 +91,7 @@ class YouTubeAccountFeedsTest:NativeTestBase() {
         ui{a.model.store.youTubeProgress(history());a.model.youtube.refresh()}
         await{ui{!a.model.youtube.busy && a.model.youtube.homeShelves.firstOrNull()?.name=="Because you watched A watched fixture"}}
         ui{a.model.clearHistory()}
-        await{ui{!a.model.youtube.busy && a.model.youtube.homeShelves.firstOrNull()?.name=="Discover"}}
+        await{ui{!a.model.youtube.busy && a.model.youtube.homeShelves.firstOrNull()?.name=="Music"}}
         assertTrue(ui{a.model.store.youTubeHistory().isEmpty()})
         click("YouTube library");ready(YouTubeFeed.HISTORY);assertTrue(ui{a.model.youtube.videos.isEmpty()})
     }

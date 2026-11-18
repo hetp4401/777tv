@@ -55,12 +55,13 @@ internal class YouTubeResolver(private val playbackOnly:Boolean=true,private val
         require(YouTubeDecode.validId(video.id))
         val extractor=ServiceList.YouTube.getStreamExtractor("https://www.youtube.com/watch?v=${video.id}")
         extractor.fetchPage()
+        val title=playbackTitle(video,runCatching{extractor.name}.getOrDefault(""),runCatching{extractor.uploaderName}.getOrDefault(""))
         val hls=runCatching { extractor.hlsUrl }.getOrDefault("")
         val headers=mapOf("User-Agent" to WEB_AGENT,"Referer" to "https://www.youtube.com/","Origin" to "https://www.youtube.com")
         val live=extractor.streamType==StreamType.LIVE_STREAM
         val captions=runCatching { extractor.getSubtitles(MediaFormat.VTT).filter { it.isUrl && isHttp(it.content) }.take(20)
             .map { VideoCaption(it.content,it.languageTag,"text/vtt") } }.getOrDefault(emptyList())
-        if(isHttp(hls))return Watch(video.title(),Stream("YouTube",hls),headers=headers,live=live,
+        if(isHttp(hls))return Watch(title,Stream("YouTube",hls),headers=headers,live=live,
             videoMimeType="application/x-mpegURL",resolvedAtMs=System.currentTimeMillis(),short=video.isShort,captions=captions)
         val audio=extractor.audioStreams.filter { it.isUrl && isHttp(it.content) }
             .sortedWith(compareByDescending<org.schabi.newpipe.extractor.stream.AudioStream> { it.format==MediaFormat.M4A }
@@ -68,13 +69,13 @@ internal class YouTubeResolver(private val playbackOnly:Boolean=true,private val
         val separate=extractor.videoOnlyStreams.filter { it.isUrl && isHttp(it.content) && it.height in 1..1080 && it.fps<=60 }
             .sortedWith(compareByDescending<org.schabi.newpipe.extractor.stream.VideoStream> { it.format==MediaFormat.MPEG_4 }
                 .thenByDescending { it.height }.thenBy { it.fps }).firstOrNull()
-        if(separate!=null && audio!=null)return Watch(video.title(),Stream("YouTube",separate.content),headers=headers,live=live,
+        if(separate!=null && audio!=null)return Watch(title,Stream("YouTube",separate.content),headers=headers,live=live,
             audioUrl=audio.content,videoMimeType=separate.format?.mimeType.orEmpty(),audioMimeType=audio.format?.mimeType.orEmpty(),
             resolvedAtMs=System.currentTimeMillis(),short=video.isShort,captions=captions)
         val combined=extractor.videoStreams.filter { it.isUrl && isHttp(it.content) }
             .sortedWith(compareByDescending<org.schabi.newpipe.extractor.stream.VideoStream> { it.format==MediaFormat.MPEG_4 }.thenByDescending { it.height }).firstOrNull()
             ?:throw UserMessage("YouTube didn't provide a playable stream. Try again or choose another video.")
-        return Watch(video.title(),Stream("YouTube",combined.content),headers=headers,live=live,videoMimeType=combined.format?.mimeType.orEmpty(),
+        return Watch(title,Stream("YouTube",combined.content),headers=headers,live=live,videoMimeType=combined.format?.mimeType.orEmpty(),
             resolvedAtMs=System.currentTimeMillis(),short=video.isShort,captions=captions)
     }
     private class Work(val trace:((String,Long)->Unit)?) {
@@ -124,9 +125,17 @@ internal fun playerWatch(video:YouTubeVideo,response:JsonObject):Watch? {
             val caption=base.toHttpUrlOrNull()?.newBuilder()?.setQueryParameter("fmt","vtt")?.build()?.toString()
             if(caption!=null)VideoCaption(caption,track.getString("languageCode").orEmpty(),"text/vtt")else null
         }
-    return Watch(video.title(),Stream("YouTube",url),headers=mapOf("User-Agent" to
+    val details=response.getObject("videoDetails")
+    return Watch(playbackTitle(video,details.getString("title"),details.getString("author")),Stream("YouTube",url),headers=mapOf("User-Agent" to
         "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
         "Referer" to "https://www.youtube.com/","Origin" to "https://www.youtube.com"),
         live=status.containsKey("liveStreamability"),videoMimeType="application/x-mpegURL",
         resolvedAtMs=System.currentTimeMillis(),short=video.isShort,captions=captions)
+}
+
+/** A cast sender may provide only an ID. Reuse the already fetched player
+ * metadata for that placeholder; normal browse titles keep their exact identity. */
+internal fun playbackTitle(video:YouTubeVideo,name:String?,author:String?):Title {
+    if(video.name!="YouTube video" || name.isNullOrBlank())return video.title()
+    return video.copy(name=name.take(500),channel=video.channel.ifBlank{author.orEmpty().take(500)}).title()
 }

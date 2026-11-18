@@ -43,15 +43,23 @@ class PlaybackStartupBenchmarkTest:NativeTestBase() {
             }
             await{ui{a.playback?.snapshot?.let{it.firstFrameMs>0 && it.playbackMs>0 && it.playing}==true}}
             val player=player()!!;val snapshot=ui{a.playback!!.snapshot!!};var rebuffers=0
-            val listener=object:Player.Listener{override fun onPlaybackStateChanged(state:Int){if(state==Player.STATE_BUFFERING)rebuffers++}}
+            val observedAt=SystemClock.elapsedRealtime();val samples=JSONArray();val transitions=JSONArray()
+            fun sample()=JSONObject().put("sinceFrameMs",SystemClock.elapsedRealtime()-observedAt)
+                .put("positionMs",player.currentPosition).put("bufferedMs",player.totalBufferedDuration)
+                .put("state",player.playbackState).put("loading",player.isLoading).put("playing",player.isPlaying)
+            val listener=object:Player.Listener{override fun onPlaybackStateChanged(state:Int){
+                if(state==Player.STATE_BUFFERING)rebuffers++
+                transitions.put(sample())
+            }}
             ui{player.addListener(listener)}
-            SystemClock.sleep(2500)
+            repeat(10){SystemClock.sleep(250);samples.put(ui{sample()})}
             val continuous=ui{player.isPlaying}
             ui{player.removeListener(listener)}
             results.put(JSONObject().put("mode",mode.name).put("iteration",iteration)
                 .put("firstFrameMs",snapshot.firstFrameMs).put("sourceMs",snapshot.sourceMs)
                 .put("playbackMs",snapshot.playbackMs).put("playableMs",maxOf(snapshot.firstFrameMs,snapshot.playbackMs))
-                .put("pipelineMs",snapshot.firstFrameMs-snapshot.sourceMs).put("rebuffers",rebuffers).put("continuous",continuous))
+                .put("pipelineMs",snapshot.firstFrameMs-snapshot.sourceMs).put("rebuffers",rebuffers).put("continuous",continuous)
+                .put("samples",samples).put("transitions",transitions))
             File(ui{a.getExternalFilesDir(null)!!},"startup-latency.json").writeText(JSONObject()
                 .put("version",ui{a.packageManager.getPackageInfo(a.packageName,0).versionName})
                 .put("measure","Explicit Play to rendered frame AND active playback; resume disabled; 204800 bytes/s media; 160 ms portal RPC")

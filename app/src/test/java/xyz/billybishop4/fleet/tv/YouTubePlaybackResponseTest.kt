@@ -29,4 +29,11 @@ class YouTubePlaybackResponseTest {
         assertNull(playerWatch(video,response(url="file:///bad")))
         assertNull(playerWatch(video,JsonParser.`object`().from("{}")))
     }
+    @Test fun castPlaceholderReusesTheMatchingPlayerMetadataWhileBrowseTitlesRemainUnchanged() {
+        val response=response();response.getObject("videoDetails")["title"]="The real title";response.getObject("videoDetails")["author"]="The real creator"
+        val cast=playerWatch(video.copy(name="YouTube video"),response)!!
+        assertEquals("The real title",cast.title.name);assertEquals("The real creator",cast.title.description)
+        assertEquals(video.title(),playerWatch(video,response)!!.title)
+        assertEquals(video.title(),playbackTitle(video,"Other title","Other creator"))
+    }
 }

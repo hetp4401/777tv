@@ -20,6 +20,7 @@ data class Preferences(
     val liveRetries: Int = 2,
     val liveSort: String = "Provider",
     val defaultProfileId: String = "",
+    val youtubeAutoplay: Boolean = true,
 ) {
     fun json() = JSONObject().apply {
         put("startupScreen", startSection); put("largePosters", largePosters)
@@ -29,6 +30,7 @@ data class Preferences(
         put("audioLanguage", audioLanguage); put("subtitleLanguage", subtitleLanguage); put("subtitles", subtitles)
         put("videoFit", videoFit); put("liveBufferSeconds", liveBufferSeconds); put("liveRetries", liveRetries); put("liveSort", liveSort)
         put("defaultProfileId", defaultProfileId)
+        put("youtubeAutoplay",youtubeAutoplay)
     }
     companion object {
         fun decode(j: JSONObject) = Preferences(
@@ -46,6 +48,7 @@ data class Preferences(
             liveBufferSeconds = j.optInt("liveBufferSeconds", 3).takeIf { it in listOf(3, 6, 10) } ?: 3,
             liveRetries = j.optInt("liveRetries", 2).coerceIn(0, 3), liveSort = j.optString("liveSort").takeIf { it in listOf("Provider", "A–Z") } ?: "Provider",
             defaultProfileId = j.optString("defaultProfileId").take(256),
+            youtubeAutoplay = j.optBoolean("youtubeAutoplay",true),
         )
         private fun language(value: String) = value.takeIf { it.isEmpty() || Regex("[a-zA-Z]{2,3}(?:-[a-zA-Z]{2,4})?").matches(it) } ?: ""
     }

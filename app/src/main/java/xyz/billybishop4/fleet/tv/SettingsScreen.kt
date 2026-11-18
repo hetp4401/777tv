@@ -31,7 +31,7 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
     init {
         view.heading("Settings")
         val rail = a.column()
-        for ((name, label) in listOf("Playback" to "Playback", "On demand" to "On demand", "Live TV settings" to "Live TV", "Appearance" to "Appearance", "Data & storage" to "Storage")) {
+        for ((name, label) in listOf("Playback" to "Playback", "On demand" to "On demand", "YouTube settings" to "YouTube", "Live TV settings" to "Live TV", "Appearance" to "Appearance", "Data & storage" to "Storage")) {
             val button = a.action(label, name) { enterPage(name) }.apply {
                 id = View.generateViewId(); gravity = Gravity.START or Gravity.CENTER_VERTICAL
                 maxLines = 1; ellipsize = TextUtils.TruncateAt.END
@@ -109,6 +109,15 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
                 choice("Playback speed", listOf(.75f, 1f, 1.25f, 1.5f, 2f), { m.preferences.speed }, { "${it}×" }) { m.updatePreferences(m.preferences.copy(speed = it)) }
                 choice("Seek interval", listOf(5, 10, 15, 30), { m.preferences.seekSeconds }, { "$it seconds" }) { m.updatePreferences(m.preferences.copy(seekSeconds = it)) }
             }
+            "YouTube settings" -> {
+                heading("Playback")
+                toggle("Autoplay next video", {m.preferences.youtubeAutoplay}) {m.updatePreferences(m.preferences.copy(youtubeAutoplay=!m.preferences.youtubeAutoplay))}
+                page.gap(12)
+                heading("Phone control")
+                setting("Link phone with TV code", { if(m.store.youTubePhoneEnabled())"Enabled" else "Off" }) { a.connectYouTubePhone() }
+                setting("Disconnect linked phones", { "Remove saved phone linking" }) { a.disconnectYouTubePhones();update() }
+                page.gap(12);page.add(a.text("Use YouTube on your phone to send videos and control playback while 777tv is open.",13f,MUTED).apply{maxLines=3})
+            }
             "Live TV settings" -> {
                 heading("IPTV")
                 page.add(a.action("Manage IPTV profiles") { m.manageProfiles() }); page.gap(16)
@@ -131,7 +140,7 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
                 m.store.readWarning?.let { page.add(a.text(it, 13f, MUTED)); page.gap(12) }
                 heading("Data on this TV")
                 page.add(a.action("Refresh content") { m.refreshContent(); localStatus = "Movies and shows will reload when you return to On-Demand."; update() }); page.gap(8)
-                page.add(a.action("Clear watch history") { a.confirm("Clear watch history? Saved titles and profiles will remain.", "Confirm reset") { m.clearHistory(); localStatus = "Watch history cleared."; update() } }); page.gap(8)
+                page.add(a.action("Clear history on this TV") { a.confirm("Clear watch history saved on this TV? Your Google watch history, saved titles and profiles will remain.", "Confirm reset") { m.clearHistory(); localStatus = "History on this TV cleared."; update() } }); page.gap(8)
                 page.add(a.action("Reset playback and appearance") { a.confirm("Reset playback and appearance? Profiles and history will remain.", "Confirm reset") { m.updatePreferences(Preferences(defaultProfileId = m.preferences.defaultProfileId)); localStatus = "Playback and appearance reset."; update() } }); page.gap(8)
                 page.add(a.action("Reset provider storage") { a.confirm("Delete all profiles, credentials and channel favorites?", "Confirm reset") { m.resetProviders(); localStatus = if (m.error == null) "IPTV profiles removed." else ""; update() } }); page.gap(18)
                 heading("About")

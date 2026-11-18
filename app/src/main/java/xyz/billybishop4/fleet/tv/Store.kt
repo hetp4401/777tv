@@ -132,6 +132,27 @@ class Store(context: Context) {
             prefs.edit().putString("youtube-session-encrypted",blob).apply()
         }
     }
+    internal fun youTubePhoneEnabled()=prefs.getBoolean("youtube-phone-enabled",false)
+    internal fun youTubePhoneEnabled(value:Boolean){prefs.edit().putBoolean("youtube-phone-enabled",value).apply()}
+    internal fun youTubeScreenStore():YouTubeScreenStore=object:YouTubeScreenStore {
+        override fun read():YouTubeScreenIdentity? {
+            val blob=prefs.getString("youtube-phone-encrypted",null)?:return null
+            val parts=blob.split(':',limit=2);require(parts.size==2)
+            val cipher=Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.DECRYPT_MODE,key("777tv-youtube-phone"),GCMParameterSpec(128,Base64.decode(parts[0],Base64.NO_WRAP)))
+            cipher.updateAAD("777tv-youtube-phone:v1".toByteArray(Charsets.UTF_8))
+            val value=JSONObject(String(cipher.doFinal(Base64.decode(parts[1],Base64.NO_WRAP)),Charsets.UTF_8))
+            return YouTubeScreenIdentity(value.getString("screen"),value.getString("device"))
+        }
+        override fun write(value:YouTubeScreenIdentity?) {
+            if(value==null){prefs.edit().remove("youtube-phone-encrypted").apply();return}
+            val cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.ENCRYPT_MODE,key("777tv-youtube-phone"))
+            cipher.updateAAD("777tv-youtube-phone:v1".toByteArray(Charsets.UTF_8))
+            val raw=JSONObject().put("screen",value.screenId).put("device",value.deviceId).toString().toByteArray(Charsets.UTF_8)
+            val blob=Base64.encodeToString(cipher.iv,Base64.NO_WRAP)+":"+Base64.encodeToString(cipher.doFinal(raw),Base64.NO_WRAP)
+            prefs.edit().putString("youtube-phone-encrypted",blob).apply()
+        }
+    }
     internal fun youTubeProgress(id:String):Progress?=runCatching {
         val raw=JSONObject(prefs.getString("youtube-progress","{}")!!).optJSONObject(id)?:return@runCatching null
         decodeYouTubeProgress(raw)

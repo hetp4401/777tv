@@ -19,7 +19,7 @@ import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 
-/** Identical generated artwork/media, input and measurement code in the before/after snapshots. */
+/** Generated artwork/media only. Horizontal Search is a new workload; compare matching layouts only. */
 class FluidityBenchmarkTest:NativeTestBase() {
     companion object {
         @BeforeClass @JvmStatic fun localDefaultsBeforeAnyActivityStarts() {
@@ -61,10 +61,11 @@ class FluidityBenchmarkTest:NativeTestBase() {
         val videos=(1..120).map { n->YouTubeVideo("P"+n.toString().padStart(10,'0'),"A generated video title $n",
             "$base/youtube/performance/thumbnail/$n.jpg","Generated channel $n","120K views · 2 days ago","12:34") }
         ui{a.model.youtube.installFixturePage(YouTubeFeed.SEARCH,YouTubePage(videos))}
-        await { (tagged("youtube-results") as? RecyclerView)?.let{ui{it.adapter?.itemCount==120 && it.childCount>=4}}==true }
+        await { searchCards()?.let{ui{it.adapter?.itemCount==120 && it.childCount>=4}}==true }
     }
+    private fun searchCards():RecyclerView?=ui{(tagged("youtube-search-results") as? RecyclerView)?.getChildAt(0)?.let{it as? YouTubeShelfView}?.list}
     @Test fun distinctArtworkScrollingInputAndRetainedMemory() {
-        installFeed();val grid=tagged("youtube-results") as RecyclerView
+        installFeed();val grid=searchCards()!!
         await { ui{descendants(grid).filterIsInstance<ImageView>().count{it.drawable!=null}>=4} }
         val initial=memory();val samples=JSONArray()
         repeat(2) { trial ->
@@ -79,7 +80,7 @@ class FluidityBenchmarkTest:NativeTestBase() {
                 Choreographer.getInstance().postFrameCallback(object:Choreographer.FrameCallback {
                     var step=0
                     override fun doFrame(time:Long) {
-                        grid.scrollBy(0,a.dp(if(step<60)16 else -16))
+                        grid.scrollBy(a.dp(if(step<60)96 else -96),0)
                         if(++step<120)Choreographer.getInstance().postFrameCallback(this) else done.countDown()
                     }
                 })
@@ -97,9 +98,8 @@ class FluidityBenchmarkTest:NativeTestBase() {
             ui{grid.scrollToPosition(0)}
             await{tagged("youtube-video:P0000000001")?.let{it.isShown && it.width>0}==true}
             ui{tagged("youtube-video:P0000000001")!!.requestFocus()};await{ui{a.currentFocus?.tag=="youtube-video:P0000000001"}}
-            // A TV grid stops at its row edge. Traverse a four-column snake so
-            // all 18 delivered moves remain meaningful in both implementations.
-            val path=listOf(22,22,22,20,21,21,21,20,22,22,22,20,21,21,21,20,22,22)
+            // Search uses the TV source's horizontal row. Every Right must move one video.
+            val path=List(18){KeyEvent.KEYCODE_DPAD_RIGHT}
             val started=SystemClock.elapsedRealtime();var down=0L;var previous=-1;var repeats=0
             fun release(){if(previous>=0)InstrumentationRegistry.getInstrumentation().sendKeySync(KeyEvent(down,SystemClock.uptimeMillis(),KeyEvent.ACTION_UP,previous,0))}
             for(code in path) {
@@ -121,9 +121,10 @@ class FluidityBenchmarkTest:NativeTestBase() {
         }
         val retained=memory()
         val result=JSONObject().put("catalogSize",120).put("artwork","Distinct URL 480x270 JPEGs, eight deterministic generated patterns")
+            .put("workload","Horizontal TV Search shelf; 120 frames, ±96dp, 18 Right presses. Compare matching layouts only.")
             .put("initialMemory",initial).put("afterScrollMemory",afterScroll).put("afterNavigationMemory",retained)
             .put("scrollTrials",samples).put("input",input).put("fixture",JSONObject(request("stats")))
-            .put("attachedCards",ui{(tagged("youtube-results") as RecyclerView).childCount})
+            .put("attachedCards",ui{searchCards()!!.childCount})
         report("fluidity-artwork.json",result)
         assertNull(player());assertTrue(result.getInt("attachedCards")<20)
         for(i in 0 until input.length())assertEquals("No remote presses may be lost", "youtube-video:P0000000019",input.getJSONObject(i).getString("focused"))

@@ -143,6 +143,14 @@ internal class YouTubeCard(
         },height=frameHeight)
         gap(6);add(title,height=context.dp(34));gap(3);add(channel,height=context.dp(16))
         setOnClickListener { video?.let { click?.invoke(it) } }
+        // The TV remote's held OK/Menu opens creator and account actions without another card button.
+        setOnLongClickListener {
+            val a=context as? MainActivity;val value=video
+            if(a!=null && value!=null){YouTubeVideoActions(a,value).show();true}else false
+        }
+        setOnKeyListener { _,key,event->
+            if(key==KeyEvent.KEYCODE_MENU){if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0)performLongClick();true}else false
+        }
     }
     fun bind(value:YouTubeVideo,open:(YouTubeVideo)->Unit) {
         click=open;if(video==value)return
@@ -159,8 +167,11 @@ internal class YouTubeCard(
 internal class YouTubeShelfView(
     context:Context,loader:ArtworkLoader,pool:RecyclerView.RecycledViewPool,
     private val kind:Int,private val play:(YouTubeVideo,List<YouTubeVideo>)->Unit,
+    private val end:((String,String)->Unit)?=null,
 ):LinearLayout(context) {
     var shelfKey="";private set
+    var stateKey="";private set
+    private var bound=false
     private var items:List<YouTubeVideo> = emptyList()
     private val heading=context.text("",19f,bold=true).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END }
     val list=RecyclerView(context)
@@ -173,20 +184,59 @@ internal class YouTubeShelfView(
         add(heading);gap(9)
         list.layoutManager=LinearLayoutManager(context,RecyclerView.HORIZONTAL,false).apply { initialPrefetchItemCount=1 }
         list.setRecycledViewPool(pool);list.tune(cachedViews=1);list.adapter=adapter
+        if(end!=null)list.addOnScrollListener(object:RecyclerView.OnScrollListener(){override fun onScrolled(recyclerView:RecyclerView,dx:Int,dy:Int) {
+            if(isShown && list.adapter===adapter && adapter.currentList==items && items.isNotEmpty() &&
+                (list.layoutManager as LinearLayoutManager).findLastVisibleItemPosition()>=items.lastIndex-2)end.invoke(shelfKey,stateKey)
+        }})
         add(list,height=(if(kind==2)width*16/9 else width*9/16)+context.dp(75))
     }
-    fun bind(row:YouTubeShelf,state:Parcelable?) {
-        val changed=shelfKey!=row.key;shelfKey=row.key;items=row.videos;tag="youtube-shelf:${row.key}"
+    fun bind(row:YouTubeShelf,state:Parcelable?,identity:String=row.key) {
+        val changed=!bound || stateKey!=identity;bound=true;shelfKey=row.key;stateKey=identity;items=row.videos;tag="youtube-shelf:${row.key}"
         heading.textIfChanged(row.name);list.contentDescription=row.name
         if(list.adapter==null)list.adapter=adapter
         if(changed)list.stopScroll()
         adapter.submitList(items) { if(changed && shelfKey==row.key) { if(state==null)list.scrollToPosition(0) else list.layoutManager?.onRestoreInstanceState(state) } }
     }
     fun saveState():Parcelable?=list.layoutManager?.onSaveInstanceState()
+    fun attachedVideo(tag:String):View?=if(adapter.currentList!=items || list.adapter!==adapter)null else list.findTag(tag)?.takeIf{it.isShown}
+    fun firstVideo():View? {
+        if(adapter.currentList!=items || list.adapter!==adapter)return null
+        val first=list.getChildAt(0)?:return null
+        val position=list.getChildAdapterPosition(first)
+        return first.takeIf{position in items.indices && it.tag=="youtube-video:${items[position].id}" && it.isShown}
+    }
     fun focusVideo(tag:String):View? {
         if(adapter.currentList!=items)return null
         val index=items.indexOfFirst{"youtube-video:${it.id}"==tag};if(index<0)return null
-        return list.findTag(tag)?:run { list.scrollToPosition(index);null }
+        return attachedVideo(tag)?:run { list.scrollToPosition(index);null }
     }
-    fun release(){for(i in 0 until list.childCount)(list.getChildAt(i) as? YouTubeCard)?.release();list.adapter=null}
+    fun release(){for(i in 0 until list.childCount)(list.getChildAt(i) as? YouTubeCard)?.release();list.adapter=null;bound=false;items=emptyList();adapter.submitList(emptyList())}
+}
+
+/** Library collections use their actual cover/name; opening a card browses, never starts playback. */
+internal class YouTubePlaylistCard(context:Context,private val loader:ArtworkLoader,private val frameWidth:Int):LinearLayout(context) {
+    private val fallback=YouTubeRailIcon("Library",context.dp(32))
+    private val image=FixedArtworkView(context).apply {
+        scaleType=ImageView.ScaleType.CENTER_CROP;clipToOutline=true;background=context.round(PANEL);setDuplicateParentStateEnabled(true)
+        foreground=StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_focused),context.round(Color.TRANSPARENT,WHITE));addState(intArrayOf(),context.round(Color.TRANSPARENT))
+        }
+    }
+    private val name=context.text("",14f).apply{maxLines=2;ellipsize=TextUtils.TruncateAt.END}
+    private val metadata=context.text("",11f,MUTED).apply{maxLines=1;ellipsize=TextUtils.TruncateAt.END}
+    init {
+        orientation=VERTICAL;pad(4);isFocusable=true;isFocusableInTouchMode=true;isClickable=true;stateListAnimator=null
+        if(Build.VERSION.SDK_INT>=26)defaultFocusHighlightEnabled=false
+        layoutParams=RecyclerView.LayoutParams(-1,frameWidth*9/16+context.dp(69)).apply{marginEnd=context.dp(8);bottomMargin=context.dp(6)}
+        add(image,height=frameWidth*9/16);gap(6);add(name,height=context.dp(34));gap(3);add(metadata,height=context.dp(16))
+    }
+    fun bind(value:YouTubePlaylist,open:(YouTubePlaylist)->Unit) {
+        if(id==View.NO_ID)id=View.generateViewId()
+        tag="youtube-playlist-card:${value.id}";contentDescription="Open playlist: ${value.name}"
+        name.textIfChanged(value.name);metadata.textIfChanged(value.metadata.ifBlank{"Playlist"})
+        image.scaleType=if(value.thumbnail.isBlank())ImageView.ScaleType.CENTER else ImageView.ScaleType.CENTER_CROP
+        if(value.thumbnail.isBlank()){image.dispose();image.setImageDrawable(fallback)}else loader.show(image,value.thumbnail,frameWidth,frameWidth*9/16)
+        setOnClickListener{open(value)}
+    }
+    fun release(){image.dispose();image.setImageDrawable(null);setOnClickListener(null);contentDescription=null}
 }

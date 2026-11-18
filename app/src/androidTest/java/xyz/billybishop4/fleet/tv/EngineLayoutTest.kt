@@ -263,9 +263,11 @@ class EngineLayoutTest : NativeTestBase() {
             assertFalse(ui { a.activePlayer!!.isCommandAvailable(Player.COMMAND_PLAY_PAUSE) })
             // Ordinary playback still owns a real manual pause which audio focus cannot undo.
             val movie=Watch(Title("audio-focus-vod","Audio focus fixture"),Stream("Generated","http://10.0.2.2:8878/hls/fixture/orig.m3u8"))
+            val live=player()
             ui { a.model.open(Route.Player(movie)) }
-            await(45000){info().optBoolean("playing") && info().optInt("width")>0}
-            ui { a.activePlayer!!.pause();audio.requestAudioFocus(request) }
+            await(45000){ui{a.playback?.watch===movie && a.activePlayer!==live} && info().optBoolean("playing") && info().optInt("width")>0}
+            ui { a.activePlayer!!.pause() };assertFalse(ui{a.activePlayer!!.playWhenReady})
+            ui { audio.requestAudioFocus(request) }
             ui { audio.abandonAudioFocusRequest(request) };android.os.SystemClock.sleep(350)
             assertFalse(ui { a.activePlayer!!.playWhenReady })
             ui { a.activePlayer!!.play() };await { info().optBoolean("playing") }

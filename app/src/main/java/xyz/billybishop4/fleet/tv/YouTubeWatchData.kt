@@ -3,7 +3,8 @@ package xyz.billybishop4.fleet.tv
 import org.json.JSONObject
 
 internal data class YouTubeHeatMarker(val startMs:Long,val durationMs:Long,val intensity:Float)
-internal data class YouTubeWatchDetails(val related:YouTubePage,val commentsToken:String?,val commentsLabel:String="Comments")
+internal data class YouTubeWatchDetails(val related:YouTubePage,val commentsToken:String?,val commentsLabel:String="Comments",
+    val channel:YouTubeChannel?=null,val rating:YouTubeRating?=null)
 internal data class YouTubeComment(
     val id:String,val author:String,val body:String,val metadata:String,
     val repliesLabel:String="",val repliesToken:String?=null,
@@ -26,7 +27,8 @@ internal object YouTubeWatchDecode {
         val comments=token(menu?.optJSONObject(0)?.opt("continuation"))?:token(panel?.opt("content"))
         val pivot=j.optJSONObject("contents")?.optJSONObject("singleColumnWatchNextResults")?.opt("pivot")
         val page=YouTubeDecode.page(if(pivot is JSONObject)pivot else j)
-        return YouTubeWatchDetails(page.copy(videos=page.videos.filter { it.id!=videoId }.take(40)),comments,label)
+        return YouTubeWatchDetails(page.copy(videos=page.videos.filter { it.id!=videoId }.take(40)),comments,label,
+            YouTubeSocialDecode.watchChannel(j),YouTubeSocialDecode.rating(j))
     }
     fun comments(j:JSONObject):YouTubeCommentsPage {
         val section=j.optJSONObject("continuationContents")?.optJSONObject("itemSectionContinuation")

@@ -26,6 +26,15 @@ internal interface NativeScreen {
 
 class MainActivity : ComponentActivity() {
     val model: FleetModel by viewModels()
+    private lateinit var youtubeVoice:YouTubeVoice
+    private var youtubePhone:YouTubePhoneLink?=null
+    internal fun voiceSearchYouTube(){youtubeVoice.start()}
+    private fun phoneLink()=youtubePhone?:YouTubePhoneLink(this).also{youtubePhone=it;it.foreground()}
+    internal fun connectYouTubePhone(){phoneLink().show()}
+    internal fun disconnectYouTubePhones(){phoneLink().disconnect()}
+    internal fun youTubePhonePlaybackChanged(){youtubePhone?.playbackChanged()}
+    internal fun canStepYouTube(watch:Watch,direction:Int)=youtubePhone?.canStep(watch,direction)==true || model.youtube.canStepRegular(watch,direction)
+    internal fun stepYouTube(watch:Watch,direction:Int):Boolean = youtubePhone?.step(watch,direction)==true || model.youtube.stepRegular(watch,direction)
     private val artworkDelegate = lazy { ArtworkLoader.get(this) }
     internal val artwork get() = artworkDelegate.value
     private var lastLarge: Boolean? = null
@@ -79,6 +88,7 @@ class MainActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        youtubeVoice=YouTubeVoice(this)
         savedInstanceState?.getBundle("screen-states")?.let { saved -> saved.keySet().forEach { key -> saved.getParcelable<Parcelable>(key)?.let { states[key]=it } } }
         savedInstanceState?.getBundle("screen-focus")?.let { saved -> saved.keySet().forEach { key -> saved.getBundle(key)?.let { b ->
             b.getString("tag")?.let { focusStates[key]=FocusToken(it,b.getString("parent")) }
@@ -297,14 +307,17 @@ class MainActivity : ComponentActivity() {
     }
     internal fun render() {
         val route = model.route; val next = key(route)
+        youtubeVoice.navigationChanged(route);youtubePhone?.navigationChanged()
         val changed=screenKey!=next || screenRoute!=route
         if (lastLarge != model.preferences.largePosters) { posterPool.clear(); lastLarge = model.preferences.largePosters }
         if (route is Route.Player) {
             if (changed) {
                 retireScreen(); closePlayback(); chrome.visibility = View.GONE
                 playback = NativePlayback(this, model, route.watch) { model.back() }.also { root.addView(it.view, FrameLayout.LayoutParams(-1, -1)); if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) it.start() }
+                youTubePhonePlaybackChanged()
                 screenKey = next;screenRoute=route
             }
+            playback?.youTubeAccountChanged()
             return
         }
         if(changed)closePlayback()
@@ -353,10 +366,11 @@ class MainActivity : ComponentActivity() {
         }) } })
         super.onSaveInstanceState(outState)
     }
-    override fun onStart() { super.onStart(); playback?.start();screen?.foreground() }
+    override fun onStart() { super.onStart(); playback?.start();screen?.foreground();if(model.store.youTubePhoneEnabled())phoneLink().foreground() }
     override fun onWindowFocusChanged(hasFocus: Boolean) { super.onWindowFocusChanged(hasFocus); if(hasFocus)restorePendingFocus() }
-    override fun onStop() { screen?.background();model.youTubeBackground(); playback?.stop(); super.onStop() }
+    override fun onStop() { youtubePhone?.background();screen?.background();model.youTubeBackground(); playback?.stop(); super.onStop() }
     override fun onDestroy() {
+        youtubeVoice.close();youtubePhone?.close();youtubePhone=null
         dismissOwnedDialogs();playback?.close(); playback = null; screen?.close(); posterPool.clear(); super.onDestroy()
     }
     override fun onTrimMemory(level: Int) {

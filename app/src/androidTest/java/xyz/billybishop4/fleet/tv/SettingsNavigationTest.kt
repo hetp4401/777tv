@@ -85,6 +85,12 @@ class SettingsNavigationTest : NativeTestBase() {
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)
         await{ui{find("On demand")?.hasFocus()==true}}
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
+        await{ui{find("YouTube settings")?.hasFocus()==true && tagged("setting:Autoplay next video")?.isShown==true}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
+        await{ui{tagged("setting:Autoplay next video")?.hasFocus()==true}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)
+        await{ui{find("YouTube settings")?.hasFocus()==true}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
         await{ui{find("Live TV settings")?.hasFocus()==true && find("Manage IPTV profiles")?.isShown==true}}
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
         await{ui{find("Manage IPTV profiles")?.hasFocus()==true && a.model.route==Route.Settings}}

@@ -1,17 +1,42 @@
 # 777tv Android TV workflow (formerly Fleet)
 
-- Latest instruction: "don’t test or deploy to tcl now I’ll tell you to do it
-  later" holds all physical TCL testing and installation again. Continue local
-  development and worker emulator checks. 0.18.0, 0.18.1 and 0.19.0 have not been deployed to the TCL;
-  the earlier 0.17.0 installation remains. Do not contact, launch, install, run
-  instrumentation, or make changes on the TCL without fresh authorization.
+- Latest instruction: "Okay stop pushing to tcl now. Continue with work."
+  holds physical TCL work again. Continue local development and worker emulator
+  checks. At the user's intervening request, the 0.20.0 preview (code26) was
+  installed in place over 0.17.0 and launched on November 18, 2026, preserving
+  UID/app data; no instrumentation or profile provisioning ran. Installation
+  receipt: `.tools/youtube020/tcl-install-public.json`. Do not contact, launch,
+  install, run instrumentation, or change the TCL without fresh authorization.
   Preserve app data, sign-ins, profiles, add-ons and history. No default IPTV profiles.
+- Current feedback: search must present full videos first and separate Shorts
+  rows, and Home/search should closely follow TizenTube. YouTube players must
+  omit Picture controls, and held seeking must accelerate much faster. Continue
+  independent reviewers toward functional TizenTube parity and keep changes
+  native, responsive and bounded in memory.
+- 0.21.0 uses real TV Home/search shelves, with full videos before one Shorts
+  row, browseable playlists, confirmed mutation cache invalidation, Next/Previous,
+  a bounded local queue and saved Autoplay. Preserve transactional replacement:
+  failed/cancelled sources keep the previous queue and decoder. Phone ownership
+  persists through failed handoffs and releases on explicit Disconnect. Optional
+  watch-next starts after a real frame, shares metadata with Related, and handles
+  account changes/late EOF without advancing a paused video. YouTube has no
+  Picture entrypoint; on-demand/IPTV retain it. Keep explicit tap seek intervals
+  and early, stronger held-key acceleration with release/reversal/focus resets.
+- 0.20.0 adds platform voice search, creator video tabs, explicit authenticated
+  rating/subscription/playlist actions, account-scoped history reporting after a
+  rendered frame, and foreground phone control using YouTube TV-code pairing.
+  Account/media/phone UI checks use generated fixtures; read-only anonymous
+  public API probes are recorded separately. Do not send
+  real account mutations or access the TCL to validate these flows. Google
+  account-owner approval and actual phone/TV pairing require a separate user-led
+  check. Keep anonymous phone identity separate from account credentials, cancel
+  pending remote playback on Disconnect, and preserve commands during handoff.
 - 0.19.0 is the team UI review: compact YouTube Home Search shortcut, TV grid/rail
   focus, preserved comments/related positions, immediate hidden-arrow seeking,
   settings entry, background Live filtering and shared-dialog lifecycle fixes.
   Keep input-generation guards and cancelled/duplicate key-release protection.
-  Supported YouTube TV flows are closer to the reference; voice/channel pages,
-  account mutations, casting and Google watch-history synchronization remain absent.
+  That release improved supported YouTube TV flows; its missing voice/channel,
+  account-action, phone-control and history capabilities are addressed in 0.20.0.
 - 0.18.0 work adds guest recommendations, account/library browsing, and distinct
   Shorts, YouTube, on-demand and Live TV presentations. Keep ExoPlayer as the only
   engine, native views, bounded caches/buffers, no seek/transport UI for live TV,

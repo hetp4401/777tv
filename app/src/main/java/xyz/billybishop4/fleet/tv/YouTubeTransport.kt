@@ -18,13 +18,13 @@ internal data class YouTubeHttpResponse(val status:Int,val text:String) { overri
 internal interface YouTubeTransport {
     suspend fun request(url:String,body:String?=null,headers:Map<String,String> = emptyMap()):YouTubeHttpResponse
 }
-internal class YouTubeHttp : YouTubeTransport {
+internal class YouTubeHttp(private val calls:Call.Factory=client) : YouTubeTransport {
     override suspend fun request(url:String,body:String?,headers:Map<String,String>):YouTubeHttpResponse = suspendCancellableCoroutine { continuation ->
         val request=Request.Builder().url(url).header("User-Agent",USER_AGENT).apply {
             headers.forEach { (key,value)->header(key,value) }
             if(body!=null)post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
         }.build()
-        val call=client.newCall(request)
+        val call=calls.newCall(request)
         continuation.invokeOnCancellation { call.cancel() }
         call.enqueue(object:Callback {
             override fun onFailure(call:Call,e:IOException) { if(continuation.isActive)continuation.resumeWithException(e) }
@@ -40,6 +40,9 @@ internal class YouTubeHttp : YouTubeTransport {
         const val USER_AGENT="Mozilla/5.0 (ChromiumStylePlatform) Cobalt/25.lts.3.1062949-gold (unlike Gecko) v8/8.8.278.8-jit gles Starboard/15"
         internal val client by lazy { OkHttpClient.Builder().connectTimeout(15,TimeUnit.SECONDS).readTimeout(25,TimeUnit.SECONDS)
             .callTimeout(45,TimeUnit.SECONDS).connectionPool(okhttp3.ConnectionPool(5,60,TimeUnit.SECONDS)).build() }
+        // Tracking requests contain account context: never follow a redirect, even
+        // to another Google host. Keep the shared pool rather than a new socket pool.
+        internal val trackingClient by lazy { client.newBuilder().followRedirects(false).followSslRedirects(false).build() }
         // Share DNS/TLS/HTTP2 connections with playback. Streaming calls have no total
         // duration deadline; read/connect timeouts still detect a broken connection.
         internal val mediaClient by lazy { client.newBuilder().readTimeout(20,TimeUnit.SECONDS).callTimeout(0,TimeUnit.SECONDS)

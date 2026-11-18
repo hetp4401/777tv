@@ -51,12 +51,16 @@ tokens use a separate Android Keystore AES-GCM store, excluded from backup.
 Refreshing is serialized; revoked sessions require sign-in again. Sign-out clears
 personal recommendation pages without changing on-demand add-ons or IPTV data.
 
-Signed-out Home uses public TV Music, Gaming and News feeds, interleaved into
-Discover and separate topic rows. When a locally recorded video has been watched
-for at least 30 seconds, public watch-next also supplies a related-video row.
-Account-personalized recommendations require successful Google approval. YouTube watch progress is local and separate from
-movie/show progress; this feature does not claim to synchronize YouTube watch
-history or implement subscription changes, posting comments, likes or casting.
+Home now requests the same TV feed first. A signed-out nudge/empty response
+uses bounded public Music, Gaming and News shelves, without duplicating a synthetic
+Discover row. Search normalizes canonical Shorts into a final portrait shelf
+and keeps full-video shelves first, including continuations. Creator pages,
+platform voice search, explicit account mutations, library playlists,
+Google watched-span reporting and TV-code phone control are described in the
+[current functional review](youtube-parity-0.21.md). These replace the earlier
+0.19 limitations; live account-owner approval has not been exercised by automated
+tests. Comments remain read-only, and public media resolution remains separate
+from account feed/history access.
 
 While a YouTube video plays, Related opens a horizontal row below the video.
 Comments open a full-height panel on the right, with the same active video

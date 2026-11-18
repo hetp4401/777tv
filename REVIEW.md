@@ -785,3 +785,51 @@ optional polish item. Full YouTube parity is not claimed: voice, channel pages,
 account mutations, casting and Google watch-history upload remain absent.
 Google account-owner approval was not exercised. No TCL contact, testing or
 deployment occurred; the latest user hold remains in force.
+
+
+## Native YouTube functional review (0.21.0)
+
+Search now keeps actual TV video shelves first and gathers canonical Shorts in
+one portrait shelf. Home requests the real TV feed first; guest nudges use
+bounded topic shelves. Music videos remain regular videos when their watch
+endpoint identifies them that way. Native voice input has keyboard fallback.
+Channels expose available tabs; Library includes real playlist collections and
+their videos. Confirmed account actions invalidate the affected cached lists.
+
+YouTube players omit Picture controls. Single taps retain the selected seek
+interval; a held direction accelerates earlier and grows to 128 times the interval
+after 3.2 seconds, resetting on release, reversal or timeline focus loss. The
+existing thin, unboxed transport remains. Next/Previous, a 20-item queue and saved
+Autoplay use real watch-next metadata fetched after a rendered frame, shared with
+Related. Media resolution begins when a next video is selected or enabled
+Autoplay reaches the end. A paused seek to the end remains paused.
+
+Queue replacement is transactional. Failed or canceled local, related and phone
+requests retain the current queue and video; completed phone control owns its
+queue until disconnected or replaced locally. Disconnect preserves the decoder
+and restores local next-video eligibility. Late recommendations can advance an
+ended, playing-intent video when Autoplay is enabled. Account changes refresh
+next metadata for the same player. Action sheets opened before browsing publish
+saved credentials before deciding whether another sign-in is required.
+
+TV-code phone linking uses a separately encrypted anonymous screen identity.
+Account History reporting observes actual watched spans, account epochs and
+Google's paused-history policy. Device-local Clear history explicitly leaves
+Google history alone. Real owner-approved account changes, phone app pairing
+and successful Google history synchronization require a user-led acceptance
+check. Automated account/phone tests use generated fixtures; separate public
+read-only probes verify current Home/search/Shorts, comments/replay, code issuance
+and accessible media without creating an account.
+
+Independent reviewers examined native layouts, lifecycle and queue failure
+paths. Captured failures also exposed test issues: a Python fixture name
+collision broke Shorts, account playlist fixtures lacked success metadata,
+initial readiness checks could observe an old player/shelf, remote tests used
+touch taps that only focused modal buttons, and older assertions omitted the
+new YouTube settings category. Corrected checks exercise real remote focus and
+activation and retain their intended behavior assertions.
+
+[Verification](releases/0.21.0/verification.json) records exact production hashes,
+local checks, native scenario coverage, corrected reruns, scoped screenshot
+reviews and startup/memory evidence. The version 0.20 preview was installed at the
+user's request; further TCL access is held and 0.21 is not deployed.

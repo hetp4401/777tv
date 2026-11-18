@@ -77,12 +77,15 @@ internal class VodControls(
     private val play = iconButton("Pause", "vod-play-pause", playIcon) { togglePlayback() }
     private val rewind = iconButton("Back $seekSeconds seconds", "vod-rewind", ControlIcon(ControlIcon.REWIND, seekSeconds)) { skip(-1) }
     private val forward = iconButton("Forward $seekSeconds seconds", "vod-forward", ControlIcon(ControlIcon.FORWARD, seekSeconds)) { skip(1) }
+    private val nextVideo=if(watch.playbackMode==PlaybackMode.YOUTUBE)iconButton("Next video","youtube-next",ControlIcon(ControlIcon.NEXT)){stepVideo(1)} else null
     private val trackButton = iconButton("Audio & subtitles", "vod-tracks", ControlIcon(ControlIcon.TRACKS)) { showTrackOptions() }
     private val quality=if(watch.playbackMode==PlaybackMode.YOUTUBE)iconButton("Video quality","youtube-quality",ControlIcon(ControlIcon.QUALITY)){chooseTrack(C.TRACK_TYPE_VIDEO)} else null
-    private val options = iconButton("Picture controls", "vod-options", ControlIcon(ControlIcon.SETTINGS)) { openPictureControls() }
+    private val options = if(watch.title.type!="youtube")iconButton("Picture controls", "vod-options", ControlIcon(ControlIcon.SETTINGS)) { openPictureControls() } else null
     private val closeButton = iconButton(if(watch.title.type=="youtube")"Back to YouTube" else "Back to streams", "vod-close", ControlIcon(ControlIcon.CLOSE)) { exit() }
     private val relatedButton=if(youtubePanel!=null)a.action("Related","Related videos"){openYouTubePanel(false)}.quiet() else null
     private val commentsButton=if(youtubePanel!=null)a.action("Comments","Video comments"){openYouTubePanel(true)}.quiet() else null
+    private val videoActionsButton=if(watch.title.type=="youtube")a.action("•••","Video actions"){openVideoActions()}.quiet() else null
+    private var videoActions:YouTubeVideoActions?=null
     private var closed = false
     private var touchPosition: Long? = null
     private var queuedSeek: Long? = null
@@ -167,6 +170,7 @@ internal class VodControls(
                 addView(title, LinearLayout.LayoutParams(0, -2, 1f))
                 relatedButton?.let { addView(it,LinearLayout.LayoutParams(a.dp(88),a.dp(40))) }
                 commentsButton?.let { addView(it,LinearLayout.LayoutParams(a.dp(106),a.dp(40)).apply{marginStart=a.dp(6)}) }
+                videoActionsButton?.let { addView(it,LinearLayout.LayoutParams(a.dp(44),a.dp(40)).apply{marginStart=a.dp(6)}) }
                 addView(closeButton, LinearLayout.LayoutParams(a.dp(44), a.dp(44)).apply { marginStart = a.dp(12) })
             })
             add(feedback)
@@ -180,6 +184,7 @@ internal class VodControls(
                 addView(rewind, LinearLayout.LayoutParams(a.dp(44), a.dp(44)))
                 addView(play, LinearLayout.LayoutParams(a.dp(44), a.dp(44)).apply { marginStart = a.dp(2); marginEnd = a.dp(2) })
                 addView(forward, LinearLayout.LayoutParams(a.dp(44), a.dp(44)))
+                nextVideo?.let { addView(it,LinearLayout.LayoutParams(a.dp(44),a.dp(44))) }
             }
             addView(transport, LinearLayout.LayoutParams(-2, a.dp(44)))
             addView(FrameLayout(a).apply {
@@ -191,17 +196,22 @@ internal class VodControls(
             }, LinearLayout.LayoutParams(0, stripHeight, 1f).apply { marginStart = a.dp(16); marginEnd = a.dp(16) })
             quality?.let { addView(it,LinearLayout.LayoutParams(a.dp(44),a.dp(44)).apply{marginEnd=a.dp(6)}) }
             addView(trackButton, LinearLayout.LayoutParams(a.dp(44), a.dp(44)).apply { marginEnd = a.dp(8) })
-            addView(options, LinearLayout.LayoutParams(a.dp(44), a.dp(44)))
+            options?.let { addView(it, LinearLayout.LayoutParams(a.dp(44), a.dp(44))) }
         }, height = stripHeight)
         bar.nextFocusUpId = closeButton.id; bar.nextFocusDownId = play.id
         closeButton.nextFocusDownId = bar.id; closeButton.nextFocusLeftId = bar.id
         closeButton.nextFocusUpId = closeButton.id; closeButton.nextFocusRightId = closeButton.id
         if(relatedButton!=null && commentsButton!=null) {
             bar.nextFocusUpId=relatedButton.id;relatedButton.nextFocusLeftId=bar.id;relatedButton.nextFocusRightId=commentsButton.id
-            commentsButton.nextFocusLeftId=relatedButton.id;commentsButton.nextFocusRightId=closeButton.id;closeButton.nextFocusLeftId=commentsButton.id
+            commentsButton.nextFocusLeftId=relatedButton.id;commentsButton.nextFocusRightId=videoActionsButton?.id?:closeButton.id
+            closeButton.nextFocusLeftId=videoActionsButton?.id?:commentsButton.id
             listOf(relatedButton,commentsButton).forEach { it.nextFocusDownId=bar.id;it.nextFocusUpId=it.id }
         }
-        val bottom = listOfNotNull(rewind, play, forward, quality, trackButton, options)
+        videoActionsButton?.let {
+            it.nextFocusLeftId=commentsButton?.id?:bar.id;it.nextFocusRightId=closeButton.id
+            it.nextFocusUpId=it.id;it.nextFocusDownId=bar.id;closeButton.nextFocusLeftId=it.id
+        }
+        val bottom = listOfNotNull(rewind, play, forward, nextVideo, quality, trackButton, options)
         bottom.forEachIndexed { index, button ->
             button.nextFocusLeftId = bottom[(index - 1).coerceAtLeast(0)].id
             button.nextFocusRightId = bottom[(index + 1).coerceAtMost(bottom.lastIndex)].id
@@ -248,7 +258,7 @@ internal class VodControls(
         view.addView(bar,FrameLayout.LayoutParams(videoWidth,a.dp(2),Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply { bottomMargin=a.dp(12) })
         panel.tag="shorts-actions";panel.isClickable=false;panel.gravity=Gravity.END
         panel.add(a.text("↑ Previous    ↓ Next",11f,MUTED).apply { gravity=Gravity.END },height=a.dp(24))
-        val actions=listOfNotNull(play,commentsButton,options,closeButton)
+        val actions=listOfNotNull(play,commentsButton,videoActionsButton,options,closeButton)
         panel.add(a.row().apply {
             for(button in actions)addView(button,LinearLayout.LayoutParams(if(button===commentsButton)a.dp(106) else a.dp(44),a.dp(44)).apply { marginStart=a.dp(4) })
         },width=-2,height=a.dp(44))
@@ -338,7 +348,7 @@ internal class VodControls(
             if(event.action==KeyEvent.ACTION_DOWN) {
                 if(event.repeatCount==0 || heldDirection!=direction){finishHold();heldDirection=direction;heldSince=event.eventTime}
                 val elapsed=(event.eventTime-heldSince).coerceAtLeast(0)
-                val multiplier=when{elapsed<500->1;elapsed<1250->2;elapsed<2500->4;else->8}
+                val multiplier=when{elapsed<180->1;elapsed<450->4;elapsed<850->8;elapsed<1400->16;elapsed<2200->32;elapsed<3200->64;else->128}
                 seekRelative(direction,event.repeatCount>0,multiplier)
             }else if(event.action==KeyEvent.ACTION_UP && heldDirection==direction)finishHold()
             true
@@ -364,6 +374,7 @@ internal class VodControls(
         val total = duration(); val at = (touchPosition ?: queuedSeek ?: position()).let { if (total > 0) it.coerceAtMost(total) else it }
         heatmap?.duration(total)
         val seekable = canSeek();bar.isEnabled=seekable
+        nextVideo?.let { it.isEnabled=a.canStepYouTube(watch,1);it.alpha=if(it.isEnabled)1f else .4f }
         if(!watch.short){rewind.isEnabled=seekable;forward.isEnabled=seekable;rewind.alpha=if(seekable)1f else .4f;forward.alpha=rewind.alpha}
         bar.progress = if (total > 0) (at.toDouble() / total * bar.max).toInt() else 0
         bar.secondaryProgress = if (total > 0) (player.bufferedPosition.coerceAtLeast(at).toDouble().coerceAtMost(total.toDouble()) / total * bar.max).toInt() else 0
@@ -376,8 +387,10 @@ internal class VodControls(
         playIcon.mode = if (paused) ControlIcon.PLAY else ControlIcon.PAUSE
         play.contentDescription = if (ended) "Replay" else if (paused) "Play" else "Pause"
     }
+    fun metadataChanged(){if(!closed && view.isShown)update()}
+    private fun stepVideo(direction:Int){finishHold();a.stepYouTube(watch,direction)}
     private fun relatedFromVideo()=view.visibility!=View.VISIBLE || !view.hasFocus() || play.hasFocus() ||
-        rewind.hasFocus() || forward.hasFocus() || trackButton.hasFocus() || options.hasFocus()
+        rewind.hasFocus() || forward.hasFocus() || trackButton.hasFocus() || options?.hasFocus()==true
     /** Only global transport/reveal keys are intercepted; visible widgets receive normal D-pad events. */
     fun dispatchKey(event: KeyEvent): Boolean {
         if (closed) return false
@@ -430,12 +443,13 @@ internal class VodControls(
         if (event.action != KeyEvent.ACTION_DOWN) return false
         fun consume(action: () -> Unit): Boolean { consumedKeys[code] = event.downTime; if (event.repeatCount == 0) action(); return true }
         when (code) {
+            KeyEvent.KEYCODE_MENU -> if(watch.title.type=="youtube")return consume { openVideoActions() }
             KeyEvent.KEYCODE_MEDIA_PLAY -> return consume { startPlayback(); show(false) }
             KeyEvent.KEYCODE_MEDIA_PAUSE -> return consume { player.pause(); show(false) }
             KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> return consume { togglePlayback() }
             KeyEvent.KEYCODE_MEDIA_REWIND, KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> return consume { skip(-1) }
             KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> return consume { skip(1) }
-            KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> return consume { }
+            KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> return consume { if(watch.playbackMode==PlaybackMode.YOUTUBE)stepVideo(if(code==KeyEvent.KEYCODE_MEDIA_NEXT)1 else -1) }
         }
         if(watch.short && center &&
             (view.visibility!=View.VISIBLE || !view.hasFocus() || play.hasFocus()))return consume{togglePlayback()}
@@ -446,8 +460,13 @@ internal class VodControls(
         if (view.visibility == View.VISIBLE) interacted()
         return false
     }
-    private fun openPictureControls() { if (!closed) { finishHold(); invalidateTrackRequest(); interacted(); pictureControls() } }
+    private fun openPictureControls() { if (!closed && watch.title.type!="youtube") { finishHold(); invalidateTrackRequest(); interacted(); pictureControls() } }
     private fun openYouTubePanel(comments:Boolean) { if(!closed){hide();youtubePanel?.invoke(comments)} }
+    private fun openVideoActions() {
+        if(closed || videoActions?.visible==true)return
+        finishHold();interacted()
+        videoActions=YouTubeVideoActions(a,YouTubeVideo(watch.title.id,watch.title.name,watch.title.poster,isShort=watch.short,live=watch.live)).also{it.show()}
+    }
     fun replayMarkers(markers:List<YouTubeHeatMarker>){heatmap?.markers(markers);heatmap?.duration(duration())}
     private fun showTrackOptions() {
         finishHold(); invalidateTrackRequest(); interacted()
@@ -476,7 +495,7 @@ internal class VodControls(
         closed = true; trackRequest++; queuedSeek = null; touchPosition = null; heldDirection = 0; heldSince = 0
         player.removeListener(listener); main.removeCallbacksAndMessages(null)
         if (view.viewTreeObserver.isAlive) view.viewTreeObserver.removeOnWindowFocusChangeListener(windowFocus)
-        dialog?.dismiss(); dialog = null; consumedKeys.clear(); view.visibility = View.GONE
+        dialog?.dismiss(); dialog = null;videoActions?.close();videoActions=null; consumedKeys.clear(); view.visibility = View.GONE
         view.removeOnLayoutChangeListener(insetLayout); panel.removeOnLayoutChangeListener(insetLayout); publishInset()
     }
     private fun format(ms: Long): String {
@@ -489,7 +508,7 @@ internal class VodControls(
 
 /** Small monochrome vector controls; no bitmap assets or per-frame path allocation. */
 private class ControlIcon(initial: Int, private val seconds: Int = 10) : Drawable() {
-    companion object { const val PLAY=0; const val PAUSE=1; const val REWIND=2; const val FORWARD=3; const val SETTINGS=4; const val CLOSE=5; const val TRACKS=6; const val QUALITY=7 }
+    companion object { const val PLAY=0; const val PAUSE=1; const val REWIND=2; const val FORWARD=3; const val SETTINGS=4; const val CLOSE=5; const val TRACKS=6; const val QUALITY=7; const val NEXT=8 }
     var mode = initial
         set(value) { if (field != value) { field = value; invalidateSelf() } }
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = WHITE; strokeWidth = 2.2f; strokeCap = Paint.Cap.ROUND }
@@ -509,6 +528,7 @@ private class ControlIcon(initial: Int, private val seconds: Int = 10) : Drawabl
             }
             SETTINGS -> { paint.style=Paint.Style.STROKE;canvas.drawLine(5f,8f,27f,8f,paint);canvas.drawLine(5f,16f,27f,16f,paint);canvas.drawLine(5f,24f,27f,24f,paint);paint.style=Paint.Style.FILL;canvas.drawCircle(12f,8f,3f,paint);canvas.drawCircle(22f,16f,3f,paint);canvas.drawCircle(10f,24f,3f,paint) }
             CLOSE -> { paint.style=Paint.Style.STROKE;canvas.drawLine(8f,8f,24f,24f,paint);canvas.drawLine(24f,8f,8f,24f,paint) }
+            NEXT -> { paint.style=Paint.Style.FILL;path.reset();path.moveTo(8f,6f);path.lineTo(23f,16f);path.lineTo(8f,26f);path.close();canvas.drawPath(path,paint);canvas.drawRect(23f,6f,26f,26f,paint) }
             QUALITY -> { paint.typeface=Typeface.DEFAULT_BOLD;paint.textSize=15f;paint.textAlign=Paint.Align.CENTER;canvas.drawText("HD",16f,22f,paint) }
             TRACKS -> { paint.style=Paint.Style.STROKE;canvas.drawRoundRect(3f,5f,29f,27f,4f,4f,paint);canvas.drawLine(8f,13f,14f,13f,paint);canvas.drawLine(18f,13f,24f,13f,paint);canvas.drawLine(8f,20f,24f,20f,paint) }
         }

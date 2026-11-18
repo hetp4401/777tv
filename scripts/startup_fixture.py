@@ -1,6 +1,7 @@
 """Generated, bandwidth-limited media and a delayed portal for paired startup measurements."""
 from pathlib import Path
 from urllib.parse import parse_qs
+import json
 import subprocess
 import threading
 import time
@@ -44,6 +45,8 @@ def handle(handler, path, query, root):
     file = directory / Path(path).name
     if file.is_file() and file.suffix == '.ts':
         data = file.read_bytes()
+        started=time.monotonic();written=0
+        print(json.dumps({'startupSegment':file.name,'event':'start','bytes':len(data),'at':started}),flush=True)
         handler.send_response(200)
         handler.send_header('Content-Type', 'video/mp2t')
         handler.send_header('Content-Length', str(len(data)))
@@ -53,7 +56,11 @@ def handle(handler, path, query, root):
                 time.sleep(.02)
                 handler.wfile.write(data[offset:offset + 4096])
                 handler.wfile.flush()
+                written+=len(data[offset:offset + 4096])
         except (BrokenPipeError, ConnectionResetError):
             pass
+        finally:
+            print(json.dumps({'startupSegment':file.name,'event':'end','bytesWritten':written,
+                'durationMs':round((time.monotonic()-started)*1000)}),flush=True)
         return
     return handler.send({'error': 'Unknown startup fixture'}, status=404)

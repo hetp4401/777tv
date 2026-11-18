@@ -68,6 +68,7 @@ class PlaybackModesTest:NativeTestBase() {
         val clips=ui{a.model.youtube.videos};ui{a.model.youtube.play(clips.first())};playing()
         await{tagged("shorts-actions")?.isShown==true}
         assertNotNull(tagged("playback-mode:shorts"));assertNull(tagged("vod-progress"));assertNull(tagged("vod-rewind"))
+        assertNull(tagged("vod-options"));assertNull(find("Picture controls"))
         assertFalse(ui{tagged("shorts-progress")!!.isFocusable});assertEquals(Player.REPEAT_MODE_ONE,ui{a.player!!.repeatMode})
         assertEquals(AspectRatioFrameLayout.RESIZE_MODE_FIT,ui{(tagged("native-player") as PlayerView).resizeMode})
         ui{a.playback!!.dismissControls()}
@@ -87,6 +88,7 @@ class PlaybackModesTest:NativeTestBase() {
         await{tagged("vod-controls")?.isShown==true && tagged("youtube-quality")?.isShown==true}
         assertNotNull(tagged("playback-mode:youtube"));assertTrue(ui{(tagged("vod-progress") as SeekBar).isFocusable})
         assertNotNull(find("Related videos"));assertNotNull(find("Video comments"));assertNull(tagged("shorts-actions"))
+        assertNull(tagged("vod-options"));assertNull(find("Picture controls"))
         val player=player();click("Video quality");assertTrue(device.wait(Until.hasObject(By.text("Auto")),5000))
         click("Auto");await{ui{a.hasWindowFocus()}};assertSame(player,player());assertTrue(ui{a.player!!.isPlaying})
         assertNull(ui{tagged("vod-panel")!!.background});screenshot("player-mode-youtube")
@@ -98,6 +100,7 @@ class PlaybackModesTest:NativeTestBase() {
         assertNotNull(tagged("playback-mode:on_demand"));assertEquals("A series",ui{(tagged("vod-title") as TextView).text.toString()})
         assertEquals(episode.label,ui{(tagged("vod-episode") as TextView).text.toString()})
         assertNotNull(find("Audio & subtitles"));assertNull(find("Video comments"));assertNull(tagged("youtube-quality"))
+        assertNotNull(tagged("vod-options"))
         assertTrue(ui{tagged("vod-progress")!!.isFocusable});assertNull(ui{tagged("vod-panel")!!.background})
         screenshot("player-mode-on-demand")
     }
@@ -125,5 +128,16 @@ class PlaybackModesTest:NativeTestBase() {
         rule.scenario.moveToState(Lifecycle.State.CREATED);await{ui{a.activePlayer==null}}
         rule.scenario.moveToState(Lifecycle.State.RESUMED);playing()
         assertNotSame(previous,player());assertFalse(ui{a.activePlayer!!.isCommandAvailable(Player.COMMAND_PLAY_PAUSE)})
+    }
+    @Test fun liveInformationAcceptsAnOrphanReleaseAndIgnoresACancelledRelease() {
+        val watch=Watch(Title("live-key-fixture","Generated live"),Stream("Generated","$base/hls/fixture/orig.m3u8"),live=true)
+        ui{a.model.open(Route.Player(watch))};playing();val original=player()
+        await(8000){tagged("live-info")?.visibility==View.GONE}
+        val at=SystemClock.uptimeMillis()
+        ui{a.playback!!.dispatchKey(KeyEvent(at,at+1,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_CENTER,0,0,KeyCharacterMap.VIRTUAL_KEYBOARD,0,KeyEvent.FLAG_CANCELED))}
+        assertEquals(View.GONE,ui{tagged("live-info")!!.visibility})
+        ui{a.playback!!.dispatchKey(KeyEvent(at+10,at+11,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_CENTER,0))}
+        await{tagged("live-info")?.isShown==true}
+        assertNull(tagged("vod-progress"));assertSame(original,player());assertTrue(ui{a.activePlayer!!.playWhenReady})
     }
 }

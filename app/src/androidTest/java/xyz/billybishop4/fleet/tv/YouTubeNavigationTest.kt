@@ -23,7 +23,7 @@ class YouTubeNavigationTest:NativeTestBase() {
         control("reset=1")
         ui {
             a.model.top(Section.SEARCH);a.model.server(base);a.model.updatePreferences(Preferences())
-            a.model.store.youTubeCredentials().write(null);a.model.youtubeFixture(base);a.model.top(Section.YOUTUBE)
+            a.model.store.youTubeCredentials().write(null);a.model.clearHistory();a.model.youtubeFixture(base);a.model.top(Section.YOUTUBE)
         }
         await{tagged("youtube-page")?.isShown==true && ui{!a.model.youtube.busy}}
         await{ui{a.model.youtube.videos.isNotEmpty() && a.model.youtube.account==null}}
@@ -58,7 +58,7 @@ class YouTubeNavigationTest:NativeTestBase() {
         val bounds=ui{listOf("Live TV","On-Demand","YouTube").map{a.window.decorView.findTag("navigation:$it")!!.let{v->android.graphics.Rect().apply{v.getGlobalVisibleRect(this)}}}}
         assertTrue(bounds[0].right<=bounds[1].left);assertTrue(bounds[1].right<=bounds[2].left)
         assertEquals("On-Demand",ui{Preferences().startSection});assertTrue(videos().isNotEmpty())
-        assertNull(ui{a.model.youtube.account});assertEquals("Discover",ui{a.model.youtube.homeShelves.first().name})
+        assertNull(ui{a.model.youtube.account});assertEquals("Music",ui{a.model.youtube.homeShelves.first().name})
         assertNotNull(tagged("field:Search YouTube"));assertNull(player())
         assertFalse(ui{descendants(a.window.decorView).any{it is android.webkit.WebView}})
         assertTrue(audit().getJSONArray("resolved").length()==0)
@@ -74,8 +74,9 @@ class YouTubeNavigationTest:NativeTestBase() {
         repeat(7){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
         assertEquals(0,audit().getJSONArray("resolved").length());assertNull(player())
         assertTrue(ui{a.currentFocus?.tag.toString().startsWith("youtube-video:")})
-        val list=tagged("youtube-results") as RecyclerView
-        assertTrue(ui{list.childCount<=16});assertEquals(32,ui{list.adapter!!.itemCount})
+        val outer=tagged("youtube-search-results") as RecyclerView
+        val list=ui{(outer.getChildAt(0) as YouTubeShelfView).list}
+        assertEquals(1,ui{outer.adapter!!.itemCount});assertTrue(ui{list.childCount<=8});assertEquals(32,ui{list.adapter!!.itemCount})
         screenshot("youtube-search")
     }
     @Test fun oneOkPlaysWithExoAndBackRestoresQueryAndSelectedVideo() {

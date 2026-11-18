@@ -35,6 +35,9 @@ open class NativeTestBase {
                 File(dir,"failure-$name.json").writeText(ui { JSONObject().put("phase",phase).put("route",a.model.route.javaClass.simpleName)
                     .put("section",a.model.section.name).put("busy",a.model.busy).put("channels",a.model.channels.size)
                     .put("results",a.model.results.size).put("focus",a.currentFocus?.tag?.toString())
+                    .put("youtubeFeed",a.model.youtube.feed.name).put("youtubeBusy",a.model.youtube.busy)
+                    .put("youtubeError",a.model.youtube.error).put("youtubeVideos",a.model.youtube.videos.size)
+                    .put("playbackMatchesRoute",a.playback?.watch===(a.model.route as? Route.Player)?.watch)
                     .put("windowFocus",a.hasWindowFocus()).put("touchMode",a.window.decorView.isInTouchMode)
                     .put("playback",JSONObject(a.playbackInfo)).toString(2) })
                 if(safe) { device.dumpWindowHierarchy(File(dir,"failure-$name.xml"));screenshot("failure-$name") }

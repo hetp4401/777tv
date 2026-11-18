@@ -5,13 +5,14 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 internal enum class YouTubeFeed {
-    HOME, SHORTS, SEARCH, SUBSCRIPTIONS, HISTORY, WATCH_LATER, LIKED;
-    val library get()=this==HISTORY || this==WATCH_LATER || this==LIKED
-    val requiresAccount get()=this==SUBSCRIPTIONS || this==WATCH_LATER || this==LIKED
+    HOME, SHORTS, SEARCH, SUBSCRIPTIONS, HISTORY, WATCH_LATER, LIKED, CHANNEL, PLAYLISTS, PLAYLIST;
+    val library get()=this==HISTORY || this==WATCH_LATER || this==LIKED || this==PLAYLISTS || this==PLAYLIST
+    val requiresAccount get()=this==SUBSCRIPTIONS || this==WATCH_LATER || this==LIKED || this==PLAYLISTS || this==PLAYLIST
 }
 internal data class YouTubeVideo(
     val id: String, val name: String, val thumbnail: String = "", val channel: String = "",
     val metadata: String = "", val duration: String = "", val isShort: Boolean = false, val live: Boolean = false,
+    val channelId:String="",val resumePositionMs:Long?=null,
 ) {
     fun title() = Title(id, name, "youtube", poster = thumbnail, description = listOf(channel, metadata).filter(String::isNotBlank).joinToString(" · "))
 }
@@ -58,7 +59,7 @@ internal object YouTubeDecode {
     }.take(1500)
     private fun url(value: String): String = (if(value.startsWith("//")) "https:$value" else value)
         .takeIf(::isHttp).orEmpty()
-    private fun image(value: Any?): String {
+    internal fun image(value: Any?): String {
         val images = find(value, setOf("thumbnails", "sources")).filterIsInstance<JSONArray>()
             .flatMap { it.objects() }.filter { it.optString("url").isNotBlank() }
         val pick = images.filter { it.optInt("width", 320) <= 720 }.maxByOrNull { it.optInt("width", 0) }
@@ -84,24 +85,33 @@ internal object YouTubeDecode {
     }
     private val skip=setOf("menu", "onLongPress", "onLongPressCommand", "onFocusCommand", "adSlotRenderer", "promotedVideoRenderer", "promotedSparklesWebRenderer",
         "adPlacements", "playerAds", "trackingParams", "loggingContext", "accessibility", "frameworkUpdates")
-    fun page(j: JSONObject, onlyShorts: Boolean = false): YouTubePage {
+    fun page(j: JSONObject, onlyShorts: Boolean = false, limit:Int=80): YouTubePage {
         val videos=ArrayList<YouTubeVideo>(); val seen=HashSet<String>()
-        val queue=ArrayDeque<Pair<Any,Int>>();queue.add(j to 0);var visited=0
-        while(queue.isNotEmpty() && visited++<50_000 && videos.size<80) {
-            val (node,depth)=queue.removeLast();if(depth>50)continue
+        val maximum=limit.coerceIn(1,120)
+        val queue=ArrayDeque<Triple<Any,Int,Boolean>>();queue.add(Triple(j,0,false));var visited=0
+        while(queue.isNotEmpty() && visited++<50_000 && videos.size<maximum) {
+            val (node,depth,shortsContext)=queue.removeLast();if(depth>50)continue
             when(node) {
                 is JSONObject -> {
                     var card:YouTubeVideo?=null
                     for(key in listOf("lockupViewModel", "shortsLockupViewModel", "videoRenderer", "gridVideoRenderer", "compactVideoRenderer", "reelItemRenderer", "tileRenderer")) {
-                        node.optJSONObject(key)?.let { card=video(it,key) }
+                        node.optJSONObject(key)?.let { card=video(it,key,shortsContext) }
                         if(card!=null)break
                     }
-                    if(card!=null) { val v=card!!; if((!onlyShorts || v.isShort) && seen.add(v.id))videos.add(v);continue }
+                    if(card!=null) {
+                        val v=card!!
+                        if(!onlyShorts || v.isShort) {
+                            if(seen.add(v.id))videos.add(v)
+                            else if(v.isShort){val index=videos.indexOfFirst{it.id==v.id};if(index>=0 && !videos[index].isShort)videos[index]=v}
+                        }
+                        continue
+                    }
                     node.keys().asSequence().toList().asReversed().forEach { key ->
-                        if(key !in skip)node.opt(key)?.let { if(it is JSONObject || it is JSONArray)queue.add(it to depth+1) }
+                        if(key !in skip)node.opt(key)?.let { if(it is JSONObject || it is JSONArray)queue.add(Triple(it,depth+1,
+                            shortsContext || key=="reelShelfRenderer" || node.optString("tvhtml5ShelfRendererType")=="TVHTML5_SHELF_RENDERER_TYPE_SHORTS")) }
                     }
                 }
-                is JSONArray -> for(i in node.length()-1 downTo 0)node.opt(i)?.let { queue.add(it to depth+1) }
+                is JSONArray -> for(i in node.length()-1 downTo 0)node.opt(i)?.let { queue.add(Triple(it,depth+1,shortsContext)) }
             }
         }
         val token=find(j,setOf("nextContinuationData", "reloadContinuationData", "continuationCommand"),1).firstOrNull() as? JSONObject
@@ -110,14 +120,18 @@ internal object YouTubeDecode {
         val message=nudge?.let { text(it.opt("subtitle")).ifBlank { text(it.opt("text")) }.ifBlank { text(it.opt("title")) } }.orEmpty()
         return YouTubePage(videos,continuation,message)
     }
+    internal fun shelfTitle(node:JSONObject):String {
+        val header=node.optJSONObject("headerRenderer")?.optJSONObject("shelfHeaderRenderer")
+        val avatar=header?.optJSONObject("avatarLockup")?.optJSONObject("avatarLockupRenderer")
+        return text(node.opt("title")).ifBlank{text(header?.opt("title"))}.ifBlank{text(avatar?.opt("title"))}.take(160)
+    }
     /** Preserve the TV feed's shelves, without retaining its response tree or inventing categories. */
     fun home(j:JSONObject):YouTubePage {
         val rows=ArrayList<YouTubeShelf>();val occurrences=HashMap<String,Int>();var remaining=120
         for(node in find(j,setOf("shelfRenderer","richShelfRenderer"),10).filterIsInstance<JSONObject>()) {
             if(remaining==0)break
             val items=page(node).videos.take(remaining);if(items.isEmpty())continue
-            val header=node.optJSONObject("headerRenderer")?.optJSONObject("shelfHeaderRenderer")
-            val name=text(node.opt("title")).ifBlank { text(header?.opt("title")) }.ifBlank { "Recommended" }.take(160)
+            val name=shelfTitle(node).ifBlank { "Recommended" }
             val key=node.optString("identifier").ifBlank { name }
             val number=occurrences.getOrDefault(key,0);occurrences[key]=number+1
             rows+=YouTubeShelf("$key/$number",name,items,items.all{it.isShort});remaining-=items.size
@@ -134,10 +148,14 @@ internal object YouTubeDecode {
         val videos=rows.flatMap{it.videos}.distinctBy{it.id}
         return YouTubePage(videos,token,shelves=rows)
     }
-    private fun video(j:JSONObject,kind:String):YouTubeVideo? {
+    private fun video(j:JSONObject,kind:String,shortsContext:Boolean=false):YouTubeVideo? {
         val type=j.optString("contentType")
-        if(type.isNotEmpty() && !type.contains("VIDEO") && !type.contains("SHORT"))return null
+        val media=type.contains("MUSIC") || type.contains("MOVIE")
+        if(type.isNotEmpty() && !type.contains("VIDEO") && !type.contains("SHORT") && !media)return null
         val endpoint=(find(j,setOf("watchEndpoint", "reelWatchEndpoint"),1).firstOrNull() as? JSONObject)
+        // Music and free movie lockups may be ordinary playable videos. Paid
+        // browse destinations are not watch endpoints and must not become Play.
+        if(media && endpoint?.optString("videoId")?.let(::validId)!=true)return null
         val id=j.optString("videoId").ifBlank { j.optString("contentId") }.takeIf(::validId)
             ?: endpoint?.optString("videoId")?.takeIf(::validId) ?: return null
         val metadata=j.optJSONObject("metadata")?.optJSONObject("lockupMetadataViewModel")
@@ -156,11 +174,13 @@ internal object YouTubeDecode {
         val badges=find(j.opt("contentImage"),setOf("thumbnailBadgeViewModel")).filterIsInstance<JSONObject>().map { text(it.opt("text")) }
         val time=(find(header?.opt("thumbnailOverlays"),setOf("thumbnailOverlayTimeStatusRenderer"),1).firstOrNull() as? JSONObject)
         val duration=text(j.opt("lengthText")).ifBlank { badges.firstOrNull { Regex("[0-9]+(?::[0-9]{2}){1,2}").matches(it) }.orEmpty() }.ifBlank { text(time?.opt("text")) }
-        val short=kind in setOf("shortsLockupViewModel", "reelItemRenderer") || type.contains("SHORT") ||
-            find(j,setOf("reelWatchEndpoint"),1).isNotEmpty() || j.optJSONObject("styling")?.optString("contentImageAspectRatio").orEmpty().contains("9_BY_16")
+        val short=shortsContext || kind in setOf("shortsLockupViewModel", "reelItemRenderer") || type.contains("SHORT") ||
+            find(j,setOf("reelWatchEndpoint"),1).isNotEmpty()
         return YouTubeVideo(id,name.take(500),image(j.opt("contentImage")?:j.opt("thumbnail")?:header?.opt("thumbnail")),channel.take(500),
             parts.drop(1).joinToString(" · ").ifBlank { text(j.opt("viewCountText")) }.ifBlank { tileLines.drop(1).joinToString(" · ") }.take(500),duration,short,
-            badges.any { it.equals("LIVE",true) } || time?.optString("style")=="LIVE" || j.optBoolean("isLive"))
+            badges.any { it.equals("LIVE",true) } || time?.optString("style")=="LIVE" || j.optBoolean("isLive"),
+            find(j,setOf("browseEndpoint"),20).filterIsInstance<JSONObject>().map{it.optString("browseId")}.firstOrNull(YouTubeSocialDecode::validChannelId).orEmpty(),
+            endpoint?.optLong("startTimeSeconds",-1)?.takeIf{it in 0L..604_800L}?.times(1000))
     }
     fun bootstrap(html:String,origin:String):YouTubeBootstrap {
         fun match(pattern:String)=Regex(pattern).find(html)?.groupValues?.get(1).orEmpty()
