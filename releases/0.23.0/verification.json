@@ -637,7 +637,8 @@
     "rawReportsAndCapturesPrivate": true,
     "temporaryProbeRemoved": true,
     "diagnosticDownloadsRemoved": true,
-    "leftOpenOnDemand": true
+    "openedOnDemandAfterCleanup": true,
+    "preservedUserForegroundAtFinalCheck": true
   },
   "deployment": {
     "installedAt": "2026-11-18T22:45:32.606656+00:00",

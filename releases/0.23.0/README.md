@@ -36,8 +36,8 @@ individual device samples, not a TizenTube speed comparison or a leak proof.
 Generated native chapter markers verify chapter-menu seeking; the sampled public
 chapter-metadata response had no markers.
 
-The temporary probe and diagnostic downloads were removed. The app was left open
-on On-Demand. Real TV captures stay private; these native screenshots use generated
+The temporary probe and diagnostic downloads were removed. On-Demand was reopened
+after cleanup. Real TV captures stay private; these native screenshots use generated
 content:
 
 ![TV query suggestions](../../docs/images/youtube-023/search-suggestions.png)

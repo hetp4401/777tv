@@ -15,7 +15,8 @@
   Actual public suggestions were 670 ms, regular first frame 2.59 s and next Short
   1.19 s; steady video windows had zero drops/rebuffers. Warm search had 1 actual
   deadline overrun/93 frames, so do not claim zero UI jank. Private reports/screens
-  stay in `.tools/youtube023/`; probe/downloads removed, app open on On-Demand.
+  stay in `.tools/youtube023/`; probe/downloads removed, On-Demand reopened after
+  checks. Preserve the user's current TV foreground session.
   `docs/youtube-parity-0.23.md` explicitly retains Google/extension/owner-acceptance
   limits; this is improved native coverage, not 1:1 TizenTube equivalence.
 - Latest user clarification makes the whole On-Demand area black with accents,
