@@ -54,5 +54,9 @@ background/PiP, certified Chromecast discovery/receiver behavior and outbound
 casting are not implemented. This is close everyday functional coverage, not a
 claim of complete YouTube parity.
 
-The user requested the 0.20 preview on the TCL, then reinstated a hold. No further
-TCL access, deployments or instrumentation are authorized for this candidate.
+The user subsequently authorized physical TCL deployment and testing. Version
+0.21.0 was installed in place, then 0.21.1 corrected bare numeric reply labels
+found in actual comments. Signed-release hardware playback, navigation and
+memory results are in the [TCL report](../releases/0.21.1/README.md). The dedicated
+probe preserved configuration; no real IPTV profile or Google-owner acceptance
+is inferred from generated live playback and public YouTube checks.

@@ -22,7 +22,7 @@
       "assembleDebugAndroidTest"
     ],
     "debugAndReleaseAreDifferentBinaries": true,
-    "scope": "Native instrumentation exercises debug builds of these production files. The signed release is built and checked locally; no physical-TV acceptance test for this candidate."
+    "scope": "Original emulator instrumentation exercises debug builds of these production files. The signed release was later installed and tested on the TCL, then superseded by the 0.21.1 reply-label patch; see its physical verification report."
   },
   "productionSourceSha256": {
     "app/build.gradle.kts": "ad6d362aabd1a9a5fe3a20975064935e8414a1bfc86d09c70bfff32cb0599584",
@@ -2284,11 +2284,11 @@
     "Comments are read-only; private/restricted media, account switching and background/PiP are not supported."
   ],
   "physicalTV": {
-    "candidateInstalled": false,
-    "candidateTested": false,
-    "testingHeld": true,
-    "installedPreviewVersion": "0.20.0",
-    "previewReceipt": "../0.20.0/preview.json",
-    "status": "No TCL access for 0.21; current user hold remains in effect."
+    "candidateInstalled": true,
+    "candidateTested": true,
+    "testingHeld": false,
+    "latestInstalledVersion": "0.21.1",
+    "followupVerification": "../0.21.1/verification.json",
+    "status": "User subsequently authorized TCL access. 0.21.0 was installed in place and probed; 0.21.1 adds a verified numeric reply-label fix and final hardware-stage results."
   }
 }

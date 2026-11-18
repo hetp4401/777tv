@@ -36,6 +36,17 @@ class YouTubeWatchTest {
         val page=YouTubeWatchDecode.comments(j);assertEquals("page-2",page.continuation)
         val comment=page.comments.single();assertEquals("replies",comment.repliesToken);assertEquals("Hello there",comment.body);assertEquals("Yesterday · 12 likes",comment.metadata)
     }
+    @Test fun numericTvReplyCountsHaveReadableActionsWithoutRewritingLocalizedLabels() {
+        val cases=mapOf("1" to "1 reply","21" to "21 replies","1.2K" to "1.2K replies",
+            "1,234" to "1,234 replies","3 replies" to "3 replies","2 réponses" to "2 réponses","" to "")
+        for((raw,expected) in cases) {
+            val renderer=JSONObject().put("commentId","one").put("contentText",JSONObject().put("simpleText","A comment"))
+                .put("repliesCount",JSONObject().put("simpleText",raw))
+                .put("detailViewEndpoint",JSONObject().put("reloadContinuationData",JSONObject().put("continuation","reply-cursor")))
+            val comment=YouTubeWatchDecode.comments(JSONObject().put("commentRenderer",renderer)).comments.single()
+            assertEquals(expected,comment.repliesLabel);assertEquals("reply-cursor",comment.repliesToken)
+        }
+    }
     @Test fun disabledCommentsHaveAnHonestEmptyState() {
         val page=YouTubeWatchDecode.comments(JSONObject("""{"messageRenderer":{"text":{"simpleText":"Comments are turned off."}}}"""))
         assertEquals("Comments are turned off.",page.message);assertTrue(page.comments.isEmpty());assertNull(page.continuation)

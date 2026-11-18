@@ -1,0 +1,688 @@
+{
+  "application": "777tv",
+  "versionName": "0.21.1",
+  "versionCode": 28,
+  "verifiedAt": "2026-11-18T20:40:05.786171+00:00",
+  "apk": {
+    "file": "777tv-0.21.1-preview.apk",
+    "sha256": "25bc61d42f37e5b24e0f170c8df9505d1aacc4f5087bef4867ef0ab6fcefff14",
+    "bytes": 8369760,
+    "signatureV2": true,
+    "certificateSha256": "c906793c72e69055a73004ea97bff7ce8059ac511c9a692e785db810d3f3ff02",
+    "alignment16KiB": true,
+    "nativeLibraries": []
+  },
+  "build": {
+    "tasks": [
+      "testDebugUnitTest",
+      "lintDebug",
+      "assembleRelease"
+    ],
+    "buildLogSha256": "240cdc739229f0b476f90d16e7682e7173eaf7696d71127bb87d9f641b15ab2b",
+    "unit": {
+      "cases": 215,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 3,
+      "passed": 212
+    },
+    "lintErrors": 0,
+    "productionFileCount": 59,
+    "changedFrom0210": [
+      "app/build.gradle.kts",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchData.kt"
+    ],
+    "productionSourceSha256": {
+      "app/build.gradle.kts": "3b72b3a68f2d162b6076d93f586b300576d3e3692685f276b6b24afc37ccfe15",
+      "app/src/main/AndroidManifest.xml": "1bbfdf5ae2fc10badeea46083d24ef1a992798bad7a633c86c8a1f64cf0c9347",
+      "app/src/main/assets/THIRD_PARTY_NOTICES.md": "38af7247d1b3b937b0eb1b4eceafbe79737c433f98383293fbedb0f16e229217",
+      "app/src/main/assets/licenses/Rhino-LICENSE.txt": "ada0787f27b581e024972a18b51db92c8e8508d0f05017d104a1c70a61b59951",
+      "app/src/main/assets/licenses/jsoup-LICENSE.txt": "f5d724c5818010c61bff2e177f5b6452434bc054807522bf241940bca8b1d6b1",
+      "app/src/main/assets/licenses/NewPipeExtractor-LICENSE.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+      "app/src/main/assets/licenses/nanojson-LICENSE.txt": "2794f8db476aea7b3da16caba160038f57bc8ee63750361c64e7d5ab501141ab",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/FleetModel.kt": "6f74c46ea99631c618f6eadfc6869352b3e1ecea7d00f1b8bc6bec67add0fb67",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/Http.kt": "24b5e8a90d77c368c303e67329992a2614792f1cb79a26b81f510c828f34334b",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchData.kt": "adf28de875dd5efeb9eee1d8615dea0826cf44802eb22c85a6eefb2c58c540ce",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/PictureControls.kt": "9ff4a7ac808c2b6694e7fc0e7155b1dc7570e33e8e3daef7ff9946c8230f5985",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/LiveScreen.kt": "db319b9e047ed902fb57565ce06519fbed992c2e31769cd4265b8f31d19ce6cc",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/ArtworkMemoryCache.kt": "e00692abfff8a6753866a5038c53084f08a6c9d012091d665108d486f6d0c7bc",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/MainActivity.kt": "96032da5ed6b948d595e31ed008b1a910d0cbbd22dd873ead8eff50c0053baec",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLibraryData.kt": "597ff676032ca02a6f78372a4898aa4c56680ace8cc6fd3f9475f1cba8e48351",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/NativeAdapters.kt": "976a4fef51dd779656186890a7dc1405f240050f097d32a2dcd89819a7dd1057",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/VodControls.kt": "0f38f413a728e5052dc270a96995b78f7469b34972bdef59627b14854542fb19",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeHeatmapView.kt": "9007e41e5ea40eb9af56049c5d04f74fc232f2bfb55810370f6383f8154c9048",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSearchData.kt": "bbd63f1371c18926449d0efecd8170d801cb92e5da57d330eaf64487e8a73e34",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSocialData.kt": "16a6862a89729ca0e75fb0fb7d8db1612f31a96d467fc48126595c8768ef70f2",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeData.kt": "3442dddea7c327f84cfbf4bcebd7c75bca7ad2e5a21a451972c0b9f34a88dff3",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/LiveChannelRow.kt": "9d927affe9496cc7e7a1af22418ff5776ccbb3bbfe0ea731c31ffbe7d695439a",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/NativeUi.kt": "ab9139ab3314e7a026ac568fb3670b9c1e82bdf2cf7d7be2e0cf4031ad5b1f23",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/LiveInfoOverlay.kt": "277f5a84dd5e004938565838ba4623f00772604433361abfbe7db0735605a32c",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTransport.kt": "33b61f96975d5d90b908a309c1aedc936fe0d6a75c423403f11a10ce5d000e7f",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/Stalker.kt": "0e245be28f87b071f5cb2867fb13fcfda1efd1b4a09d417a2188fb5ac07ff832",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/Repository.kt": "3ca9e8ca1d0515f29619806c189e31ed9a43f23b58da63ec5fff51f7f381746c",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeScreen.kt": "ae8cf28c58e36bd60db34ff09c990f9567c708f1c88606578bd0e242dfbf17a3",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/SettingsScreen.kt": "90bc65fbbef9620eb42ec46b65a5e5534c88ad1c81ec0c539a9e0b28f9896b7e",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/AddonSettingsScreen.kt": "ed35474d2e856f18e44f6cb2894b16a190204c988e850cb892d0f4dce662be89",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeHistory.kt": "96912a83456be32f84162b4cc3a6e955dc102406d1b3af4301ffa37004995e90",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLocalQueue.kt": "4fd85b0e47c7a55d42b14178ff24856b01d37ec389487476f5805da4cd2a1d99",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubePhoneLink.kt": "932eb3e0433105dfb1f4d84b3e03d21b62c3273098344de97592e1eee2e30717",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/Models.kt": "ef80816cbf0b140518b98048feb5cefe6764735655115540d3524b2c08bc6f4a",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTvViews.kt": "5015f40237498b19225e2d29fe8bb58938347dc1f47526f3d43797d703b603a1",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/Store.kt": "93a302e07375682737ee29bb33f7b2d2c3aad4857ba47993729c298f32234e9c",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/Guide.kt": "e4afb9f80a40f1aca03e12e75a2e8a1f8823d0ca7d899cb4842e7b7ad51c0d46",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLounge.kt": "7151b3985be7f6aac8d4f5ec973c35ac21224cb45949c39a43081a0b031aba76",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/Playback.kt": "853eed8cd1790adc684ddd36b78255ad08617dd262cd28bca9855b080f451ee4",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/SearchScreen.kt": "761151c5ba8eae9cf25c28a67284f079155485e15f93360a4c8d05d7a3347a33",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSignIn.kt": "50dfec0728803d841f0072fdfcaf4bf6f66ca2850584136f44511cee5a2a23fa",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeResolver.kt": "e733757df8f317dd22f97232c8d58d2cf4be738bfdde858c65f0745ec0718df9",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeVoice.kt": "afbce73f2346a050d1cb67d130a469f6f6f01a1c6517f5f6566e0aa85786e10e",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/ProviderForm.kt": "c35c29d91bb9df5022e6fd0b795fb207c9575e8e088756771c7c968821541127",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/Preferences.kt": "ebcac08b4799f681ffb6f022d1d7f0316330b50e1f9959d03bde163e14c813fd",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeModel.kt": "a9ab7b3b75689f2d4ebba96f48bfc6acf3765f9bc8a8eb6360da2fa2727391c5",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchPanel.kt": "add0f9bc576b1a59d3bd57ed84437310e9afd497c728474429086c2ebba008dd",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeClient.kt": "8c002f2cd0e9bb13e0982463eee569c7960670696dd29b1b037956f752b83b09",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/Addons.kt": "8ce012ae17e02e39dc24adab4151893378e77156cdcce8895b803c9e171cf6bb",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/NativeBrowse.kt": "88bb1b225ce9a429987eb12539fe1cd58f02b6f8aa24760d0c546aedb73a9b5b",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/VideoPicture.kt": "61e99faabd02f03e60f179bcb48c9ec62f77b64b797e79328ae8a44b0044e3e0",
+      "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeVideoActions.kt": "c267d946ad7cff4f0cd925a0e1faad05743d8191762e286a2ae60298efcc5dfd",
+      "app/src/main/res/drawable/fleet_icon.xml": "7ee412788f6f077cc84c61259207d56834047c53047395582ac0b81b571a05b3",
+      "app/src/main/res/drawable/ic_search.xml": "cbad918ba86c29515012c5b56976fdd423b9bf58e955b03de5f81610b1d3b19f",
+      "app/src/main/res/drawable/tv_banner.xml": "14983758b8949f645eee6dfb5796d35dc44ad0b3e8d1c56b38f181979da48116",
+      "app/src/main/res/layout/live_player.xml": "424758bc787f01863866ecae626f2775dedba88fbe97052bad908de60eb9ea39",
+      "app/src/main/res/layout/live_player_content.xml": "23c97249640061e9b6d66103b7895838e0ec6eed00d8e304b348fbb5b8203730",
+      "app/src/main/res/values/styles.xml": "eda8d33d4cd76ce9dd84e5b3f6ad57691f67f1c4f8933c77ae1c4e251043ef08",
+      "app/src/main/res/xml/data_extraction_rules.xml": "4c6f140d42cbf35e21ef83cd909993da77c8cdc67a7c0c5a31536ddcc438f7b0"
+    },
+    "previousEmulatorCoverage": {
+      "version": "0.21.0",
+      "uniqueScenarios": 218,
+      "sameProductionFiles": 57,
+      "note": "The two changed files are the version declaration and reply-label parser. The full emulator suite was not repeated for 0.21.1; the new parser regression and signed-release TCL checks were run."
+    }
+  },
+  "deployment": {
+    "device": {
+      "manufacturer": "TCL",
+      "model": "Smart TV Pro",
+      "android": 14,
+      "api": 34,
+      "displayHz": 60.000004
+    },
+    "previousInstalledVersion": "0.20.0",
+    "intermediateVersionTested": "0.21.0",
+    "installedVersion": "0.21.1",
+    "inPlace": true,
+    "sameApplicationUid": true,
+    "dataCleared": false,
+    "preferencesPreserved": true,
+    "addonsPreserved": true,
+    "profilesPreserved": true,
+    "profilesCount": 0,
+    "addonsCount": 2,
+    "signOutPerformed": false,
+    "explicitGoogleMutations": false,
+    "temporaryProbeRemoved": true,
+    "diagnosticDownloadFilesRemoved": true,
+    "reversePortRemoved": true,
+    "localMediaServerStopped": true,
+    "appLeftForeground": true,
+    "screenAwake": true
+  },
+  "measurementProtocol": {
+    "target": "Installed signed release; FLAG_DEBUGGABLE=false; dedicated separately signed test package with matching certificate",
+    "probe": "../../scripts/device_probe/README.md",
+    "probeKotlinSha256": "6f357e324a84e80c509c67ab50a31779275c38cc052a8131af49dba600d57518",
+    "timing": "Explicit Play to first rendered video frame; active playback reported separately; first audible audio not measured",
+    "steadyWindow": "After 3 seconds of settling; excludes seeks and codec startup. Decoder output counts are not display presentation FPS.",
+    "ui": "FrameMetrics TOTAL_DURATION compared against each frame DEADLINE, excluding first-draw frames; callback losses reported. Wall workload time includes an idle tail and cleanup, not an FPS denominator.",
+    "memory": "PSS in KiB, one snapshot per workload; forced-GC samples explicitly separated. Cache/buffer caps are not whole-process limits.",
+    "live": "Looping generated HLS served over a temporary adb reverse port. Live-window-relative positions reset as its playlist slides; no real IPTV provider provisioned.",
+    "comparison": "No matched TizenTube or prior-release physical-device baseline. Standby launch samples excluded."
+  },
+  "physicalStages": {
+    "passed": 9,
+    "unresolvedAppFailures": 0,
+    "selectedStageReruns": true,
+    "names": [
+      "catalog and settings",
+      "remote keyboard and voice cancel",
+      "YouTube home and search",
+      "regular YouTube playback",
+      "Shorts",
+      "on demand streams and episodes",
+      "episodes navigation",
+      "memory cycles",
+      "controlled live playback"
+    ]
+  },
+  "startup": {
+    "activityFirstDraw": {
+      "samplesMs": [
+        1398,
+        895,
+        923
+      ],
+      "medianMs": 923,
+      "scope": "Force-stopped process, awake display, am start -W Activity first draw; content/video readiness measured separately"
+    },
+    "youtubeHomeDataReadyMs": 2387,
+    "youtubeHomeRecommendations": 68,
+    "youtubeHomeShelves": 8,
+    "signedIn": false,
+    "youtubeSearchFirstVisibleCardMs": 804,
+    "artworkReadyNotMeasured": true
+  },
+  "playback": {
+    "youtube": {
+      "startup": {
+        "firstFrameMs": 2230,
+        "sourceMs": 557,
+        "activePlaybackMs": 2299,
+        "width": 854,
+        "height": 480,
+        "decoder": "c2.mtk.avc.decoder",
+        "audioSelected": true,
+        "audibleAudioLatencyMeasured": false,
+        "hardwareCodec": true,
+        "sourceFps": 30,
+        "mime": "video/avc",
+        "speed": 1
+      },
+      "steady": {
+        "seconds": 30,
+        "renderedFrames": 1598,
+        "droppedFrames": 0,
+        "decoderReinitializations": 0,
+        "rebuffers": 0,
+        "memory": {
+          "pssKiB": 86908,
+          "privateDirtyKiB": 44136,
+          "nativeAllocatedBytes": 19723200,
+          "managedUsedBytes": 26306168,
+          "artworkBytes": 2970240,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        },
+        "positionAdvanceMs": 30010,
+        "observedFormats": [
+          {
+            "observedAtMs": 5000,
+            "format": {
+              "width": 854,
+              "height": 480,
+              "sourceFps": 30,
+              "bitrate": 1291038
+            }
+          },
+          {
+            "observedAtMs": 10001,
+            "format": {
+              "width": 1920,
+              "height": 1080,
+              "sourceFps": 60,
+              "bitrate": 7417746
+            }
+          }
+        ],
+        "allSamplesPlaying": true
+      },
+      "commentsCount": 20,
+      "commentsPreservedDecoder": true,
+      "unlabeledReplyCounts": 0,
+      "repliesLoaded": true,
+      "relatedVideos": 30,
+      "nextAvailableAfterMetadata": true,
+      "hiddenTapSeekMs": 10000,
+      "holdSeekAdvanceMs": 170000,
+      "holdInputOffsetsMs": [
+        0,
+        500,
+        650
+      ],
+      "releaseResetStepMs": 10000,
+      "seekPreservedPause": true,
+      "hudAutoHidden": true,
+      "pictureControlAbsent": true
+    },
+    "shorts": {
+      "startup": {
+        "firstFrameMs": 1755,
+        "sourceMs": 509,
+        "activePlaybackMs": 1926,
+        "width": 480,
+        "height": 854,
+        "decoder": "c2.mtk.avc.decoder",
+        "audioSelected": true,
+        "audibleAudioLatencyMeasured": false,
+        "hardwareCodec": true,
+        "sourceFps": 30,
+        "mime": "video/avc",
+        "speed": 1
+      },
+      "steady": {
+        "seconds": 20,
+        "renderedFrames": 600,
+        "droppedFrames": 0,
+        "decoderReinitializations": 0,
+        "rebuffers": 0,
+        "memory": {
+          "pssKiB": 75134,
+          "privateDirtyKiB": 28980,
+          "nativeAllocatedBytes": 19220640,
+          "managedUsedBytes": 9021800,
+          "artworkBytes": 6538880,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        },
+        "positionAdvanceMs": 20004,
+        "observedFormats": [
+          {
+            "observedAtMs": 5001,
+            "format": {
+              "width": 480,
+              "height": 854,
+              "sourceFps": 30,
+              "bitrate": 1352600
+            }
+          }
+        ],
+        "allSamplesPlaying": true
+      },
+      "nextClipWallMs": 1154,
+      "nextClipStartup": {
+        "firstFrameMs": 1014,
+        "sourceMs": 129,
+        "activePlaybackMs": 1113,
+        "width": 480,
+        "height": 854,
+        "decoder": "c2.mtk.avc.decoder",
+        "audioSelected": true,
+        "audibleAudioLatencyMeasured": false,
+        "hardwareCodec": true,
+        "sourceFps": 30,
+        "mime": "video/avc",
+        "speed": 1
+      },
+      "previousWorks": true,
+      "noSeekBar": true,
+      "pictureControlAbsent": true
+    },
+    "onDemand": {
+      "streamsReadyMs": 806,
+      "streamsReturned": 130,
+      "normalSourceAttempts": [
+        {
+          "index": 0,
+          "visibleCardIndex": 0,
+          "headerCount": 0,
+          "normalRouteHeadersMatched": true,
+          "normalRouteStreamMatched": true,
+          "success": false
+        },
+        {
+          "index": 1,
+          "visibleCardIndex": 1,
+          "headerCount": 0,
+          "normalRouteHeadersMatched": true,
+          "normalRouteStreamMatched": true,
+          "success": true
+        }
+      ],
+      "startup": {
+        "firstFrameMs": 2874,
+        "sourceMs": 1,
+        "activePlaybackMs": 3188,
+        "width": 3840,
+        "height": 2160,
+        "decoder": "c2.mtk.hevc.decoder",
+        "audioSelected": true,
+        "audibleAudioLatencyMeasured": false,
+        "hardwareCodec": true,
+        "sourceFps": -1,
+        "mime": "video/hevc",
+        "speed": 1
+      },
+      "steady": {
+        "seconds": 30,
+        "renderedFrames": 720,
+        "droppedFrames": 0,
+        "decoderReinitializations": 0,
+        "rebuffers": 0,
+        "memory": {
+          "pssKiB": 124485,
+          "privateDirtyKiB": 78372,
+          "nativeAllocatedBytes": 14060944,
+          "managedUsedBytes": 58922216,
+          "artworkBytes": 8002944,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        },
+        "positionAdvanceMs": 30006,
+        "observedFormats": [
+          {
+            "observedAtMs": 5001,
+            "format": {
+              "width": 3840,
+              "height": 2160,
+              "sourceFps": -1,
+              "bitrate": -1
+            }
+          }
+        ],
+        "allSamplesPlaying": true
+      },
+      "originalMovieResumeRestored": true,
+      "sourceFailure": "First visible source failed; HTTP 502 was observed in device logs and a separate native Mac media request. The second visible source returned media/range data and played 3840x2160 HEVC on the TCL. The failed source remains recorded; not all 130 sources were tested."
+    },
+    "controlledLive": {
+      "generatedMedia": true,
+      "realIptvServiceTested": false,
+      "startup": {
+        "firstFrameMs": 993,
+        "sourceMs": 79,
+        "activePlaybackMs": 1045,
+        "width": 640,
+        "height": 360,
+        "decoder": "c2.mtk.avc.decoder",
+        "audioSelected": true,
+        "audibleAudioLatencyMeasured": false,
+        "hardwareCodec": true,
+        "sourceFps": -1,
+        "mime": "video/avc",
+        "speed": 1
+      },
+      "steady": {
+        "seconds": 20,
+        "renderedFrames": 479,
+        "droppedFrames": 0,
+        "decoderReinitializations": 0,
+        "rebuffers": 0,
+        "memory": {
+          "pssKiB": 66638,
+          "privateDirtyKiB": 23660,
+          "nativeAllocatedBytes": 16963840,
+          "managedUsedBytes": 8219176,
+          "artworkBytes": 0,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        },
+        "observedFormats": [
+          {
+            "observedAtMs": 5001,
+            "format": {
+              "width": 640,
+              "height": 360,
+              "sourceFps": -1,
+              "bitrate": -1
+            }
+          }
+        ],
+        "allSamplesPlaying": true
+      },
+      "noSeekBar": true,
+      "noMovieControls": true,
+      "pauseAndSeekIgnored": true
+    }
+  },
+  "navigation": {
+    "youtubeSearch": {
+      "rows": [
+        {
+          "shorts": false,
+          "count": 15
+        },
+        {
+          "shorts": true,
+          "count": 5
+        }
+      ],
+      "deliveredMoves": 24,
+      "reachedRightTarget": true,
+      "returnedToFirst": true,
+      "attachedCards": 4,
+      "firstPass": {
+        "name": "search remote input",
+        "frames": 132,
+        "displayHz": 60.000004,
+        "elapsedMs": 2423,
+        "processCpuMs": 2564,
+        "totalP50Ms": 36.739707,
+        "totalP95Ms": 53.436704,
+        "layoutP95Ms": 0.20775,
+        "drawP95Ms": 0.872333,
+        "framesOverDisplayPeriod": 129,
+        "deadlineP50Ms": 49.998526,
+        "gpuP95Ms": 17.982334,
+        "syncP95Ms": 0.635417,
+        "commandIssueP95Ms": 15.85625,
+        "swapP95Ms": 2.236,
+        "unknownDelayP95Ms": 6.686669,
+        "inputHandlingP95Ms": 0.003833,
+        "animationP95Ms": 3.721834,
+        "nonFirstDrawFrames": 132,
+        "framesOverActualDeadline": 4,
+        "metricEventsDropped": 0,
+        "scope": "UI window FrameMetrics CPU/GPU timings with per-frame deadline; not video presentation FPS"
+      },
+      "warmPass": {
+        "name": "warm search remote input",
+        "frames": 124,
+        "displayHz": 60.000004,
+        "elapsedMs": 2203,
+        "processCpuMs": 1230,
+        "totalP50Ms": 9.670475,
+        "totalP95Ms": 11.403264,
+        "layoutP95Ms": 0.269084,
+        "drawP95Ms": 0.721917,
+        "framesOverDisplayPeriod": 0,
+        "deadlineP50Ms": 16.666666,
+        "gpuP95Ms": 4.893084,
+        "syncP95Ms": 0.665834,
+        "commandIssueP95Ms": 2.960584,
+        "swapP95Ms": 1.433833,
+        "unknownDelayP95Ms": 3.055024,
+        "inputHandlingP95Ms": 0.003834,
+        "animationP95Ms": 2.705584,
+        "nonFirstDrawFrames": 124,
+        "framesOverActualDeadline": 0,
+        "metricEventsDropped": 0,
+        "scope": "UI window FrameMetrics CPU/GPU timings with per-frame deadline; not video presentation FPS"
+      },
+      "warmReturnedToFirst": true
+    },
+    "episodes": {
+      "episodes": 58,
+      "startingSortedIndex": 35,
+      "finalSortedIndex": 53,
+      "episodeMovesDelivered": 18,
+      "episodeIndexAdvance": 18,
+      "episodeFrames": {
+        "name": "episode remote input",
+        "frames": 81,
+        "displayHz": 60.000004,
+        "elapsedMs": 1487,
+        "processCpuMs": 763,
+        "totalP50Ms": 5.574403,
+        "totalP95Ms": 8.497917,
+        "layoutP95Ms": 0.138333,
+        "drawP95Ms": 0.5055,
+        "framesOverDisplayPeriod": 0,
+        "deadlineP50Ms": 16.666666,
+        "gpuP95Ms": 2.856583,
+        "syncP95Ms": 0.383917,
+        "commandIssueP95Ms": 2.643084,
+        "swapP95Ms": 1.435417,
+        "unknownDelayP95Ms": 0.522025,
+        "inputHandlingP95Ms": 0.004167,
+        "animationP95Ms": 2.086,
+        "nonFirstDrawFrames": 81,
+        "framesOverActualDeadline": 0,
+        "metricEventsDropped": 0,
+        "scope": "UI window FrameMetrics CPU/GPU timings with per-frame deadline; not video presentation FPS"
+      },
+      "streamsUnchangedWhileBrowsing": true,
+      "selectedEpisodeContextUpdated": true,
+      "renderedSeasonAfterSelection": "Season 6"
+    },
+    "keyboard": {
+      "nativeKeysTyped": true,
+      "backPreservesQuery": true,
+      "voiceProviderAvailable": true,
+      "voiceCanceledWithoutChangingQuery": true
+    },
+    "settingsNavigated": true
+  },
+  "lifecycle": {
+    "threePlayBackCycles": [
+      {
+        "cycle": 1,
+        "startup": {
+          "firstFrameMs": 2164,
+          "sourceMs": 535,
+          "activePlaybackMs": 2262,
+          "width": 854,
+          "height": 480,
+          "decoder": "c2.mtk.avc.decoder",
+          "audioSelected": true,
+          "audibleAudioLatencyMeasured": false,
+          "hardwareCodec": true,
+          "sourceFps": 30,
+          "mime": "video/avc",
+          "speed": 1
+        },
+        "during": {
+          "pssKiB": 81901,
+          "privateDirtyKiB": 37016,
+          "nativeAllocatedBytes": 19642976,
+          "managedUsedBytes": 17750400,
+          "artworkBytes": 2970240,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        },
+        "afterBack": {
+          "pssKiB": 82436,
+          "privateDirtyKiB": 37520,
+          "nativeAllocatedBytes": 13696928,
+          "managedUsedBytes": 18587400,
+          "artworkBytes": 3394560,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      },
+      {
+        "cycle": 2,
+        "startup": {
+          "firstFrameMs": 1159,
+          "sourceMs": 33,
+          "activePlaybackMs": 1300,
+          "width": 1920,
+          "height": 1080,
+          "decoder": "c2.mtk.avc.decoder",
+          "audioSelected": true,
+          "audibleAudioLatencyMeasured": false,
+          "hardwareCodec": true,
+          "sourceFps": 60,
+          "mime": "video/avc",
+          "speed": 1
+        },
+        "during": {
+          "pssKiB": 87952,
+          "privateDirtyKiB": 42728,
+          "nativeAllocatedBytes": 19703968,
+          "managedUsedBytes": 23817696,
+          "artworkBytes": 3394560,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        },
+        "afterBack": {
+          "pssKiB": 88439,
+          "privateDirtyKiB": 43312,
+          "nativeAllocatedBytes": 13736592,
+          "managedUsedBytes": 24439752,
+          "artworkBytes": 3394560,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      },
+      {
+        "cycle": 3,
+        "startup": {
+          "firstFrameMs": 1029,
+          "sourceMs": 37,
+          "activePlaybackMs": 1113,
+          "width": 1920,
+          "height": 1080,
+          "decoder": "c2.mtk.avc.decoder",
+          "audioSelected": true,
+          "audibleAudioLatencyMeasured": false,
+          "hardwareCodec": true,
+          "sourceFps": 60,
+          "mime": "video/avc",
+          "speed": 1
+        },
+        "during": {
+          "pssKiB": 90675,
+          "privateDirtyKiB": 45348,
+          "nativeAllocatedBytes": 19766032,
+          "managedUsedBytes": 25982896,
+          "artworkBytes": 3394560,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        },
+        "afterBack": {
+          "pssKiB": 90424,
+          "privateDirtyKiB": 46084,
+          "nativeAllocatedBytes": 13775712,
+          "managedUsedBytes": 26613392,
+          "artworkBytes": 3394560,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      }
+    ],
+    "afterExplicitGc": {
+      "pssKiB": 69276,
+      "privateDirtyKiB": 24936,
+      "nativeAllocatedBytes": 13193040,
+      "managedUsedBytes": 4689464,
+      "artworkBytes": 3394560,
+      "artworkMaxBytes": 8388608,
+      "forcedGc": true
+    },
+    "uninstrumentedOnDemandHomePssKiB": 75958,
+    "recentExitReasonsDuringSession": {
+      "USER REQUESTED": 16
+    },
+    "note": "Three short cycles do not prove long-term leak freedom. Native allocation returned after Back; managed heaps varied and reclaimed memory after explicitly labeled GC. Recent process exits were inspected separately from intentional force stops."
+  },
+  "customerReview": {
+    "independent": true,
+    "actualTclScreenshots": true,
+    "visualApproval": true,
+    "blockingFindings": [],
+    "resolved": [
+      "Bare numeric reply counts now have readable labels; actual reply dialog and replies verified.",
+      "Final selected episode, season, description and stream context match after OK.",
+      "Related populated and Next became available after metadata."
+    ],
+    "nonblocking": [
+      "Read-comment dialog retains standard Android square styling and uppercase buttons."
+    ],
+    "privateScreenshotsPublished": false
+  },
+  "correctedProbeFailures": [
+    "Keyboard inserts lowercase ab; uppercase assertion corrected and results awaited before Back.",
+    "HUD must be revealed after closing Comments before activating Related.",
+    "Original on-demand manual Watch omitted stream headers and provider order differed from visible sorting; corrected runs activate actual stream cards and verify headers/identity.",
+    "One Android shell launch with an unquoted spaced stage argument did not execute; stale output rejected and not counted.",
+    "Fresh stream URLs may change identity; alternate card lookup now matches stable metadata then verifies the current Watch identity.",
+    "API episode order differs from sorted native order, and bound/prefetched holders are not settled focus. The final run uses real season-selector Right handoff, asserts settled rail focus and verifies exact destination before OK."
+  ],
+  "limitations": [
+    "No real Stalker profile exists, so no real provider authentication, guide or channel playback was tested. No profile was added.",
+    "Real Google owner approval, account mutations/history synchronization and actual phone app pairing were not exercised.",
+    "Voice provider availability and cancellation passed; dictated speech accuracy, physical-remote latency and audible AV sync were not measured.",
+    "Optional on-demand picture-effect adjustments were not exercised in these physical playback windows.",
+    "Cold search first-pass recorded 4 deadline overruns in 132 frames; warm repeat had zero in 124. This is a bounded workload, not universal smoothness or superiority over TizenTube."
+  ]
+}

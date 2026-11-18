@@ -6,19 +6,20 @@ and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
 ## Development candidate
 
-**0.21.0 · version code 27 · Android 7.0 / API 24 or later**
+**0.21.1 · version code 28 · Android 7.0 / API 24 or later**
 
 This branch contains the native YouTube integration and continuing TizenTube
-functional review. The TCL has the previously requested 0.20.0 preview; further
-physical-TV access is held. This candidate is developed and checked locally and
-on worker emulators. The release record tracks the exact validation scope.
+functional review. Version 0.21.1 is installed on the TCL after the user's
+physical-device testing request. It passed signed-release playback, remote,
+focus and memory probes; the release record tracks their exact scope.
+Development also uses local checks and worker emulators.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Candidate verification](releases/0.21.0/verification.json) records the APK checksum,
+[Candidate verification](releases/0.21.1/verification.json) records the APK checksum,
 source/build checksums and validation scope.
-[SHA256SUMS](releases/0.21.0/SHA256SUMS) identifies the candidate APK. The last
-published production snapshot remains recorded in [0.14.1](releases/0.14.1/production.json).
+[SHA256SUMS](releases/0.21.1/SHA256SUMS) identifies the installed APK. The original
+production import remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
 
@@ -144,9 +145,17 @@ adb -s emulator-5554 shell am start -n xyz.billybishop4.fleet.tv/.MainActivity
 
 ## Tests and verification
 
-The candidate passes 211 ordinary JVM tests, 218 unique TV-emulator scenarios
-and Android lint. Three opt-in JVM probes are skipped in the ordinary run; two
-separate public YouTube interoperability checks pass.
+0.21.1 passes 212 ordinary JVM tests, Android lint, and nine selected physical
+TCL stages against the signed release. Three opt-in JVM probes are skipped.
+The preceding 0.21.0 candidate passed 218 unique TV-emulator scenarios and two
+public YouTube interoperability probes. Its 59 production files differ only in
+the version declaration and reply-label parser; the full emulator suite was not
+repeated for this small patch. The new parser regression and real reply flow pass.
+
+[Physical TCL results](releases/0.21.1/README.md) include first-frame startup,
+decoder drops, buffering, memory, actual frame deadlines and verified remote
+movement. The [dedicated device probe](scripts/device_probe/README.md) preserves
+configured app data and keeps real-account mutations outside automated checks.
 
 Candidate verification records native navigation/account/player, startup and
 bounded-memory results against the exact production source files. Normal
@@ -175,7 +184,8 @@ active playback are available, with resume disabled and constrained bandwidth:
 These are four-trial medians per source on the same software-rendered emulator,
 using generated media; neither build rebuffers during the controlled observation.
 Real public YouTube source timings are measured separately. These results compare
-777tv builds; TizenTube and the physical TCL have not been benchmarked for this update.
+777tv builds; they are not a TizenTube comparison. The later physical TCL
+measurements have a separate workload and are recorded above.
 
 Artwork stays within an 8 MiB cache budget (4 MiB on low-memory devices), counting
 actual hardware-bitmap pixels. Encoded movie buffering targets 24/16 MiB;
@@ -227,6 +237,7 @@ historical artifact paths in that file refer to untracked local evidence.
 | `app/src/androidTest/` | Android TV navigation, rendering, playback and performance tests |
 | `scripts/` | Toolchain bootstrap, fixtures and optional remote client |
 | `remote/` | Optional build/test worker service and pinned toolchain |
-| `releases/0.21.0/` | Candidate verification and APK checksum |
+| `releases/0.21.0/` | Prior candidate emulator verification and APK checksum |
+| `releases/0.21.1/` | Installed TCL release, physical measurements and checksum |
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency notices.

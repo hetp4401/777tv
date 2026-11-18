@@ -1,13 +1,18 @@
 # 777tv Android TV workflow (formerly Fleet)
 
-- Latest instruction: "Okay stop pushing to tcl now. Continue with work."
-  holds physical TCL work again. Continue local development and worker emulator
-  checks. At the user's intervening request, the 0.20.0 preview (code26) was
-  installed in place over 0.17.0 and launched on November 18, 2026, preserving
-  UID/app data; no instrumentation or profile provisioning ran. Installation
-  receipt: `.tools/youtube020/tcl-install-public.json`. Do not contact, launch,
-  install, run instrumentation, or change the TCL without fresh authorization.
-  Preserve app data, sign-ins, profiles, add-ons and history. No default IPTV profiles.
+- Latest user instruction authorizes physical TCL deployment/testing. On
+  November 18, 2026, 0.21.0 was installed in place, then 0.21.1/code 28 added a
+  verified fix for numeric YouTube reply labels. Nine final signed-release
+  physical stages pass; see `releases/0.21.1/verification.json`. The release is
+  left open on On-Demand; its UID/data, preferences, add-ons and zero profiles
+  were preserved. Temporary instrumentation, downloads, reverse port and local
+  media server were removed. No current TV hold; check later user steering.
+  Keep private screenshots/raw reports in `.tools/tcl021/`, outside Git.
+  Use `scripts/device_probe/README.md` for the dedicated opt-in release probe;
+  never run fixture suites that reset configuration on a configured TV.
+  No default IPTV profiles; leave STBEmu unchanged. Real Google-owner/phone
+  acceptance and real-IPTV playback were not performed. Controlled live tests
+  used generated HLS without adding a profile. Preserve existing resume data.
 - Current feedback: search must present full videos first and separate Shorts
   rows, and Home/search should closely follow TizenTube. YouTube players must
   omit Picture controls, and held seeking must accelerate much faster. Continue
@@ -27,7 +32,8 @@
   rendered frame, and foreground phone control using YouTube TV-code pairing.
   Account/media/phone UI checks use generated fixtures; read-only anonymous
   public API probes are recorded separately. Do not send
-  real account mutations or access the TCL to validate these flows. Google
+  explicit real account mutations (Like/Subscribe/Save/delete/sign-out) to validate
+  these flows. User-authorized normal playback may use its usual watch history. Google
   account-owner approval and actual phone/TV pairing require a separate user-led
   check. Keep anonymous phone identity separate from account credentials, cancel
   pending remote playback on Disconnect, and preserve commands during handoff.
@@ -55,7 +61,7 @@
   explicit `youtubeLive=true`; it never provisions IPTV profiles or supplies
   Google account credentials. Preserve existing account approvals and app data.
 - Earlier authorization covered local Mac development/builds/tests and direct
-  deployment to the TCL; the latest physical-TV hold above takes precedence. Preserve watch history, add-ons and other app data. ExoPlayer is now the only player; no engine
+  deployment to the TCL; the latest explicit testing authorization above takes precedence. Preserve watch history, add-ons and other app data. ExoPlayer is now the only player; no engine
   setting remains. The app is named 777tv; its application ID stays unchanged for
   in-place updates. The user subsequently requested deleting the saved IPTV
   profile on the TCL and shipping no default profiles. The profile was deleted;

@@ -831,5 +831,38 @@ activation and retain their intended behavior assertions.
 
 [Verification](releases/0.21.0/verification.json) records exact production hashes,
 local checks, native scenario coverage, corrected reruns, scoped screenshot
-reviews and startup/memory evidence. The version 0.20 preview was installed at the
-user's request; further TCL access is held and 0.21 is not deployed.
+reviews and startup/memory evidence. Physical access was held at that verification
+cutoff; the subsequent user-authorized TCL deployment and 0.21.1 review below
+supersede that device status.
+
+
+## Physical TCL release and customer review (0.21.1)
+
+The signed release was updated in place from 0.20.0 through 0.21.0 to 0.21.1,
+with unchanged application UID and preserved preferences, add-ons and zero IPTV
+profiles. Real comments exposed bare numeric reply counts. A cached count parser
+now labels them as replies while preserving already localized text and cursors;
+the new regression and actual reply dialog/replies pass.
+
+Nine final signed-release device stages pass. Regular YouTube, portrait Shorts
+and a selected 4K HEVC on-demand source used hardware decoders and had zero
+recorded decoder drops, rebuffers or decoder restarts in their bounded 30/20/30
+second steady windows. The first movie link failed with upstream HTTP 502; the
+second visible card played. Failed links remain recorded. Generated profileless
+live HLS also passed; this does not establish real Stalker service compatibility.
+
+The final episode probe enters the rail through the native season-selector Right
+handoff and verifies settled focus before measuring. All 18 moves crossed season
+boundaries; OK updated the selected episode and stream context together. Earlier
+probe attempts incorrectly compared API episode order with sorted native order,
+or treated a prefetched holder as visible focus; those samples are excluded.
+Cold search had four actual deadline overruns in 132 measured frames; warm search
+had none in 124. Decoder counters and FrameMetrics are not displayed-video FPS.
+
+The independent customer reviewer approved actual Home/search, comments/replies,
+Related, Shorts, selected episode/streams, player, settings and live captures with
+no blocking visual findings. The standard square read-comment dialog remains
+minor polish. The release stays open on On-Demand; test instrumentation,
+diagnostic downloads, reverse forwarding and the local media server were removed.
+The [TCL report](releases/0.21.1/README.md) and its verification JSON retain exact
+metrics, source hashes, scope and remaining owner/IPTV acceptance limits.

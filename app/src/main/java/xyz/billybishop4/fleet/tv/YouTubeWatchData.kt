@@ -30,6 +30,13 @@ internal object YouTubeWatchDecode {
         return YouTubeWatchDetails(page.copy(videos=page.videos.filter { it.id!=videoId }.take(40)),comments,label,
             YouTubeSocialDecode.watchChannel(j),YouTubeSocialDecode.rating(j))
     }
+    private val replyCount=Regex("[0-9][0-9, .\\u00A0\\u202F]*[KMB]?",RegexOption.IGNORE_CASE)
+    private fun repliesLabel(value:Any?):String {
+        val label=YouTubeDecode.text(value).trim()
+        // TV responses sometimes send only a count; keep already localized labels intact.
+        if(!label.matches(replyCount))return label
+        return "$label "+if(label.toLongOrNull()==1L)"reply" else "replies"
+    }
     fun comments(j:JSONObject):YouTubeCommentsPage {
         val section=j.optJSONObject("continuationContents")?.optJSONObject("itemSectionContinuation")
         // A comment contains reply continuations. Only the section continuation advances the top-level page.
@@ -41,7 +48,7 @@ internal object YouTubeWatchDecode {
                 if(id.isBlank() || body.isBlank())null else YouTubeComment(id,YouTubeDecode.text(r.opt("authorText")),body,
                     listOf(YouTubeDecode.text(r.opt("publishedTimeText")),YouTubeDecode.text(r.opt("voteCount")).takeIf(String::isNotBlank)?.let { "$it likes" }.orEmpty())
                         .filter(String::isNotBlank).joinToString(" · "),
-                    YouTubeDecode.text(r.opt("repliesCount")),token(r.opt("detailViewEndpoint")))
+                    repliesLabel(r.opt("repliesCount")),token(r.opt("detailViewEndpoint")))
             }.distinctBy { it.id }.take(40)
         val message=if(comments.isEmpty())YouTubeDecode.find(j,setOf("messageRenderer"),1).filterIsInstance<JSONObject>()
             .firstOrNull()?.let { YouTubeDecode.text(it.opt("text")) }.orEmpty().ifBlank { "No comments available." } else ""
