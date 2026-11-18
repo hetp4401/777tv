@@ -33,6 +33,7 @@ internal class VodControls(
     private val selectTrack: (Int, String) -> Unit,
     private val controlsInset: (Int) -> Unit = {},
     private val pictureControls: () -> Unit = {},
+    private val youtubePanel: ((Boolean) -> Unit)? = null,
 ) {
     val view = FrameLayout(a).apply { tag = "vod-controls"; visibility = View.GONE; isFocusable = false }
     private val main = Handler(Looper.getMainLooper())
@@ -67,12 +68,15 @@ internal class VodControls(
         }
     }
     private val playIcon = ControlIcon(ControlIcon.PAUSE)
+    private val heatmap=if(watch.title.type=="youtube")YouTubeHeatmapView(a,bar) else null
     private val play = iconButton("Pause", "vod-play-pause", playIcon) { togglePlayback() }
     private val rewind = iconButton("Back $seekSeconds seconds", "vod-rewind", ControlIcon(ControlIcon.REWIND, seekSeconds)) { skip(-1) }
     private val forward = iconButton("Forward $seekSeconds seconds", "vod-forward", ControlIcon(ControlIcon.FORWARD, seekSeconds)) { skip(1) }
     private val trackButton = iconButton("Audio & subtitles", "vod-tracks", ControlIcon(ControlIcon.TRACKS)) { showTrackOptions() }
     private val options = iconButton("Picture controls", "vod-options", ControlIcon(ControlIcon.SETTINGS)) { openPictureControls() }
-    private val closeButton = iconButton("Back to streams", "vod-close", ControlIcon(ControlIcon.CLOSE)) { exit() }
+    private val closeButton = iconButton(if(watch.title.type=="youtube")"Back to YouTube" else "Back to streams", "vod-close", ControlIcon(ControlIcon.CLOSE)) { exit() }
+    private val relatedButton=if(youtubePanel!=null)a.action("Related","Related videos"){openYouTubePanel(false)}.quiet() else null
+    private val commentsButton=if(youtubePanel!=null)a.action("Comments","Video comments"){openYouTubePanel(true)}.quiet() else null
     private var closed = false
     private var touchPosition: Long? = null
     private var queuedSeek: Long? = null
@@ -136,12 +140,19 @@ internal class VodControls(
         val title = a.column().apply {
             add(a.text(watch.title.name, 17f, bold = true).apply { tag = "vod-title"; maxLines = 1; ellipsize = TextUtils.TruncateAt.END; setShadowLayer(a.dp(2).toFloat(), 0f, a.dp(1).toFloat(), Color.BLACK) })
             watch.episode?.let { episode -> gap(3); add(a.text(episode.label, 11f, MUTED).apply { tag = "vod-episode"; maxLines = 1; ellipsize = TextUtils.TruncateAt.END; setShadowLayer(a.dp(2).toFloat(), 0f, a.dp(1).toFloat(), Color.BLACK) }) }
+            if(watch.title.type=="youtube") {
+                gap(3);add(a.text(if(watch.short)"Shorts · ↑ Previous · ↓ Next" else watch.title.description,11f,MUTED).apply {
+                    maxLines=1;ellipsize=TextUtils.TruncateAt.END;setShadowLayer(a.dp(2).toFloat(),0f,a.dp(1).toFloat(),Color.BLACK)
+                })
+            }
         }
         feedback.setShadowLayer(a.dp(2).toFloat(), 0f, a.dp(1).toFloat(), Color.BLACK)
         val header = a.column().apply {
             tag = "vod-header"
             add(a.row().apply {
                 addView(title, LinearLayout.LayoutParams(0, -2, 1f))
+                relatedButton?.let { addView(it,LinearLayout.LayoutParams(a.dp(88),a.dp(40))) }
+                commentsButton?.let { addView(it,LinearLayout.LayoutParams(a.dp(106),a.dp(40)).apply{marginStart=a.dp(6)}) }
                 addView(closeButton, LinearLayout.LayoutParams(a.dp(44), a.dp(44)).apply { marginStart = a.dp(12) })
             })
             add(feedback)
@@ -158,6 +169,7 @@ internal class VodControls(
             }
             addView(transport, LinearLayout.LayoutParams(-2, a.dp(44)))
             addView(FrameLayout(a).apply {
+                heatmap?.let { addView(it,FrameLayout.LayoutParams(-1,a.dp(44),Gravity.TOP)) }
                 addView(bar, FrameLayout.LayoutParams(-1, a.dp(44), Gravity.TOP))
                 addView(a.row().apply {
                     addView(elapsed, LinearLayout.LayoutParams(0, -2, 1f)); add(remaining, width = -2)
@@ -169,6 +181,11 @@ internal class VodControls(
         bar.nextFocusUpId = closeButton.id; bar.nextFocusDownId = play.id
         closeButton.nextFocusDownId = bar.id; closeButton.nextFocusLeftId = bar.id
         closeButton.nextFocusUpId = closeButton.id; closeButton.nextFocusRightId = closeButton.id
+        if(relatedButton!=null && commentsButton!=null) {
+            bar.nextFocusUpId=relatedButton.id;relatedButton.nextFocusLeftId=bar.id;relatedButton.nextFocusRightId=commentsButton.id
+            commentsButton.nextFocusLeftId=relatedButton.id;commentsButton.nextFocusRightId=closeButton.id;closeButton.nextFocusLeftId=commentsButton.id
+            listOf(relatedButton,commentsButton).forEach { it.nextFocusDownId=bar.id;it.nextFocusUpId=it.id }
+        }
         val bottom = listOf(rewind, play, forward, trackButton, options)
         bottom.forEachIndexed { index, button ->
             button.nextFocusLeftId = bottom[(index - 1).coerceAtLeast(0)].id
@@ -299,6 +316,7 @@ internal class VodControls(
     private fun update() {
         if (closed || view.visibility != View.VISIBLE) return
         val total = duration(); val at = (touchPosition ?: queuedSeek ?: position()).let { if (total > 0) it.coerceAtMost(total) else it }
+        heatmap?.duration(total)
         val seekable = canSeek(); bar.isEnabled = seekable; rewind.isEnabled = seekable; forward.isEnabled = seekable
         rewind.alpha = if (seekable) 1f else .4f; forward.alpha = rewind.alpha
         bar.progress = if (total > 0) (at.toDouble() / total * bar.max).toInt() else 0
@@ -331,12 +349,17 @@ internal class VodControls(
             KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> return consume { skip(1) }
             KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> return consume { }
         }
+        if(code==KeyEvent.KEYCODE_DPAD_DOWN && youtubePanel!=null &&
+            (view.visibility!=View.VISIBLE || listOf(play,rewind,forward,trackButton,options).any { it.hasFocus() }))
+            return consume { openYouTubePanel(false) }
         val navigation = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT
         if (navigation && (view.visibility != View.VISIBLE || !view.hasFocus())) return consume { show(true) }
         if (view.visibility == View.VISIBLE) interacted()
         return false
     }
     private fun openPictureControls() { if (!closed) { finishHold(); invalidateTrackRequest(); interacted(); pictureControls() } }
+    private fun openYouTubePanel(comments:Boolean) { if(!closed){hide();youtubePanel?.invoke(comments)} }
+    fun replayMarkers(markers:List<YouTubeHeatMarker>){heatmap?.markers(markers);heatmap?.duration(duration())}
     private fun showTrackOptions() {
         finishHold(); invalidateTrackRequest(); interacted()
         dialog = a.showActions("Audio & subtitles", listOf(

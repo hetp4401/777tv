@@ -1,27 +1,39 @@
 # 777tv
 
-A native Android TV app for on-demand movies and shows through Stremio add-ons,
-plus optional Stalker IPTV profiles. Kotlin, native Android views, RecyclerView
+A native Android TV app for YouTube, on-demand movies and shows through Stremio
+add-ons, plus optional Stalker IPTV profiles. Kotlin, native Android views, RecyclerView
 and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
-## Production snapshot
+## Development candidate
 
-**0.14.1 · version code 18 · Android 7.0 / API 24 or later**
+**0.16.0 · version code 20 · Android 7.0 / API 24 or later**
 
-This source matches the APK installed on the production TV. The application ID
-remains `xyz.billybishop4.fleet.tv` so existing installations can update in place.
+This branch contains the YouTube candidate. The 0.16.0 additions have not been
+installed or tested on the physical TCL; the user requested holding TV testing.
+The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Production manifest](releases/0.14.1/production.json) records the APK checksum,
-every production source checksum, build configuration checksums and validation
-scope. [SHA256SUMS](releases/0.14.1/SHA256SUMS) identifies the matching APK.
+[Candidate verification](releases/0.16.0/verification.json) records the APK checksum,
+source/build checksums and validation scope.
+[SHA256SUMS](releases/0.16.0/SHA256SUMS) identifies the candidate APK. The last
+published production snapshot remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
 
 ## Features
 
+- A **YouTube** section beside On-Demand: native Home recommendations, search,
+  portrait Shorts and Google TV code/QR sign-in. The same ExoPlayer plays videos;
+  no browser engine or second player is bundled. Home personalizes after sign-in.
+  Public videos play signed out; private/restricted video playback and Google
+  watch-history synchronization are not claimed. Details and APK investigation:
+  [YouTube integration](docs/tizentube-investigation.md).
+- Read-only YouTube comments, replies and horizontal related videos during
+  playback. A faint **Most replayed** graph appears above the thin seek line
+  when YouTube provides replay data. Comments load on opening; the player keeps
+  playing while browsing the native sheet.
 - On-Demand opens by default; Settings → Appearance → Startup screen can select
-  Live TV instead. Compact catalog shelves, grouped search, continue watching,
+  Live TV or YouTube instead. Compact catalog shelves, grouped search, continue watching,
   recently watched titles and My list.
 - Stremio manifest installation, configured add-ons, catalogs, search, metadata
   and direct HTTP(S) stream links, including add-on request headers.
@@ -89,10 +101,13 @@ adb -s emulator-5554 shell am start -n xyz.billybishop4.fleet.tv/.MainActivity
 
 ## Tests and verification
 
-Version 0.14.1 passed **60 JVM tests**, Android lint with no errors, and **29
-browsing/search/catalog Android TV scenarios**. The latter are the focused checks
-for this patch; they are not a new run of every historical playback scenario.
-Full validation scope and source hashes are in the production manifest.
+Version 0.16.0 passes **95 JVM tests**, Android lint with no errors, and **115
+unique worker Android TV scenarios**. The candidate verification records the
+source versions, the resolved test-only Back-release wait, and the controlled
+before/after pagination regression. A separate
+opt-in live probe checks real search, Shorts, code issuance, public media,
+comments, related videos and replay markers. Real Google approval requires the
+account owner; its completion is covered by generated fixtures.
 
 The same-worker navigation comparison delivered 18 keys per row. Episodes
 previously advanced 8 rapid and 6 held moves; both now advance all 18, matching
@@ -137,6 +152,6 @@ historical artifact paths in that file refer to untracked local evidence.
 | `app/src/androidTest/` | Android TV navigation, rendering, playback and performance tests |
 | `scripts/` | Toolchain bootstrap, fixtures and optional remote client |
 | `remote/` | Optional build/test worker service and pinned toolchain |
-| `releases/0.14.1/` | Production provenance and APK checksum |
+| `releases/0.16.0/` | Candidate verification and APK checksum |
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency notices.

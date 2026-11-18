@@ -34,7 +34,7 @@ data class Preferences(
         fun decode(j: JSONObject) = Preferences(
             // The new key separates a deliberate choice from the old saved
             // Live TV default, so upgrades also start on On-Demand once.
-            startSection = j.optString("startupScreen").takeIf { it in listOf("On-Demand", "Live TV") } ?: "On-Demand",
+            startSection = j.optString("startupScreen").takeIf { it in listOf("On-Demand", "Live TV", "YouTube") } ?: "On-Demand",
             largePosters = j.optBoolean("largePosters"), showRecent = j.optBoolean("showRecent", true),
             showContinue = j.optBoolean("showContinue", true), showMyList = j.optBoolean("showMyList", true),
             resume = j.optBoolean("resume", true),

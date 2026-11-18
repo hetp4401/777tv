@@ -34,7 +34,7 @@ class Store(context: Context) {
         value.forEach { (id, groups) -> if (groups.isNotEmpty()) data.put(id, JSONArray(groups.sorted())) }
         prefs.edit().putString("hidden-channel-categories", data.toString()).apply()
     }
-    fun clearHistory() { prefs.edit().remove("progress").apply();progressSource=null;progressEntries=emptyList(); readWarning = null }
+    fun clearHistory() { prefs.edit().remove("progress").remove("youtube-progress").apply();progressSource=null;progressEntries=emptyList(); readWarning = null }
     fun saved(): List<Title> = Decode.titles(array("saved"))
     fun saveTitles(titles: List<Title>) { prefs.edit().putString("saved", JSONArray(titles.take(500).map { it.json() }).toString()).apply() }
     fun progress(): List<Progress> {
@@ -113,5 +113,34 @@ class Store(context: Context) {
     fun resetAddons() {
         KeyStore.getInstance("AndroidKeyStore").apply { load(null);deleteEntry("fleet-tv-addons") }
         prefs.edit().remove("addons-encrypted").apply()
+    }
+    internal fun youTubeCredentials():YouTubeCredentials = object:YouTubeCredentials {
+        override fun read():YouTubeSession? {
+            val blob=prefs.getString("youtube-session-encrypted",null)?:return null
+            val parts=blob.split(':',limit=2);require(parts.size==2)
+            val cipher=Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.DECRYPT_MODE,key("777tv-youtube"),GCMParameterSpec(128,Base64.decode(parts[0],Base64.NO_WRAP)))
+            cipher.updateAAD("777tv-youtube:v1".toByteArray(Charsets.UTF_8))
+            return YouTubeSession.decode(JSONObject(String(cipher.doFinal(Base64.decode(parts[1],Base64.NO_WRAP)),Charsets.UTF_8)))
+        }
+        override fun write(session:YouTubeSession?) {
+            if(session==null) { prefs.edit().remove("youtube-session-encrypted").apply();return }
+            val cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.ENCRYPT_MODE,key("777tv-youtube"))
+            cipher.updateAAD("777tv-youtube:v1".toByteArray(Charsets.UTF_8))
+            val blob=Base64.encodeToString(cipher.iv,Base64.NO_WRAP)+":"+
+                Base64.encodeToString(cipher.doFinal(session.json().toString().toByteArray(Charsets.UTF_8)),Base64.NO_WRAP)
+            prefs.edit().putString("youtube-session-encrypted",blob).apply()
+        }
+    }
+    internal fun youTubeProgress(id:String):Progress?=runCatching {
+        val raw=JSONObject(prefs.getString("youtube-progress","{}")!!).optJSONObject(id)?:return@runCatching null
+        Progress(Decode.title(raw.getJSONObject("title")),null,raw.getLong("position"),raw.getLong("duration"),raw.getLong("updated"))
+    }.getOrNull()
+    internal fun youTubeProgress(value:Progress) {
+        val data=runCatching { JSONObject(prefs.getString("youtube-progress","{}")!!) }.getOrDefault(JSONObject())
+        data.put(value.title.id,JSONObject().put("title",value.title.json()).put("position",value.positionMs.coerceAtLeast(0))
+            .put("duration",value.durationMs.coerceAtLeast(0)).put("updated",value.updated))
+        val stale=data.keys().asSequence().sortedByDescending { data.optJSONObject(it)?.optLong("updated")?:0L }.drop(50).toList()
+        stale.forEach(data::remove);prefs.edit().putString("youtube-progress",data.toString()).apply()
     }
 }

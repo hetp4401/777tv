@@ -10,7 +10,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-enum class Section(val label: String) { LIVE("Live TV"), SEARCH("On-Demand") }
+enum class Section(val label: String) { LIVE("Live TV"), SEARCH("On-Demand"), YOUTUBE("YouTube") }
 internal fun streamLinksFresh(loadedAtMs:Long?,nowMs:Long,ttlMs:Long=300_000L)=loadedAtMs!=null && loadedAtMs>=0 && nowMs>=loadedAtMs && nowMs-loadedAtMs<=ttlMs
 sealed interface Route {
     data class Browse(val section: Section) : Route
@@ -30,6 +30,26 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
         if (if (old is Collection<*> && value is Collection<*>) old !== value else old != value) changes.postValue(Unit)
     }
     val store = Store(application)
+    private var youtubeValue:YouTubeModel?=null
+    internal val youtube:YouTubeModel get()=youtubeValue?:createYouTube().also { youtubeValue=it }
+    private fun createYouTube(origin:String="https://www.youtube.com",resolver:YouTubeStreamResolver=YouTubeResolver())=YouTubeModel(
+        YouTubeClient(store.youTubeCredentials(),origin=origin),viewModelScope,{changes.postValue(Unit)},
+        { watch,replace -> if(replace && (route as? Route.Player)?.watch?.title?.type=="youtube")route=Route.Player(watch) else open(Route.Player(watch)) },
+        { message -> android.widget.Toast.makeText(getApplication(),message,android.widget.Toast.LENGTH_LONG).show() },resolver)
+    internal fun youTubeBackground(){youtubeValue?.deactivate()}
+    @androidx.annotation.VisibleForTesting
+    internal fun youtubeFixture(value:String) {
+        require(getApplication<Application>().applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE!=0)
+        val base=baseUrl(value);require(java.net.URI(base).host in setOf("10.0.2.2","127.0.0.1","localhost"))
+        youtubeValue?.deactivate()
+        youtubeValue=createYouTube("$base/youtube",object:YouTubeStreamResolver {
+            override suspend fun resolve(video:YouTubeVideo):Watch {
+                val result=org.json.JSONObject(Http().text("$base/youtube/resolve/${video.id}"))
+                return Watch(video.title(),Stream("YouTube fixture",result.getString("url")),short=video.isShort,resolvedAtMs=System.currentTimeMillis(),
+                    audioUrl=result.optString("audioUrl"),videoMimeType=result.optString("videoMimeType"),audioMimeType=result.optString("audioMimeType"))
+            }
+        })
+    }
     var preferences by state(store.preferences()); private set
     private val addonLoad=store.addons()
     var addons by state(addonLoad.getOrDefault(emptyList())); private set
@@ -39,7 +59,7 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
     val addonDraft:String get()=addonDraftValue
     private var fixtureAddons:List<Addon>?=null
     var repository by state(Repository(addons)); private set
-    private val initialSection = if (preferences.startSection == "Live TV") Section.LIVE else Section.SEARCH
+    private val initialSection = when(preferences.startSection) { "Live TV" -> Section.LIVE; "YouTube" -> Section.YOUTUBE;else -> Section.SEARCH }
     var route by state<Route>(Route.Browse(initialSection)); private set
     var section by state(initialSection); private set
     var busy by state(false); private set
@@ -97,6 +117,7 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
         val root=history.isEmpty() && when(section) {
             Section.SEARCH -> route==Route.Browse(Section.SEARCH)
             Section.LIVE -> route is Route.Channels || (route==Route.Browse(Section.LIVE) && defaultProfile==null)
+            Section.YOUTUBE -> route==Route.Browse(Section.YOUTUBE)
         }
         if(this.section==section && root)return
         this.section = section; history.clear(); route = Route.Browse(section)
@@ -169,6 +190,7 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
             is Route.Browse -> when (page.section) {
                 Section.SEARCH -> search(searchText)
                 Section.LIVE -> cancelLoad()
+                Section.YOUTUBE -> cancelLoad()
             }
             is Route.Detail -> {
                 if(page.title.type=="series")loadSeriesDetail(page)
@@ -332,9 +354,11 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
         saved = if (saved.any { it.key == title.key }) saved.filter { it.key != title.key } else (listOf(title.copy(episodes=emptyList())) + saved).take(500)
         store.saveTitles(saved)
     }
-    fun resume(title: Title, episode: Episode?): Long = if (!preferences.resume) 0L else store.progress().find { it.title.key == title.key && it.episode?.id == episode?.id && !it.finished }?.positionMs ?: 0L
+    fun resume(title: Title, episode: Episode?): Long = if (!preferences.resume) 0L else if(title.type=="youtube")store.youTubeProgress(title.id)?.takeUnless { it.finished }?.positionMs?:0L
+        else store.progress().find { it.title.key == title.key && it.episode?.id == episode?.id && !it.finished }?.positionMs ?: 0L
     fun saveProgress(watch: Watch, positionMs: Long, durationMs: Long) {
         if (!watch.live && positionMs > 0) {
+            if(watch.title.type=="youtube") { if(!watch.short)store.youTubeProgress(Progress(watch.title,null,positionMs,durationMs.coerceAtLeast(0),System.currentTimeMillis()));return }
             store.progress(Progress(watch.title, watch.episode, positionMs, durationMs.coerceAtLeast(0), System.currentTimeMillis()))
             progress = store.progress()
         }
@@ -464,6 +488,7 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
     }
     fun refreshContent() { repository.refresh();invalidateSeriesPages(); shelves = emptyList(); results = emptyList();searchShelves=emptyList();catalogDefinitions=emptyList();lastSearch=null;homeWarning=null; if (route == Route.Settings) { connectionStatus = "Content cache cleared." } else load() }
     fun trimMemory() {
+        youtubeValue?.trimMemory((route as? Route.Player)?.watch?.title?.type=="youtube")
         repository.refresh()
         val active=(route as? Route.Detail)?.title?.key?:(route as? Route.Player)?.watch?.title?.key
         seriesPages.keys.filter { it!=active }.forEach(seriesPages::remove)

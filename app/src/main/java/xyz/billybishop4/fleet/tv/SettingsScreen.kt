@@ -108,7 +108,7 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
             }
             "Appearance" -> {
                 heading("Navigation")
-                choice("Startup screen", listOf("On-Demand", "Live TV"), { m.preferences.startSection }) { m.updatePreferences(m.preferences.copy(startSection = it)) }
+                choice("Startup screen", listOf("On-Demand", "Live TV", "YouTube"), { m.preferences.startSection }) { m.updatePreferences(m.preferences.copy(startSection = it)) }
                 choice("Poster size", listOf(false, true), { m.preferences.largePosters }, { if (it) "Large" else "Standard" }) { m.updatePreferences(m.preferences.copy(largePosters = it)) }
                 page.gap(12); heading("Search home")
                 toggle("Show continue watching", { m.preferences.showContinue }) { m.updatePreferences(m.preferences.copy(showContinue = !m.preferences.showContinue)) }

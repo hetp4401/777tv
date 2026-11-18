@@ -533,3 +533,43 @@ Full results and artifact hashes are recorded in `artifacts/verification-0.9.0.j
 Functional emulator results do not establish physical TV smoothness or codec
 compatibility for an untested production stream. No TCL or production IPTV
 connection is part of this verification.
+
+## Native YouTube candidate (0.16.0)
+
+The official TizenTube Cobalt APK was inspected before implementing the native
+feature; findings and source links are in `docs/tizentube-investigation.md`.
+777tv uses recycled native cards and its existing ExoPlayer instead of shipping
+the Cobalt runtime. The candidate has no native libraries or WebViews. Public
+media signature resolution uses the pinned NewPipeExtractor dependency, created
+only for explicit playback.
+
+| Viewer action | Reviewed behavior |
+| --- | --- |
+| Move through Home, search or Shorts. | Focus frames the thumbnail, leaving text outside. Focusing never resolves or starts a stream. Search is native and debounced. |
+| Sign in. | A native code/QR sheet uses Google's returned URL. Pending, cancel, decline, expiry and sign-out are recoverable; account tokens are encrypted separately from add-ons and IPTV. |
+| Press Down while watching an ordinary video. | A compact native related-video sheet opens over the same player. Shorts retain hidden-controls Up/Down navigation. |
+| Choose a related video. | The player route is replaced, so Back does not step through an accumulating chain of old players. |
+| Open Comments. | Text loads on demand into recycled rows. Page cursors and reply cursors stay separate. Reading/replies keep playback running. Back returns from replies; Close dismisses the entire sheet. |
+| Reveal or seek with the playback controls. | The existing slim, unboxed strip and hold acceleration remain. Optional replay intensities draw as one cached Canvas path above the seek line. Absent data and uncovered time ranges stay clear; controls still auto-hide. |
+| Close a sheet or leave playback. | Pending sheet requests cancel; visible artwork is released. Optional metadata failures do not stop the video. |
+
+The 95 ordinary JVM checks and Android lint pass. The opt-in public YouTube
+probe also passed actual search, Shorts, device-code issuance, public stream
+access, related videos, comments and replay-marker parsing. Actual Google owner
+approval was not performed; account completion uses generated fixtures.
+
+Worker emulator checks exercise the above actions and existing on-demand,
+Live TV and settings behavior. The candidate verification under
+`releases/0.16.0/verification.json` records every case, source/archive hash and
+the scope of reruns. A timing-dependent test assertion was corrected to wait
+for the new player after a related-video route changes; its assertions still
+require a different, playing player and the correct Back destination.
+The expanded run also exposed a real cancellation race: scroll pagination
+cancelled a video being opened. Continuations now preserve explicit playback
+resolution. A regression selects a video and starts pagination concurrently;
+the same test/fixtures compare the original behavior with the corrected model.
+
+The base 0.15.0 candidate was checked on the physical TCL before the user's
+later instruction to hold TV testing. The 0.16.0 candidate is not installed or
+tested there. No physical-TV memory or frame-rate improvement is claimed for
+the new YouTube feature. IPTV defaults remain empty and existing data is kept.

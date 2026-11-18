@@ -39,7 +39,10 @@ data class Channel(val id: String, val name: String, val url: String, val group:
 }
 data class GuideProgram(val name: String, val startMs: Long, val endMs: Long, val description: String = "")
 data class Watch(val title: Title, val stream: Stream, val episode: Episode? = null, val headers: Map<String, String> = emptyMap(), val live: Boolean = false,
-    val provider: Provider? = null, val channel: Channel? = null)
+    val provider: Provider? = null, val channel: Channel? = null,
+    val audioUrl:String="", val videoMimeType:String="", val audioMimeType:String="", val resolvedAtMs:Long=0L,
+    val short:Boolean=false, val captions:List<VideoCaption> = emptyList())
+data class VideoCaption(val url:String,val language:String,val mimeType:String)
 
 object Decode {
     fun title(j: JSONObject, fallbackType: String = "movie"): Title {

@@ -11,6 +11,7 @@ import time
 import struct
 import zlib
 import re
+import youtube_fixture
 
 
 def logo_png():
@@ -97,6 +98,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urlparse(self.path); path = unquote(u.path)
+        if path.startswith('/youtube/'):return youtube_fixture.handle_get(self,path,u.query,ROOT)
         if path=='/media/multitrack.mkv':return self.media()
         if path == '/logo.png':
             if parse_qs(u.query).get('slow') == ['1']:time.sleep(1)
@@ -226,6 +228,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         u = urlparse(self.path); q = parse_qs(u.query)
+        if u.path.startswith('/youtube/'):return youtube_fixture.handle_post(self,u.path)
         if u.path != "/hls/fixture/session":
             return self.send({"error": "unknown stream"}, status=404)
         sid = q.get("sid", [""])[0]; action = q.get("action", ["keep"])[0]

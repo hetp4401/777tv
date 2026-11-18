@@ -18,6 +18,7 @@ internal interface NativeScreen {
     fun restoreState(state: Parcelable?) {}
     fun focusTarget():View?=null
     fun restoreFocus(tag:String,parentTag:String?):Boolean=false
+    fun back():Boolean=false
     fun background() {}
     fun foreground() {}
     fun close() {}
@@ -38,6 +39,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var errorRow:LinearLayout
     private lateinit var live: Button
     private lateinit var search: Button
+    private lateinit var youtube:Button
     private lateinit var settings: Button
     private var screen: NativeScreen? = null
     private var screenKey = ""
@@ -113,7 +115,7 @@ class MainActivity : ComponentActivity() {
         else @Suppress("DEPRECATION") run { window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY }
         model.changes.observe(this) { scheduleRender() }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() { if (playback?.dismissControls()!=true && !collapsePreview() && !model.back()) finish() }
+            override fun handleOnBackPressed() { if (playback?.dismissControls()!=true && !collapsePreview() && screen?.back()!=true && !model.back()) finish() }
         })
         render()
     }
@@ -140,9 +142,10 @@ class MainActivity : ComponentActivity() {
                 addState(intArrayOf(), round(android.graphics.Color.TRANSPARENT))
             }
         }
-        live = tab("Live TV", Section.LIVE); search = tab("On-Demand", Section.SEARCH)
+        live = tab("Live TV", Section.LIVE); search = tab("On-Demand", Section.SEARCH);youtube=tab("YouTube",Section.YOUTUBE)
         tabs.addView(live, LinearLayout.LayoutParams(dp(112), dp(42)).apply { marginEnd=dp(6) })
-        tabs.addView(search, LinearLayout.LayoutParams(dp(132), dp(42)))
+        tabs.addView(search, LinearLayout.LayoutParams(dp(132), dp(42)).apply { marginEnd=dp(6) })
+        tabs.addView(youtube,LinearLayout.LayoutParams(dp(112),dp(42)))
         bar.addView(tabs, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         settings = action("Settings") { model.open(Route.Settings) }.quiet()
         bar.addView(settings, FrameLayout.LayoutParams(-2, -2, Gravity.END or Gravity.CENTER_VERTICAL))
@@ -296,15 +299,15 @@ class MainActivity : ComponentActivity() {
         }
         if(changed)closePlayback()
         chrome.visibility = if(inlineFullscreen)View.GONE else View.VISIBLE
-        live.isSelected = model.section == Section.LIVE; search.isSelected = model.section == Section.SEARCH
+        live.isSelected = model.section == Section.LIVE; search.isSelected = model.section == Section.SEARCH;youtube.isSelected=model.section==Section.YOUTUBE
         settings.visibility = if (route == Route.Settings) View.INVISIBLE else View.VISIBLE
-        val localFeedback=route is Route.Channels || route==Route.Settings || route==Route.Addons || route==Route.AddProvider || route is Route.EditProvider
+        val localFeedback=route is Route.Channels || route==Route.Settings || route==Route.Addons || route==Route.AddProvider || route is Route.EditProvider || route==Route.Browse(Section.YOUTUBE)
         error.text = model.error.orEmpty();errorRow.visibility=if(!localFeedback && model.error!=null)View.VISIBLE else View.GONE
         loading.visibility = if (model.busy && !localFeedback) View.VISIBLE else View.GONE
         if (changed || screen == null) {
             retireScreen(); screenKey = next;screenRoute=route
             screen = when (route) {
-                is Route.Browse -> if (route.section == Section.SEARCH) SearchScreen(this) else ProfilesScreen(this)
+                is Route.Browse -> when(route.section) { Section.SEARCH->SearchScreen(this);Section.LIVE->ProfilesScreen(this);Section.YOUTUBE->YouTubeScreen(this) }
                 is Route.Channels -> ChannelsScreen(this, route.provider)
                 is Route.Detail -> DetailScreen(this, route.title)
                 is Route.Sources -> SourcesScreen(this, route)
@@ -322,6 +325,9 @@ class MainActivity : ComponentActivity() {
                 search.nextFocusDownId=input.id;input.nextFocusUpId=search.id
             }
         } else search.nextFocusDownId=View.NO_ID
+        if(route==Route.Browse(Section.YOUTUBE)) {
+            screen!!.view.findTag("field:Search YouTube")?.let { input ->youtube.nextFocusDownId=input.id;input.nextFocusUpId=youtube.id }
+        } else youtube.nextFocusDownId=View.NO_ID
         if(pendingFocus!=null)root.postOnAnimation { restorePendingFocus() }
     }
     override fun onSaveInstanceState(outState:Bundle) {
@@ -335,7 +341,7 @@ class MainActivity : ComponentActivity() {
     }
     override fun onStart() { super.onStart(); playback?.start();screen?.foreground() }
     override fun onWindowFocusChanged(hasFocus: Boolean) { super.onWindowFocusChanged(hasFocus); if(hasFocus)restorePendingFocus() }
-    override fun onStop() { screen?.background(); playback?.stop(); super.onStop() }
+    override fun onStop() { screen?.background();model.youTubeBackground(); playback?.stop(); super.onStop() }
     override fun onDestroy() {
         playback?.close(); playback = null; screen?.close(); posterPool.clear(); super.onDestroy()
     }

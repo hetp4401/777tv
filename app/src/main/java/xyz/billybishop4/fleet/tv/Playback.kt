@@ -13,6 +13,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.*
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaSession
 import androidx.media3.ui.*
@@ -41,6 +42,8 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     private var pausedPictureAnchor:Long?=null
     private var pausedPictureRefresh:Runnable?=null
     private var controls: VodControls? = null
+    private var youtubePanel:YouTubeWatchPanel?=null
+    private var replayRequest:Job?=null
     private var buffering: View? = null
     private var exoDecoder=""
     val snapshot: PlaybackSnapshot? get() = player?.let { exo ->
@@ -65,7 +68,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     private var closed = false
     private var transitioning = false
     private var retries = 0
-    private var startMs = if (original.live) 0L else m.resume(original.title,original.episode)
+    private var startMs = if (original.live || original.short) 0L else m.resume(original.title,original.episode)
     private var playIntent=true
     fun start() { if (running || closed) return; running=true; connect(false) }
     fun stop() { running=false; resolution?.cancel(); resolution=null; detach() }
@@ -76,10 +79,11 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         resolution=a.lifecycleScope.launch {
             try {
                 if(retries>0)delay((retries*1000L).coerceAtMost(3000))
-                val w=if(original.live&&original.provider!=null&&original.channel!=null)m.repository.liveWatch(original.provider,original.channel,refresh) else original
+                val w=if(original.title.type=="youtube" && (refresh || System.currentTimeMillis()-original.resolvedAtMs !in 0..300_000L))m.youtube.refreshWatch(original)
+                    else if(original.live&&original.provider!=null&&original.channel!=null)m.repository.liveWatch(original.provider,original.channel,refresh) else original
                 ensureActive();if(running&&!closed)attach(w)
             } catch(e:CancellationException){throw e}
-            catch(e:Exception){if(running){transitioning=false;if(original.live&&retries<m.preferences.liveRetries){retries++;connect(true)}else fail((e as? UserMessage)?.message?:"Couldn't connect to this channel. Check the provider or try again.")}}
+            catch(e:Exception){if(running){transitioning=false;if(original.live&&retries<m.preferences.liveRetries){retries++;connect(true)}else fail((e as? UserMessage)?.message?:if(original.title.type=="youtube")"YouTube couldn't play this video. Try again." else "Couldn't connect to this channel. Check the provider or try again.")}}
         }
     }
     private fun attach(w:Watch) {
@@ -92,9 +96,12 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                 .setDefaultRequestProperties(w.headers).setConnectTimeoutMs(15000).setReadTimeoutMs(20000)
             val tracks=DefaultTrackSelector(a).apply{parameters=buildUponParameters().setPreferredAudioLanguage(prefs.audioLanguage.takeIf{it.isNotBlank()})
                 .setPreferredTextLanguage(prefs.subtitleLanguage.takeIf{it.isNotBlank()}).setTrackTypeDisabled(C.TRACK_TYPE_TEXT,!prefs.subtitles).setSelectUndeterminedTextLanguage(prefs.subtitles).build()}
+            if(w.title.type=="youtube")tracks.parameters=tracks.buildUponParameters().setMaxVideoSize(1920,1080).setPreferredVideoMimeTypes(MimeTypes.VIDEO_H264).build()
             val builder=ExoPlayer.Builder(a).setMediaSourceFactory(DefaultMediaSourceFactory(source)).setTrackSelector(tracks)
                 .setSeekBackIncrementMs(prefs.seekSeconds*1000L).setSeekForwardIncrementMs(prefs.seekSeconds*1000L)
             if(w.live){val min=prefs.liveBufferSeconds*1000;builder.setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(min,maxOf(15000,min*2),500,1000).setTargetBufferBytes(24*1024*1024).setPrioritizeTimeOverSizeThresholds(false).build())}
+            else if(w.title.type=="youtube")builder.setLoadControl(DefaultLoadControl.Builder().setBufferDurationsMs(10000,30000,1000,2000)
+                .setTargetBufferBytes(24*1024*1024).setPrioritizeTimeOverSizeThresholds(false).build())
             val exo=builder.build();player=exo
             // Do not even set an empty effect list for neutral playback: doing
             // so creates a GPU sink instead of the direct MediaCodec Surface.
@@ -141,10 +148,23 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                 selectTrack={ type,id -> if(mediaPlayer===p)selectExoTrack(p,type,id) },
                 controlsInset={ bottom ->
                     playerView?.subtitleView?.setPadding(0,0,0,if(bottom>0)bottom+a.dp(8) else 0)
-                },pictureControls={ showPictureControls() }).also { c ->
+                },pictureControls={ showPictureControls() },
+                youtubePanel=if(w.title.type=="youtube")({comments:Boolean->youtubePanel?.show(comments)}) else null).also { c ->
                 view.addView(c.view,FrameLayout.LayoutParams(-1,-1))
                 playerView?.setOnClickListener { c.show() }
                 c.show()
+            }
+            if(w.title.type=="youtube") {
+                youtubePanel=YouTubeWatchPanel(a,w){playerView?.requestFocus()}.also {
+                    view.addView(it.view,FrameLayout.LayoutParams(-1,minOf(a.dp(320),(a.resources.displayMetrics.heightPixels*.6f).toInt()),Gravity.BOTTOM))
+                }
+                replayRequest=a.lifecycleScope.launch {
+                    // Let the first video frames arrive before this optional metadata request competes for bandwidth.
+                    while(p.playbackState!=Player.STATE_READY && p.playbackState!=Player.STATE_ENDED)delay(200)
+                    try { val markers=m.youtube.client.heatmap(w.title.id);if(mediaPlayer===p)controls?.replayMarkers(markers) }
+                    catch(e:CancellationException){throw e}
+                    catch(_:Exception){ /* Missing replay data must never interrupt playback. */ }
+                }
             }
         }
         session=MediaSession.Builder(a,p).build()
@@ -170,7 +190,16 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             }
 
         })
-        p.setMediaItem(MediaItem.Builder().setUri(url).setMediaMetadata(MediaMetadata.Builder().setTitle(w.title.name).setSubtitle(w.episode?.label).build()).build(),if(w.live)C.TIME_UNSET else startMs)
+        val item=MediaItem.Builder().setUri(url).apply { if(w.videoMimeType.isNotBlank())setMimeType(w.videoMimeType) }
+            .setMediaMetadata(MediaMetadata.Builder().setTitle(w.title.name).setSubtitle(w.episode?.label?:w.title.description.takeIf{w.title.type=="youtube"}).build())
+            .setSubtitleConfigurations(w.captions.map { caption->MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(caption.url))
+                .setMimeType(caption.mimeType).setLanguage(caption.language).build() }).build()
+        if(w.audioUrl.isNotBlank()) {
+            val factory=DefaultMediaSourceFactory(source)
+            val audio=MediaItem.Builder().setUri(w.audioUrl).apply { if(w.audioMimeType.isNotBlank())setMimeType(w.audioMimeType) }.build()
+            exo.setMediaSource(MergingMediaSource(factory.createMediaSource(item),factory.createMediaSource(audio)),startMs)
+        } else p.setMediaItem(item,if(w.live)C.TIME_UNSET else startMs)
+        if(w.short)p.repeatMode=Player.REPEAT_MODE_ONE
         p.setPlaybackParameters(savedPlaybackParameters?:PlaybackParameters(if(w.live)1f else prefs.speed));p.prepare();p.playWhenReady=playIntent
         keepAwake(p)
         progressJob=a.lifecycleScope.launch{
@@ -282,6 +311,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     }
     private fun keepAwake(p:Player){if(p.isPlaying||(p.playWhenReady&&p.playbackState==Player.STATE_BUFFERING))a.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)else a.window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)}
     private fun detach(keepPictureControls:Boolean=false){
+        replayRequest?.cancel();replayRequest=null;youtubePanel?.close();youtubePanel=null
         cancelPictureRefresh()
         if(!keepPictureControls) { pictureDialog?.dismiss();pictureDialog=null;pictureResult=null;pendingPictureFrame=false }
         progressJob?.cancel();progressJob=null
@@ -302,8 +332,8 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     private fun fail(text:String){
         resolution?.cancel();resolution=null;detach();view.removeAllViews()
         val box=a.column().apply{pad(24);gravity=Gravity.CENTER;add(a.text(text,19f));gap(20)}
-        val retry=a.action("Retry") {retries=0;transitioning=false;connect(original.live)}
-        box.add(a.row().apply{button(retry);button(a.action(if(original.live)"Back to channels" else "Back to streams"){exit()})})
+        val retry=a.action("Retry") {retries=0;transitioning=false;connect(original.live || original.title.type=="youtube")}
+        box.add(a.row().apply{button(retry);button(a.action(if(original.title.type=="youtube")"Back to YouTube" else if(original.live)"Back to channels" else "Back to streams"){exit()})})
         view.addView(box,FrameLayout.LayoutParams(a.dp(640).coerceAtMost((view.width.takeIf{it>0}?:a.resources.displayMetrics.widthPixels)-a.dp(24)),-2,Gravity.CENTER))
         if(!fullscreen)return
         view.descendantFocusability=android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS
@@ -319,6 +349,16 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     }
     fun dispatchKey(event:KeyEvent):Boolean {
         if(!fullscreen)return false
+        if(youtubePanel?.visible==true) {
+            // Native panel descendants handle navigation; global media buttons still reach the same player.
+            return if(event.keyCode in setOf(KeyEvent.KEYCODE_MEDIA_PLAY,KeyEvent.KEYCODE_MEDIA_PAUSE,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,KeyEvent.KEYCODE_MEDIA_REWIND))controls?.dispatchKey(event)?:false else false
+        }
+        if(original.short && (controls?.view?.visibility!=View.VISIBLE || event.keyCode in setOf(KeyEvent.KEYCODE_MEDIA_NEXT,KeyEvent.KEYCODE_MEDIA_PREVIOUS)) &&
+            event.keyCode in setOf(KeyEvent.KEYCODE_DPAD_UP,KeyEvent.KEYCODE_DPAD_DOWN,KeyEvent.KEYCODE_MEDIA_NEXT,KeyEvent.KEYCODE_MEDIA_PREVIOUS)) {
+            if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0)m.youtube.step(original,if(event.keyCode in setOf(KeyEvent.KEYCODE_DPAD_DOWN,KeyEvent.KEYCODE_MEDIA_NEXT))1 else -1)
+            return true
+        }
         if(!original.live)return controls?.dispatchKey(event)?:false
         if(mediaPlayer==null)return false
         if(event.keyCode in listOf(KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,KeyEvent.KEYCODE_MEDIA_REWIND,KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD,KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD,KeyEvent.KEYCODE_MEDIA_NEXT,KeyEvent.KEYCODE_MEDIA_PREVIOUS,KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER))return true
@@ -328,7 +368,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         }
         return false
     }
-    fun dismissControls():Boolean = controls?.dismiss()==true
+    fun dismissControls():Boolean = youtubePanel?.dismiss()==true || controls?.dismiss()==true
 }
 
 private fun exoTracks(p:Player,type:Int):List<PlaybackTrack> {

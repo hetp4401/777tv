@@ -14,7 +14,7 @@ const state=path.join(root,'.tools/shellbox-remote');
 const config=JSON.parse(await fs.readFile(process.env.FLEET_REMOTE_CONFIG||path.join(state,'worker-access.json'),'utf8'));
 const args=process.argv.slice(2), command=args[0]||'doctor';
 const defaultUiClasses=['TvFlowTest','EngineLayoutTest','CategoryVisibilityTest','OptimizationRegressionTest',
-    'SettingsNavigationTest','LiveNavigationTest','BrowseNavigationTest','SearchCatalogTest','NavigationRobustnessTest','VodControlsTest']
+    'SettingsNavigationTest','LiveNavigationTest','BrowseNavigationTest','SearchCatalogTest','NavigationRobustnessTest','VodControlsTest','YouTubeNavigationTest','YouTubeWatchUiTest']
     .map(name=>'xyz.billybishop4.fleet.tv.'+name).join(',');
 const headers={Authorization:'Bearer '+config.token};
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -31,7 +31,7 @@ async function snapshot(){
 import sys,pathlib,tarfile,gzip
 root=pathlib.Path(sys.argv[1]);target=pathlib.Path(sys.argv[2])
 files=[root/p for p in ['.gitignore','AGENTS.md','README.md','REVIEW.md','THIRD_PARTY_NOTICES.md','build.gradle.kts','settings.gradle.kts','gradle.properties','gradlew','gradlew.bat','app/build.gradle.kts']]
-for name in ['app/src','scripts','gradle','remote']:
+for name in ['app/src','scripts','gradle','remote','docs','releases']:
  files.extend(p for p in (root/name).rglob('*') if p.is_file() and '__pycache__' not in p.parts and 'jniLibs' not in p.parts and p.suffix not in ['.keystore','.jks'] and p.name!='.env')
 with target.open('wb') as out,gzip.GzipFile(filename='',mode='wb',fileobj=out,mtime=0) as zipped,tarfile.open(fileobj=zipped,mode='w') as tar:
  for p in sorted(files):
