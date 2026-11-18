@@ -552,7 +552,10 @@ class BrowseNavigationTest:NativeTestBase() {
     private fun awaitEpisodeStreams(episode:Episode) {
         await { shownTag("series-details")!=null && shownTag("stream:Fixture GDrive")!=null && ui {
             a.model.route is Route.Detail && a.model.selectedEpisode?.id==episode.id && !a.model.busy && !a.model.streamsBusy &&
-                a.model.streams.isNotEmpty() && a.model.streams.all { it.url.contains("episode="+episode.id) }
+                a.model.streams.isNotEmpty() && a.model.streams.all { it.url.contains("episode="+episode.id) } &&
+                // Fast fixture responses can finish before the next rendered UI frame.
+                a.model.selectedEpisode?.description.orEmpty().let { overview->overview.isEmpty() ||
+                    (a.window.decorView.findTag("episode-description") as? TextView)?.text?.toString()==overview }
         } }
     }
     private fun rectangle(tag:String)=ui {

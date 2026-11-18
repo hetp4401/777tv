@@ -34,6 +34,7 @@ class YouTubeNavigationTest:NativeTestBase() {
     }
     private fun videos()=ui{a.model.youtube.videos}
     private fun search(query:String) {
+        if(ui{a.model.youtube.feed!=YouTubeFeed.SEARCH})click("YouTube search")
         field("Search YouTube",query);click("Search YouTube videos")
         await{ui{!a.model.youtube.busy && a.model.youtube.feed==YouTubeFeed.SEARCH}}
         await {
@@ -163,7 +164,7 @@ class YouTubeNavigationTest:NativeTestBase() {
         ui{a.model.toggle(title)}
     }
     @Test fun olderSearchResponsesCannotReplaceTheLatestQuery() {
-        control("slow=1");field("Search YouTube","slow");click("Search YouTube videos")
+        click("YouTube search");control("slow=1");field("Search YouTube","slow");click("Search YouTube videos")
         await{audit().getJSONArray("requests").objects().any{it.optString("query")=="slow"}}
         field("Search YouTube","new query");click("Search YouTube videos")
         await{ui{!a.model.youtube.busy && a.model.youtube.query=="new query" && a.model.youtube.videos.isNotEmpty()}}

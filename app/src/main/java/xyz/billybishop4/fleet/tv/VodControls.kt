@@ -69,6 +69,10 @@ internal class VodControls(
     }
     private val playIcon = ControlIcon(ControlIcon.PAUSE)
     private var lastCenterRelease=Long.MIN_VALUE
+    private var lastRelatedDown=Long.MIN_VALUE
+    private var lastRelatedRelease=Long.MIN_VALUE
+    private var lastControlsUpDown=Long.MIN_VALUE
+    private var lastControlsUpRelease=Long.MIN_VALUE
     private val heatmap=if(watch.playbackMode==PlaybackMode.YOUTUBE)YouTubeHeatmapView(a,bar) else null
     private val play = iconButton("Pause", "vod-play-pause", playIcon) { togglePlayback() }
     private val rewind = iconButton("Back $seekSeconds seconds", "vod-rewind", ControlIcon(ControlIcon.REWIND, seekSeconds)) { skip(-1) }
@@ -96,6 +100,7 @@ internal class VodControls(
     private var elapsedSecond = Long.MIN_VALUE
     private var remainingSecond = Long.MIN_VALUE
     private var reportedInset = 0
+    private var focusRequest=0
     private val insetLayout = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> publishInset() }
     private val ticker = object : Runnable {
         override fun run() {
@@ -217,24 +222,7 @@ internal class VodControls(
                 interacted(); update()
             }
         })
-        bar.setOnKeyListener { _, code, event ->
-            when (code) {
-                KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                    val direction = if (code == KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1
-                    if (event.action == KeyEvent.ACTION_DOWN) {
-                        if (event.repeatCount == 0 || heldDirection != direction) {
-                            finishHold(); heldDirection = direction; heldSince = event.eventTime
-                        }
-                        val elapsed = (event.eventTime - heldSince).coerceAtLeast(0)
-                        val multiplier = when { elapsed < 500 -> 1; elapsed < 1250 -> 2; elapsed < 2500 -> 4; else -> 8 }
-                        seekRelative(direction, event.repeatCount > 0, multiplier)
-                    } else if (event.action == KeyEvent.ACTION_UP && heldDirection == direction) finishHold()
-                    true
-                }
-                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> { if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) { finishHold(); togglePlayback() }; true }
-                else -> false
-            }
-        }
+        bar.setOnKeyListener { _,code,event->timelineKey(code,event) }
         bar.setOnFocusChangeListener { _, focused -> if (!focused) { touchPosition = null; finishHold() } }
         bar.setOnTouchListener { _, event -> if (event.actionMasked == MotionEvent.ACTION_CANCEL) { touchPosition = null; update(); scheduleHide() }; false }
         }
@@ -287,9 +275,10 @@ internal class VodControls(
     }
     fun show(focus: Boolean = true) {
         if (closed) return
+        val request=++focusRequest;val input=a.focusInputGeneration
         view.visibility = View.VISIBLE; interactedAt = SystemClock.uptimeMillis(); update(); startTicker(); scheduleHide()
         publishInset(); view.post { publishInset() }
-        if (focus) view.post { if (!closed && view.isShown && view.hasWindowFocus()) play.requestFocus() }
+        if (focus) view.post { if (!closed && request==focusRequest && input==a.focusInputGeneration && view.isShown && view.hasWindowFocus()) play.requestFocus() }
     }
     fun surfaceClick(){if(watch.short)togglePlayback() else show()}
     /** Back dismisses the overlay; a later Back may exit. */
@@ -298,6 +287,7 @@ internal class VodControls(
         hide(); return true
     }
     private fun hide() {
+        focusRequest++
         touchPosition = null; finishHold(); invalidateTrackRequest(); view.visibility = View.GONE
         main.removeCallbacks(ticker); main.removeCallbacks(hideLater); publishInset(); focusVideo()
     }
@@ -341,6 +331,23 @@ internal class VodControls(
         }
         show(false)
     }
+    /** Shared by focused timeline keys and the first Left/Right from the video surface. */
+    private fun timelineKey(code:Int,event:KeyEvent):Boolean = when(code) {
+        KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT->{
+            val direction=if(code==KeyEvent.KEYCODE_DPAD_RIGHT)1 else -1
+            if(event.action==KeyEvent.ACTION_DOWN) {
+                if(event.repeatCount==0 || heldDirection!=direction){finishHold();heldDirection=direction;heldSince=event.eventTime}
+                val elapsed=(event.eventTime-heldSince).coerceAtLeast(0)
+                val multiplier=when{elapsed<500->1;elapsed<1250->2;elapsed<2500->4;else->8}
+                seekRelative(direction,event.repeatCount>0,multiplier)
+            }else if(event.action==KeyEvent.ACTION_UP && heldDirection==direction)finishHold()
+            true
+        }
+        KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER->{
+            if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0){finishHold();togglePlayback()};true
+        }
+        else->false
+    }
     private fun togglePlayback() {
         if (player.playbackState == Player.STATE_ENDED) startPlayback()
         else if (player.playWhenReady) player.pause() else player.play()
@@ -369,19 +376,52 @@ internal class VodControls(
         playIcon.mode = if (paused) ControlIcon.PLAY else ControlIcon.PAUSE
         play.contentDescription = if (ended) "Replay" else if (paused) "Play" else "Pause"
     }
+    private fun relatedFromVideo()=view.visibility!=View.VISIBLE || !view.hasFocus() || play.hasFocus() ||
+        rewind.hasFocus() || forward.hasFocus() || trackButton.hasFocus() || options.hasFocus()
     /** Only global transport/reveal keys are intercepted; visible widgets receive normal D-pad events. */
     fun dispatchKey(event: KeyEvent): Boolean {
         if (closed) return false
         val code = event.keyCode
         val center=code==KeyEvent.KEYCODE_DPAD_CENTER || code==KeyEvent.KEYCODE_ENTER
+        val relatedDown=!watch.short && youtubePanel!=null && code==KeyEvent.KEYCODE_DPAD_DOWN
+        val controlsUp=!watch.short && code==KeyEvent.KEYCODE_DPAD_UP
+        if(relatedDown && event.action==KeyEvent.ACTION_DOWN)lastRelatedDown=event.downTime
+        if(controlsUp && event.action==KeyEvent.ACTION_DOWN)lastControlsUpDown=event.downTime
         if (event.action == KeyEvent.ACTION_UP) {
-            if(consumedKeys.remove(code)!=null){if(center)lastCenterRelease=event.downTime;return true}
+            val consumed=consumedKeys.remove(code)
+            // An opening DOWN's UP can go to the panel instead of these controls.
+            // Its old entry must not swallow a later press's orphan release.
+            if(consumed!=null && (!(relatedDown || controlsUp) || consumed==event.downTime)) {
+                if(center)lastCenterRelease=event.downTime
+                if(relatedDown)lastRelatedRelease=event.downTime
+                if(controlsUp)lastControlsUpRelease=event.downTime
+                return true
+            }
             // Android can consume the first DOWN when leaving touch/focus mode and
             // still deliver its UP. Activate the focused Shorts surface once in that case.
             if(watch.short && center && (view.visibility!=View.VISIBLE || !view.hasFocus())) {
                 if(!event.isCanceled && lastCenterRelease!=event.downTime)togglePlayback()
                 lastCenterRelease=event.downTime;return true
             }
+            if(relatedDown && lastRelatedDown!=event.downTime && relatedFromVideo()) {
+                val fresh=lastRelatedRelease!=event.downTime;lastRelatedRelease=event.downTime
+                if(!event.isCanceled && fresh)openYouTubePanel(false)
+                return true
+            }
+            if(controlsUp && lastControlsUpDown!=event.downTime && (view.visibility!=View.VISIBLE || !view.hasFocus())) {
+                val fresh=lastControlsUpRelease!=event.downTime;lastControlsUpRelease=event.downTime
+                if(!event.isCanceled && fresh)show(true)
+                return true
+            }
+        }
+        val horizontal=code==KeyEvent.KEYCODE_DPAD_LEFT || code==KeyEvent.KEYCODE_DPAD_RIGHT
+        // Do not consume an entire held direction just to reveal the HUD. Route its
+        // first DOWN and every repeat/UP through the same accelerated timeline handler.
+        if(!watch.short && horizontal && !consumedKeys.containsKey(code) && canSeek() &&
+            (bar.hasFocus() || view.visibility!=View.VISIBLE || !view.hasFocus()) &&
+            (event.action==KeyEvent.ACTION_DOWN || event.action==KeyEvent.ACTION_UP && heldDirection!=0)) {
+            if(event.action==KeyEvent.ACTION_DOWN && (view.visibility!=View.VISIBLE || !bar.hasFocus())){show(false);bar.requestFocus()}
+            return timelineKey(code,event)
         }
         consumedKeys[code]?.let { down ->
             if (event.repeatCount > 0 || event.downTime == down) return true
@@ -397,10 +437,9 @@ internal class VodControls(
             KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> return consume { skip(1) }
             KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> return consume { }
         }
-        if(watch.short && code in setOf(KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER) &&
+        if(watch.short && center &&
             (view.visibility!=View.VISIBLE || !view.hasFocus() || play.hasFocus()))return consume{togglePlayback()}
-        if(!watch.short && code==KeyEvent.KEYCODE_DPAD_DOWN && youtubePanel!=null &&
-            (view.visibility!=View.VISIBLE || listOf(play,rewind,forward,trackButton,options).any { it.hasFocus() }))
+        if(relatedDown && relatedFromVideo())
             return consume { openYouTubePanel(false) }
         val navigation = code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER || code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT
         if (navigation && (view.visibility != View.VISIBLE || !view.hasFocus())) return consume { show(true) }

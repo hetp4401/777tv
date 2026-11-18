@@ -44,7 +44,7 @@ internal class NativeAdapter<T : Any>(
 }
 internal class PosterCard(context: Context, private val loader: ArtworkLoader, private val model: FleetModel,
     private val widthDp: Int, horizontal: Boolean) : LinearLayout(context) {
-    private val image = ImageView(context)
+    private val image = FixedArtworkView(context)
     private val label = context.text("", 13f)
     private var title: Title? = null
     private var open: ((Title) -> Unit)? = null

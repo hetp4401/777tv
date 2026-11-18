@@ -64,6 +64,49 @@ class YouTubeTvLayoutTest:NativeTestBase() {
         await{ui{a.currentFocus?.tag=="youtube-video:V0000000001" && tagged("youtube-navigation")!!.width==a.dp(52)}}
         assertEquals(before,bounds(tagged("youtube-home")!!))
     }
+    @Test fun homeHasOneCompactSearchActionAndGlobalNavigationReturnsToRememberedContent() {
+        home();val first=tagged("youtube-video:V0000000003")!!
+        assertFalse(ui{tagged("youtube-search-header")!!.isShown})
+        val search=tagged("youtube-home-search")!!
+        assertTrue(ui{search.isFocusable && search.width in a.dp(220)..a.dp(240) && search.height in a.dp(32)..a.dp(38)})
+        assertFalse(search is EditText);assertTrue(bounds(search).width()<bounds(tagged("youtube-home")!!).width()/2)
+        ui{first.requestFocus()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP)
+        await{ui{a.currentFocus===search}}
+        screenshot("youtube-home-search-pill")
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP)
+        await{ui{a.currentFocus?.tag=="navigation:YouTube"}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
+        await{ui{a.currentFocus===first && first.isShown}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP);await{ui{a.currentFocus===search}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN);await{ui{a.currentFocus===first}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP);await{ui{a.currentFocus===search}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
+        await{ui{a.model.youtube.feed==YouTubeFeed.SEARCH && tagged("youtube-keyboard")?.isShown==true}}
+        assertFalse(ui{search.isShown})
+        ui{tagged("navigation:YouTube")!!.requestFocus()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
+        await{ui{a.currentFocus?.isShown==true && generateSequence(a.currentFocus){it.parent as? View}.any{it===tagged("youtube-page")}}}
+        screenshot("youtube-compact-home-search-navigation")
+    }
+    @Test fun gridEdgesReachTheRailAndNativeScrollingKeepsEveryDeliveredMove() {
+        click("YouTube search");field("Search YouTube","fixture");click("Search YouTube videos")
+        await{ui{!a.model.youtube.busy && a.model.youtube.videos.size>=32 && a.currentFocus?.tag=="youtube-video:V0000000001"}}
+        repeat(3){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000004"}}
+        repeat(4){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
+        assertEquals("youtube-video:V0000000004",ui{a.currentFocus?.tag})
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000008"}}
+        repeat(3){sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)}
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000005"}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)
+        await{ui{a.currentFocus?.contentDescription=="YouTube search"}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000005"}}
+        repeat(4){sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)}
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000021"}}
+        assertNull(player());assertFalse(ui{a.model.youtube.resolving})
+        screenshot("youtube-grid-native-focus-and-rail-return")
+    }
     @Test fun homeCanScrollAcrossUnattachedCardsWithTheRemoteAndReturn() {
         home();ui{tagged("youtube-video:V0000000001")!!.requestFocus()}
         repeat(8){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
@@ -104,6 +147,27 @@ class YouTubeTvLayoutTest:NativeTestBase() {
         assertEquals(YouTubeFeed.SEARCH,ui{a.model.youtube.feed});assertTrue(ui{keyboard.isShown});assertTrue(ui{a.model.youtube.videos.isEmpty()})
         ui{a.onBackPressedDispatcher.onBackPressed()};await{ui{a.model.youtube.feed==YouTubeFeed.HOME && !a.model.youtube.busy && a.model.youtube.videos.isNotEmpty()}}
         assertEquals(YouTubeFeed.HOME,ui{a.model.youtube.feed})
+    }
+    @Test fun backClosesAnExpandedSearchKeyboardWithoutDiscardingTheResults() {
+        click("YouTube search");field("Search YouTube","fixture");click("Search YouTube videos")
+        await{ui{!a.model.youtube.busy && a.currentFocus?.tag=="youtube-video:V0000000001"}}
+        val results=ui{a.model.youtube.videos}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP)
+        await{ui{tagged("youtube-keyboard")!!.hasFocus()}}
+        ui{a.onBackPressedDispatcher.onBackPressed()}
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000001" && !tagged("youtube-search-tools")!!.isShown}}
+        assertEquals(YouTubeFeed.SEARCH,ui{a.model.youtube.feed});assertEquals("fixture",ui{a.model.youtube.query})
+        assertSame(results,ui{a.model.youtube.videos});assertNull(player())
+    }
+    @Test fun keyboardSkipsItsUnusedCellInsteadOfOfferingAnActionThatDoesNothing() {
+        click("YouTube search");val keyboard=tagged("youtube-keyboard")!!
+        ui{keyboard.requestFocus()};repeat(3){sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)}
+        repeat(6){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
+        val description=ui{keyboard.contentDescription.toString()}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
+        assertEquals(description,ui{keyboard.contentDescription.toString()})
+        assertFalse(description.contains("·"));sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
+        assertEquals("'",ui{a.model.youtube.query})
     }
     @Test fun shortsKeepPortraitBrowseCardsAndDoNotResolveVideosOnFocus() {
         click("YouTube Shorts");await{ui{!a.model.youtube.busy && a.model.youtube.videos.isNotEmpty()}}

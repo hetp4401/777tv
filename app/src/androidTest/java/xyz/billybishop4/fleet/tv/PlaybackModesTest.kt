@@ -2,6 +2,7 @@
 package xyz.billybishop4.fleet.tv
 
 import android.os.SystemClock
+import androidx.lifecycle.Lifecycle
 import android.view.KeyEvent
 import android.view.KeyCharacterMap
 import android.view.View
@@ -105,11 +106,24 @@ class PlaybackModesTest:NativeTestBase() {
         ui{a.model.open(Route.Player(Watch(Title(channel.id,channel.name),Stream("Fixture live",channel.url),live=true,channel=channel)))};playing()
         await{tagged("live-info")?.isShown==true};assertNotNull(tagged("playback-mode:live"))
         assertNull(tagged("vod-controls"));assertNull(tagged("vod-progress"));assertNull(find("Pause"))
+        assertFalse(ui{a.activePlayer!!.isCommandAvailable(Player.COMMAND_PLAY_PAUSE)})
+        ui{a.activePlayer!!.pause();a.activePlayer!!.playWhenReady=false}
+        assertTrue("A live-facing controller must not pause the stream",ui{a.player!!.playWhenReady})
         sendRemoteKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);assertTrue(ui{a.player!!.playWhenReady})
         await(8000){tagged("live-info")?.visibility==View.GONE}
         await{ui{a.hasWindowFocus() && tagged("native-player")!!.hasFocus()}}
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER);await{tagged("live-info")?.isShown==true}
         assertEquals("Fixture live channel",ui{(tagged("live-channel-name") as TextView).text.toString()});screenshot("player-mode-live")
         sendRemoteKey(KeyEvent.KEYCODE_BACK);await{ui{a.model.route !is Route.Player && a.player==null}}
+    }
+    @Test fun liveReturnsPlayingAfterTheInternalEngineLostIntentBeforeBackgroundRelease() {
+        val watch=Watch(Title("lifecycle-live","Generated live"),Stream("Generated","$base/hls/fixture/orig.m3u8"),live=true)
+        ui{a.model.open(Route.Player(watch))};playing()
+        val previous=player()
+        // Audio focus controls the raw engine independently of the non-pausable live facade.
+        ui{a.player!!.pause()};await{ui{a.player?.playWhenReady==false}}
+        rule.scenario.moveToState(Lifecycle.State.CREATED);await{ui{a.activePlayer==null}}
+        rule.scenario.moveToState(Lifecycle.State.RESUMED);playing()
+        assertNotSame(previous,player());assertFalse(ui{a.activePlayer!!.isCommandAvailable(Player.COMMAND_PLAY_PAUSE)})
     }
 }

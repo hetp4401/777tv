@@ -79,7 +79,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     private var retries = 0
     private var startMs = if (original.live || original.short) 0L else m.resume(original.title,original.episode)
     private var playIntent=true
-    fun start() { if (running || closed) return; running=true; connect(false) }
+    fun start() { if (running || closed) return; if(original.live)playIntent=true;running=true; connect(false) }
     fun stop() { running=false; resolution?.cancel(); resolution=null; detach() }
     fun close() { stop(); closed=true;view.removeAllViews() }
     private fun message(text:String) { view.removeAllViews();view.addView(a.text(text,20f),FrameLayout.LayoutParams(-2,-2,Gravity.CENTER)) }
@@ -449,13 +449,16 @@ private fun selectExoTrack(p:Player,type:Int,id:String) {
     p.trackSelectionParameters=builder.build()
 }
 
-/** Live streams expose play/pause only, including to external media controllers. */
+/** Live-facing controls cannot pause or seek. Lifecycle/audio focus still owns the raw player. */
 private class LivePlayer(player:Player):ForwardingPlayer(player) {
     override fun getAvailableCommands() = super.getAvailableCommands().buildUpon().removeAll(
+        Player.COMMAND_PLAY_PAUSE,
         Player.COMMAND_SEEK_BACK,Player.COMMAND_SEEK_FORWARD,Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
         Player.COMMAND_SEEK_TO_DEFAULT_POSITION,Player.COMMAND_SEEK_TO_MEDIA_ITEM,Player.COMMAND_SEEK_TO_NEXT,
         Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM,Player.COMMAND_SEEK_TO_PREVIOUS,Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM).build()
     override fun isCommandAvailable(command:Int)=availableCommands.contains(command)
+    override fun pause() {}
+    override fun setPlayWhenReady(playWhenReady:Boolean) { if(playWhenReady)super.setPlayWhenReady(true) }
     override fun seekTo(positionMs:Long) {}
     override fun seekTo(mediaItemIndex:Int,positionMs:Long) {}
     override fun seekBack() {}

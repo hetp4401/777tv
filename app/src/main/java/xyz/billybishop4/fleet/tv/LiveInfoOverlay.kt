@@ -41,11 +41,17 @@ internal class LiveInfoOverlay(private val a:MainActivity,private val watch:Watc
         }
     }
     private fun render() {
-        val now=System.currentTimeMillis();val current=schedule.firstOrNull{now in it.startMs until it.endMs}
-        val next=schedule.firstOrNull{it.startMs>now}
-        val label=current?.name?.let{name->name+(next?.let { "  ·  Next: ${it.name}" }?:"")}.orEmpty()
+        val label=liveProgramLabel(schedule,System.currentTimeMillis())
         program.textIfChanged(label);program.visibility=if(label.isEmpty())View.GONE else View.VISIBLE
     }
     fun hide(){main.removeCallbacks(hideLater);view.visibility=View.GONE;request?.cancel();request=null}
     fun close(){closed=true;hide();schedule=emptyList()}
+}
+
+/** A guide gap must not hide a known upcoming programme. */
+internal fun liveProgramLabel(schedule:List<GuideProgram>,now:Long):String {
+    val current=schedule.firstOrNull{now in it.startMs until it.endMs}
+    val next=schedule.filter{it.startMs>now}.minByOrNull{it.startMs}
+    return current?.name?.let{name->name+(next?.let { "  ·  Next: ${it.name}" }?:"")}
+        ?:next?.let{"Next: ${it.name}"}.orEmpty()
 }

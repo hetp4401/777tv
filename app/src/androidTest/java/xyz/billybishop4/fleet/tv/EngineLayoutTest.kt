@@ -258,6 +258,13 @@ class EngineLayoutTest : NativeTestBase() {
         try {
             ui { audio.requestAudioFocus(request) };await { ui { a.activePlayer?.isPlaying==false && a.activePlayer?.playbackSuppressionReason==Player.PLAYBACK_SUPPRESSION_REASON_TRANSIENT_AUDIO_FOCUS_LOSS } }
             ui { audio.abandonAudioFocusRequest(request) };await { ui { a.activePlayer?.isPlaying==true && a.activePlayer?.playWhenReady==true } }
+            ui { a.activePlayer!!.pause();a.activePlayer!!.playWhenReady=false }
+            assertTrue("The live-facing player must ignore manual pause",ui { a.activePlayer!!.playWhenReady })
+            assertFalse(ui { a.activePlayer!!.isCommandAvailable(Player.COMMAND_PLAY_PAUSE) })
+            // Ordinary playback still owns a real manual pause which audio focus cannot undo.
+            val movie=Watch(Title("audio-focus-vod","Audio focus fixture"),Stream("Generated","http://10.0.2.2:8878/hls/fixture/orig.m3u8"))
+            ui { a.model.open(Route.Player(movie)) }
+            await(45000){info().optBoolean("playing") && info().optInt("width")>0}
             ui { a.activePlayer!!.pause();audio.requestAudioFocus(request) }
             ui { audio.abandonAudioFocusRequest(request) };android.os.SystemClock.sleep(350)
             assertFalse(ui { a.activePlayer!!.playWhenReady })

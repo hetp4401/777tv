@@ -6,18 +6,18 @@ and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
 ## Development candidate
 
-**0.18.1 · version code 24 · Android 7.0 / API 24 or later**
+**0.19.0 · version code 25 · Android 7.0 / API 24 or later**
 
-This branch contains the native YouTube and source-specific player update.
-The latest user instruction holds TCL testing and deployment. Version 0.18.1
+This branch contains the native YouTube and whole-app UI review update.
+The latest user instruction holds TCL testing and deployment. Version 0.19.0
 is validated locally and on worker emulators; it has not been installed
 on the physical TV. The release record tracks the exact validation scope.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Candidate verification](releases/0.18.1/verification.json) records the APK checksum,
+[Candidate verification](releases/0.19.0/verification.json) records the APK checksum,
 source/build checksums and validation scope.
-[SHA256SUMS](releases/0.18.1/SHA256SUMS) identifies the candidate APK. The last
+[SHA256SUMS](releases/0.19.0/SHA256SUMS) identifies the candidate APK. The last
 published production snapshot remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
@@ -40,6 +40,12 @@ are excluded from Git.
   playback. A faint **Most replayed** graph appears above the thin seek line
   when YouTube provides replay data. Comments load on opening; the player keeps
   playing while browsing related videos below it or comments beside it.
+- Compact YouTube Home Search, remembered rail/grid focus, row-edge TV navigation
+  and keyboard Back that keeps search results. Comments, replies and related
+  videos retain their reading positions; loaded content receives focus directly.
+  Settings opens its selected category in one step. Shared dialogs and background
+  Live work retire with their screen, while catalog snapshots and fixed artwork
+  avoid unnecessary rebuilds and layout work. See the [team UI review](docs/ui-review-0.19.0.md).
 - Four native player presentations: Shorts have portrait framing, a read-only
   progress line, looping playback and direct Up/Down clip navigation. Regular
   YouTube has quality, comments and related-video actions; movies and episodes
@@ -122,14 +128,20 @@ adb -s emulator-5554 shell am start -n xyz.billybishop4.fleet.tv/.MainActivity
 
 ## Tests and verification
 
-The candidate passes 119 ordinary JVM checks, 147 unique worker emulator
-scenarios and Android lint. Three opt-in public YouTube checks verify real
+The candidate passes 121 ordinary JVM checks, 169 unique worker emulator
+scenarios, and Android lint. Three opt-in public YouTube
+checks from 0.18.1 verify the unchanged API code against real
 signed-out recommendations, search, Shorts, media,
 comments, replay data and device-code issuance without account approval.
 Worker Android TV suites cover navigation, account fixtures, all four player
 presentations, seeking, picture adjustments, failure recovery and bounded memory.
 Exact counts, source scopes, resolved development failures and physical-device
 checks are recorded in the candidate verification.
+
+The independent customer review covers every section, using the official YouTube
+TV layout as a reference. Supported flows are closer to that reference; voice,
+creator/channel pages, account mutations, casting and Google watch-history
+upload remain absent. The review does not claim complete YouTube feature parity.
 
 In a paired Mac check, median public YouTube source resolution fell from 811 ms
 to 153 ms. A matched worker test measures Play until both a video frame and
@@ -197,6 +209,6 @@ historical artifact paths in that file refer to untracked local evidence.
 | `app/src/androidTest/` | Android TV navigation, rendering, playback and performance tests |
 | `scripts/` | Toolchain bootstrap, fixtures and optional remote client |
 | `remote/` | Optional build/test worker service and pinned toolchain |
-| `releases/0.18.0/` | Candidate verification and APK checksum |
+| `releases/0.19.0/` | Candidate verification and APK checksum |
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency notices.

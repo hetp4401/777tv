@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.graphics.Rect
 import android.os.SystemClock
 import android.view.KeyEvent
+import android.view.KeyCharacterMap
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.lifecycle.Lifecycle
@@ -52,12 +53,14 @@ class VodControlsTest : NativeTestBase() {
     }
     private fun info() = JSONObject(ui { a.playbackInfo })
     private fun pictureDialogSelector() = By.desc("Picture controls").clazz("android.widget.LinearLayout")
-    private fun start(url: String = "http://10.0.2.2:8878/hls/fixture/orig.m3u8", title: String = "Fleet player fixture",headers:Map<String,String> = emptyMap(), preferences:Preferences = Preferences()) {
+    private fun start(url: String = "http://10.0.2.2:8878/hls/fixture/orig.m3u8", title: String = "Fleet player fixture",headers:Map<String,String> = emptyMap(), preferences:Preferences = Preferences(),youtube:Boolean=false) {
         stopObservingSeeks()
         ui { a.model.showProfiles() }; await { ui { a.activePlayer == null } }
         ui {
             a.model.updatePreferences(preferences); a.model.server("http://10.0.2.2:8878"); a.model.clearHistory()
-            a.model.open(Route.Player(Watch(Title("vod-ui-fixture", title), Stream("Fixture stream", url),headers=headers)))
+            if(youtube)a.model.youtubeFixture("http://10.0.2.2:8878")
+            a.model.open(Route.Player(Watch(Title(if(youtube)"V0000000001" else "vod-ui-fixture",title,if(youtube)"youtube" else "movie"),
+                Stream("Fixture stream",url),headers=headers,resolvedAtMs=System.currentTimeMillis())))
         }
         await(45000) { info().optBoolean("playing") && info().optInt("width") > 0 }
         await { ui {
@@ -254,6 +257,68 @@ class VodControlsTest : NativeTestBase() {
         repeat(3) { key(KeyEvent.KEYCODE_DPAD_LEFT) }; seeked(0)
         await { ui { (tagged("vod-progress") as SeekBar).progress <= 100 } }
         assertFalse(ui { a.activePlayer!!.playWhenReady })
+    }
+    @Test fun hiddenAndVideoSurfaceDirectionsSeekImmediatelyWithoutPausingOrAnExtraPress() {
+        for(youtube in listOf(false,true)) {
+            start(youtube=youtube);ui{a.activePlayer!!.seekTo(20000)}
+            await{ui{a.activePlayer!!.playWhenReady && kotlin.math.abs(a.activePlayer!!.currentPosition-20000)<1200}}
+            key(KeyEvent.KEYCODE_BACK);await{tagged("vod-controls")?.isShown==false && tagged("native-player")?.hasFocus()==true}
+            observeSeeks();key(KeyEvent.KEYCODE_DPAD_RIGHT)
+            focusedTimeline();await{seekCount()==1 && kotlin.math.abs(info().optLong("positionMs")-30000)<1200}
+            SystemClock.sleep(250)
+            assertTrue("A deferred Play focus stole the timeline",tagged("vod-progress")?.hasFocus()==true)
+            assertTrue("A directional seek paused a playing video",ui{a.activePlayer!!.playWhenReady})
+            // The visible HUD can also coexist with focus on the video surface.
+            ui{tagged("native-player")!!.requestFocus()};key(KeyEvent.KEYCODE_DPAD_LEFT)
+            focusedTimeline();await{seekCount()==2 && kotlin.math.abs(info().optLong("positionMs")-20000)<1200}
+            assertTrue(ui{a.activePlayer!!.playWhenReady})
+        }
+    }
+    @Test fun oneContinuousHoldFromHiddenControlsAcceleratesAndReleaseResetsIt() {
+        val instrumentation=InstrumentationRegistry.getInstrumentation()
+        fun event(code:Int,action:Int,down:Long,time:Long,repeats:Int) {
+            val wait=time-SystemClock.uptimeMillis();if(wait>0)SystemClock.sleep(wait)
+            instrumentation.sendKeySync(KeyEvent(down,time,action,code,repeats))
+        }
+        for(youtube in listOf(false,true)) {
+            start(youtube=youtube);ui{a.activePlayer!!.pause();a.activePlayer!!.seekTo(0)}
+            await{ui{!a.activePlayer!!.playWhenReady && a.activePlayer!!.currentPosition<1200}}
+            key(KeyEvent.KEYCODE_BACK);await{tagged("vod-controls")?.isShown==false && tagged("native-player")?.hasFocus()==true}
+            observeSeeks();val down=SystemClock.uptimeMillis()
+            event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down,0)
+            focusedTimeline();await{seekCount()==1 && kotlin.math.abs(info().optLong("positionMs")-10000)<1200}
+            event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down+600,1)
+            await{kotlin.math.abs(info().optLong("positionMs")-30000)<1200}
+            event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down+800,2)
+            event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_UP,down,SystemClock.uptimeMillis(),0)
+            await{seekCount()==3 && kotlin.math.abs(info().optLong("positionMs")-50000)<1200}
+            val released=seekCount();SystemClock.sleep(250);assertEquals("Held seeking continued after UP",released,seekCount())
+            key(KeyEvent.KEYCODE_DPAD_LEFT)
+            await{seekCount()==4 && kotlin.math.abs(info().optLong("positionMs")-40000)<1200}
+            assertFalse("Held directional seeking resumed paused playback",ui{a.activePlayer!!.playWhenReady})
+            assertTrue(tagged("vod-progress")?.hasFocus()==true)
+        }
+    }
+    @Test fun orphanUpDirectionRevealsOrdinaryControlsWithoutPausingAndNormalUpKeepsItsNavigation() {
+        for(youtube in listOf(false,true)) {
+            start(youtube=youtube);val original=ui{a.activePlayer!!}
+            key(KeyEvent.KEYCODE_BACK);await{tagged("vod-controls")?.isShown==false}
+            observeSeeks();val at=SystemClock.uptimeMillis()
+            val release=KeyEvent(at,at+1,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_UP,0)
+            assertTrue(ui{a.playback!!.dispatchKey(release)})
+            await{tagged("vod-controls")?.isShown==true && tagged("vod-play-pause")?.hasFocus()==true}
+            ui{a.playback!!.dispatchKey(release)}
+            assertTrue(ui{original.playWhenReady});assertEquals(0,seekCount())
+            key(KeyEvent.KEYCODE_BACK);await{tagged("vod-controls")?.isShown==false}
+            val cancelled=KeyEvent(at+10,at+11,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_UP,0,0,KeyCharacterMap.VIRTUAL_KEYBOARD,0,KeyEvent.FLAG_CANCELED)
+            assertTrue(ui{a.playback!!.dispatchKey(cancelled)});assertFalse(tagged("vod-controls")!!.isShown)
+            ui{a.playback!!.dispatchKey(KeyEvent(at+20,at+21,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_UP,0))}
+            await{tagged("vod-play-pause")?.hasFocus()==true}
+            ui{tagged("vod-play-pause")!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP)
+            focusedTimeline();SystemClock.sleep(100)
+            assertTrue("A matched Up pair stole focus back from the timeline",tagged("vod-progress")!!.hasFocus())
+            assertSame(original,ui{a.activePlayer});assertTrue(ui{original.playWhenReady});assertEquals(0,seekCount())
+        }
     }
     @Test fun directionsAndPictureButtonOpenSlidersDirectlyAndRetainPlaybackSettings() {
         start(preferences = Preferences(speed = 1.25f, videoFit = "Zoom"))

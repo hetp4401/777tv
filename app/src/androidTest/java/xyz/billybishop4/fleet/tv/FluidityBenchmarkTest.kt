@@ -97,13 +97,19 @@ class FluidityBenchmarkTest:NativeTestBase() {
             ui{grid.scrollToPosition(0)}
             await{tagged("youtube-video:P0000000001")?.let{it.isShown && it.width>0}==true}
             ui{tagged("youtube-video:P0000000001")!!.requestFocus()};await{ui{a.currentFocus?.tag=="youtube-video:P0000000001"}}
-            val started=SystemClock.elapsedRealtime();val down=SystemClock.uptimeMillis()
-            repeat(18) { n->
-                if(held)InstrumentationRegistry.getInstrumentation().sendKeySync(KeyEvent(down,SystemClock.uptimeMillis(),KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_RIGHT,n))
-                else sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
+            // A TV grid stops at its row edge. Traverse a four-column snake so
+            // all 18 delivered moves remain meaningful in both implementations.
+            val path=listOf(22,22,22,20,21,21,21,20,22,22,22,20,21,21,21,20,22,22)
+            val started=SystemClock.elapsedRealtime();var down=0L;var previous=-1;var repeats=0
+            fun release(){if(previous>=0)InstrumentationRegistry.getInstrumentation().sendKeySync(KeyEvent(down,SystemClock.uptimeMillis(),KeyEvent.ACTION_UP,previous,0))}
+            for(code in path) {
+                if(held) {
+                    if(code!=previous){release();previous=code;down=SystemClock.uptimeMillis();repeats=0}
+                    InstrumentationRegistry.getInstrumentation().sendKeySync(KeyEvent(down,SystemClock.uptimeMillis(),KeyEvent.ACTION_DOWN,code,repeats++))
+                }else sendRemoteKey(code)
                 SystemClock.sleep(if(held)45 else 30)
             }
-            if(held)InstrumentationRegistry.getInstrumentation().sendKeySync(KeyEvent(down,SystemClock.uptimeMillis(),KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_RIGHT,0))
+            if(held)release()
             SystemClock.sleep(650)
             val focused=ui{a.currentFocus?.tag?.toString().orEmpty()}
             input.put(JSONObject().put("held",held).put("deliveredKeys",18).put("focused",focused).put("elapsedMs",SystemClock.elapsedRealtime()-started))

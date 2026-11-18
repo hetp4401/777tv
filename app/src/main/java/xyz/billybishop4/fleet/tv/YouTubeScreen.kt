@@ -37,31 +37,36 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
                 val focused=findFocus()
                 val card=focused?.let(list::findContainingItemView)
                 if(card!=null && list.isShown) {
-                    val position=requestedFocusIndex?:list.getChildAdapterPosition(card)
+                    val position=list.getChildAdapterPosition(card)
                     when(event.keyCode) {
                         KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT->{
-                            if(position==0 && event.keyCode==KeyEvent.KEYCODE_DPAD_LEFT)return selectedRail().requestFocus()
-                            val next=(position+if(event.keyCode==KeyEvent.KEYCODE_DPAD_RIGHT)1 else -1).coerceIn(0,(adapter.itemCount-1).coerceAtLeast(0))
-                            if(position>=0 && next!=position)focusIndex(next)
-                            return true
+                            if(position>=0) {
+                                val column=position%grid.spanCount
+                                if(column==0 && event.keyCode==KeyEvent.KEYCODE_DPAD_LEFT)return selectedRail().requestFocus()
+                                if(event.keyCode==KeyEvent.KEYCODE_DPAD_RIGHT &&
+                                    (column==grid.spanCount-1 || position==adapter.itemCount-1))return true
+                                // RecyclerView owns normal movement and repeat delivery. Restarting a
+                                // smooth scroll for every key loses presses while new cards attach.
+                            }
                         }
                         KeyEvent.KEYCODE_DPAD_UP->if(position in 0 until grid.spanCount) {
                             if(m.feed==YouTubeFeed.SEARCH){expandSearch();return keyboard.requestFocus()}
                             if(m.feed.library)return libraryTarget().requestFocus()
-                            return input.requestFocus()
+                            return topNavigation().requestFocus()
                         }
                     }
                 }
                 val shelf=focused?.let { focus->generateSequence(focus){it.parent as? View}.filterIsInstance<YouTubeShelfView>().firstOrNull() }
                 if(shelf!=null) {
                     if(event.keyCode==KeyEvent.KEYCODE_DPAD_LEFT && shelf.list.getChildAdapterPosition(focused!!)==0)return home.requestFocus()
-                    if(event.keyCode==KeyEvent.KEYCODE_DPAD_UP && shelves.getChildAdapterPosition(shelf)==0)return input.requestFocus()
+                    if(event.keyCode==KeyEvent.KEYCODE_DPAD_UP && shelves.getChildAdapterPosition(shelf)==0)return homeSearch.requestFocus()
                 }
             }
             return super.dispatchKeyEvent(event)
         }
     }
     private fun railButton(label:String,description:String,click:()->Unit)=a.action(label,description,click=click).quiet().apply {
+        id=View.generateViewId()
         gravity=Gravity.CENTER_VERTICAL or Gravity.START;setPadding(a.dp(13),0,a.dp(8),0)
         setCompoundDrawablesRelativeWithIntrinsicBounds(YouTubeRailIcon(label,a.dp(23)),null,null,null)
         compoundDrawablePadding=a.dp(17);setSingleLine(true)
@@ -91,8 +96,26 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         setCompoundDrawablesRelative(icon,null,null,null);compoundDrawablePadding=a.dp(10)
     }
     private val submit=a.action("Search","Search YouTube videos"){search()}.quiet()
+    private val searchHeader=a.row().apply {
+        tag="youtube-search-header"
+        addView(input,LinearLayout.LayoutParams(0,a.dp(42),1f))
+        add(submit,width=a.dp(84),height=a.dp(42))
+    }
+    private val homeSearch=a.action("Search","Search YouTube from Home"){showSearch();keyboard.requestFocus()}.quiet().apply {
+        id=View.generateViewId();tag="youtube-home-search";gravity=Gravity.CENTER_VERTICAL or Gravity.START
+        minHeight=0;minimumHeight=0;setPadding(a.dp(13),0,a.dp(13),0)
+        background=StateListDrawable().apply {
+            addState(intArrayOf(android.R.attr.state_focused),a.round(PANEL,WHITE,24));addState(intArrayOf(),a.round(PANEL,radius=24))
+        }
+        val icon=a.getDrawable(R.drawable.ic_search)!!.mutate().apply{setBounds(0,0,a.dp(16),a.dp(16))}
+        setCompoundDrawablesRelative(icon,null,null,null);compoundDrawablePadding=a.dp(10)
+    }
+    private val homeSearchRow=a.row().apply {
+        tag="youtube-home-search-row";gravity=Gravity.CENTER_VERTICAL;add(homeSearch,width=a.dp(232),height=a.dp(36))
+    }
+    private val heading=a.text("",22f,bold=true).apply { tag="youtube-section-heading";gravity=Gravity.CENTER_VERTICAL }
     private val status=a.text("",13f,MUTED).apply{tag="youtube-status";maxLines=2}
-    private val retry=a.action("Retry","Retry YouTube"){m.refresh()}.quiet()
+    private val retry=a.action("Retry","Retry YouTube"){m.refresh();focusContent()}.quiet().apply { id=View.generateViewId() }
     private val feedback=a.row().apply { addView(status,LinearLayout.LayoutParams(0,-2,1f));add(retry,width=-2);visibility=View.GONE }
     private val progress=ProgressBar(a,null,android.R.attr.progressBarStyleHorizontal).apply {
         tag="youtube-loading";isIndeterminate=true;visibility=View.INVISIBLE;importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -107,9 +130,9 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         add(recent,width=a.dp(190),height=-1)
         addView(keyboard,LinearLayout.LayoutParams(a.dp(338),a.dp(160)).apply { marginStart=a.dp(24) })
     }
-    private val history=a.action("History","YouTube history"){browse(YouTubeFeed.HISTORY)}.quiet()
-    private val watchLater=a.action("Watch Later","YouTube Watch Later"){browse(YouTubeFeed.WATCH_LATER)}.quiet()
-    private val liked=a.action("Liked videos","YouTube liked videos"){browse(YouTubeFeed.LIKED)}.quiet()
+    private val history=a.action("History","YouTube history"){browse(YouTubeFeed.HISTORY)}.quiet().apply { id=View.generateViewId() }
+    private val watchLater=a.action("Watch Later","YouTube Watch Later"){browse(YouTubeFeed.WATCH_LATER)}.quiet().apply { id=View.generateViewId() }
+    private val liked=a.action("Liked videos","YouTube liked videos"){browse(YouTubeFeed.LIKED)}.quiet().apply { id=View.generateViewId() }
     private val libraryTabs=a.row().apply {
         tag="youtube-library-tabs";visibility=View.GONE
         add(history,width=a.dp(100),height=a.dp(38));add(watchLater,width=a.dp(128),height=a.dp(38));add(liked,width=a.dp(128),height=a.dp(38))
@@ -127,8 +150,10 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         }})
     private val emptyTitle=a.text("",22f,bold=true)
     private val emptyBody=a.text("",14f,MUTED).apply { maxLines=3;gravity=Gravity.CENTER }
-    private val emptySignIn=a.action("Sign in","Sign in to YouTube"){account()}.quiet().apply { visibility=View.GONE }
-    private val empty=a.column().apply { gravity=Gravity.CENTER;add(emptyTitle,width=-2);gap(10);add(emptyBody,width=-2);gap(12);add(emptySignIn,width=a.dp(112),height=a.dp(42)) }
+    private val emptySignIn=a.action("Sign in","Sign in to YouTube"){account()}.quiet().apply { id=View.generateViewId();visibility=View.GONE }
+    private val emptyRefresh=a.action("Refresh","Refresh YouTube"){m.refresh();focusContent()}.quiet().apply { id=View.generateViewId();tag="youtube-empty-refresh";visibility=View.GONE }
+    private val empty=a.column().apply { gravity=Gravity.CENTER;add(emptyTitle,width=-2);gap(10);add(emptyBody,width=-2);gap(12)
+        add(emptySignIn,width=a.dp(112),height=a.dp(42));add(emptyRefresh,width=a.dp(112),height=a.dp(42)) }
     private val openVideo:(YouTubeVideo)->Unit={play(it,null)}
     private val adapter=NativeAdapter<YouTubeVideo>({it.id},{parent,type->
         val portrait=type==1
@@ -140,29 +165,53 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
     private var submitted:List<YouTubeVideo>?=null;private var submittedShelves:List<YouTubeShelf>?=null
     private val scrollStates=linkedMapOf<YouTubeFeed,Parcelable>()
     private var pendingScroll:Parcelable?=null;private var pendingHomeScroll:Parcelable?=null
-    private var requestedFocusIndex:Int?=null
     private var signInDialog:AlertDialog?=null
     private var codeText:TextView?=null;private var codeMessage:TextView?=null;private var qr:ImageView?=null
     private var shownCode:YouTubeDeviceCode?=null;private var qrJob:Job?=null
-    private val railFocus=ViewTreeObserver.OnGlobalFocusChangeListener { _,focused->
+    private data class ContentAnchor(val tag:String,val parent:String?,val feed:YouTubeFeed,val query:String)
+    private var contentAnchor:ContentAnchor?=null
+    private fun within(child:View?,parent:View):Boolean {
+        var node=child
+        while(node!=null){if(node===parent)return true;node=node.parent as? View}
+        return false
+    }
+    private fun contentCard(child:View?):View? {
+        var node=child
+        while(node!=null && node!==view){if(node is YouTubeCard)return node;node=node.parent as? View}
+        return null
+    }
+    private fun anchor()=contentAnchor?.takeIf{it.feed==m.feed && (m.feed!=YouTubeFeed.SEARCH || it.query==m.query)}
+    private fun anchoredCard():View?=anchor()?.let { saved->
+        if(m.feed==YouTubeFeed.HOME)(saved.parent?.let(shelves::findTag) as? YouTubeShelfView)
+            ?.list?.findTag(saved.tag)?.takeIf{it.isShown}
+        else list.findTag(saved.tag)?.takeIf{it.isShown}
+    }
+    private fun returnFromRail(button:View) {
+        if(keyboard.isShown){keyboard.requestFocus();return}
+        anchoredCard()?.let{it.requestFocus();return}
+        anchor()?.let{if(restoreFocus(it.tag,it.parent))return}
+        (firstCard()?:emptySignIn.takeIf{it.isShown}?:emptyRefresh.takeIf{it.isShown}?:
+            if(m.feed.library)libraryTarget() else if(m.feed==YouTubeFeed.SEARCH)input else button).requestFocus()
+    }
+    private val railFocus=ViewTreeObserver.OnGlobalFocusChangeListener { previous,focused->
         if(!closed) {
-            val parents=focused?.let { generateSequence(it){node->node.parent as? View}.toList() }.orEmpty()
-            val expanded=rail in parents
+            contentCard(previous)?.takeIf{contentCard(focused)==null}?.let { card->
+                val parent=card.parent as? View
+                val shelf=parent?.parent as? YouTubeShelfView
+                contentAnchor=ContentAnchor(card.tag.toString(),shelf?.tag?.toString(),m.feed,m.query)
+            }
+            val expanded=within(focused,rail)
             val width=a.dp(if(expanded)164 else 52)
             if(rail.layoutParams.width!=width)rail.layoutParams=rail.layoutParams.apply { this.width=width }
             if(m.feed==YouTubeFeed.SEARCH) {
-                if(list in parents){searchCollapsed=true;searchTools.visibility=View.GONE}
-                else if(focused===input || keyboard in parents || recent in parents)expandSearch()
+                if(within(focused,list)){searchCollapsed=true;searchTools.visibility=View.GONE}
+                else if(focused===input || within(focused,keyboard) || within(focused,recent))expandSearch()
             }
         }
     }
     init {
         val body=a.column().apply {
-            add(a.row().apply {
-                addView(input,LinearLayout.LayoutParams(0,a.dp(42),1f))
-                add(submit,width=a.dp(84),height=a.dp(42))
-                add(a.text("YouTube",18f,bold=true).apply{gravity=Gravity.END},width=a.dp(100))
-            },height=a.dp(48))
+            add(homeSearchRow,height=a.dp(44));add(searchHeader,height=a.dp(48));add(heading,height=a.dp(42))
             add(progress,height=a.dp(2));add(feedback);gap(8)
             add(searchTools,height=a.dp(168))
             add(libraryTabs,height=a.dp(44))
@@ -173,6 +222,13 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         view.addView(body,FrameLayout.LayoutParams(-1,-1).apply{marginStart=a.dp(64)})
         view.addView(rail,FrameLayout.LayoutParams(a.dp(52),-1,Gravity.START))
         list.adapter=adapter;shelves.adapter=shelfAdapter
+        homeSearch.setOnKeyListener { _,key,event->
+            if(event.action!=KeyEvent.ACTION_DOWN)false else when(key) {
+                KeyEvent.KEYCODE_DPAD_UP->topNavigation().requestFocus()
+                KeyEvent.KEYCODE_DPAD_DOWN->{returnFromRail(homeSearch);true}
+                else->false
+            }
+        }
         input.setOnClickListener{showSearch();keyboard.requestFocus()}
         input.setOnKeyListener { _,key,event->when(key) {
             KeyEvent.KEYCODE_DPAD_CENTER->{if(event.action==KeyEvent.ACTION_UP){showSearch();keyboard.requestFocus()};true}
@@ -196,12 +252,13 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
             if(homeLayout.findLastVisibleItemPosition()>=shelfAdapter.itemCount-2 && shelfAdapter.itemCount>0)m.more()
         }})
         for(button in listOf(home,shorts,searchNav,account,subscriptions,library))button.setOnKeyListener { _,key,event->
-            if(event.action==KeyEvent.ACTION_DOWN && key==KeyEvent.KEYCODE_DPAD_RIGHT) { (if(keyboard.isShown)keyboard else firstCard()?:input).requestFocus();true }
+            if(event.action==KeyEvent.ACTION_DOWN && key==KeyEvent.KEYCODE_DPAD_RIGHT) {
+                returnFromRail(button);true }
             else if(button===account && event.action==KeyEvent.ACTION_DOWN && key==KeyEvent.KEYCODE_DPAD_UP) { a.window.decorView.findTag("navigation:YouTube")?.requestFocus();true }else false
         }
         for(button in listOf(history,watchLater,liked))button.setOnKeyListener { _,key,event->
             if(event.action==KeyEvent.ACTION_DOWN && key==KeyEvent.KEYCODE_DPAD_DOWN){(firstGridCard()?:emptySignIn.takeIf{it.isShown})?.requestFocus()?:true}
-            else if(event.action==KeyEvent.ACTION_DOWN && key==KeyEvent.KEYCODE_DPAD_UP)input.requestFocus() else false
+            else if(event.action==KeyEvent.ACTION_DOWN && key==KeyEvent.KEYCODE_DPAD_UP)topNavigation().requestFocus() else false
         }
         view.viewTreeObserver.addOnGlobalFocusChangeListener(railFocus)
         m.activate()
@@ -209,6 +266,7 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
     private fun play(video:YouTubeVideo,group:List<YouTubeVideo>?) { hideKeyboard();restore.cancel();m.play(video,group) }
     private fun browse(feed:YouTubeFeed){restore.cancel();hideKeyboard();m.select(feed);focusContent()}
     private fun libraryTarget()=when(m.feed){YouTubeFeed.WATCH_LATER->watchLater;YouTubeFeed.LIKED->liked;else->history}
+    private fun topNavigation():View=a.window.decorView.findTag("navigation:YouTube")?:selectedRail()
     private fun selectedRail()=when(m.feed){YouTubeFeed.HOME->home;YouTubeFeed.SHORTS->shorts;YouTubeFeed.SEARCH->searchNav;YouTubeFeed.SUBSCRIPTIONS->subscriptions;else->library}
     private fun expandSearch(){searchCollapsed=false;searchTools.visibility=View.VISIBLE}
     private fun showSearch(){restore.cancel();hideKeyboard();m.showSearch();expandSearch()}
@@ -232,18 +290,17 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
     private fun focusContent() { restore.start(waitForWindowFocus=true) {
         if(m.busy || m.resolving || adapter.currentList!=m.videos && m.feed!=YouTubeFeed.HOME)null
         // A diff can commit before RecyclerView attaches its first card on the next frame.
-        else if(m.videos.isEmpty())when {m.feed.requiresAccount && m.account==null->emptySignIn;m.feed.library->libraryTarget();else->input} else firstCard()
+        else if(m.videos.isEmpty())when {m.error!=null->retry;m.feed.requiresAccount && m.account==null->emptySignIn;
+            m.feed.library->libraryTarget();emptyRefresh.isShown->emptyRefresh;m.feed==YouTubeFeed.SEARCH->input;else->selectedRail()} else firstCard()
     } }
     private fun firstGridCard():View?=list.getChildAt(0)?.takeIf { it.isShown && it.isFocusable }
     private fun firstCard():View?=if(m.feed==YouTubeFeed.HOME)(shelves.getChildAt(0) as? YouTubeShelfView)?.list?.getChildAt(0)?.takeIf{it.isShown} else firstGridCard()
-    private fun focusIndex(index:Int) {
-        val target=adapter.currentList.getOrNull(index)?:return
-        val attached=grid.findViewByPosition(index)
-        if(attached!=null) { requestedFocusIndex=null;restore.cancel();attached.requestFocus();return }
-        requestedFocusIndex=index;list.smoothScrollToPosition(index)
-        restore.start { list.findTag("youtube-video:${target.id}")?.also { requestedFocusIndex=null } }
+    override fun focusTarget():View?=when {
+        m.feed==YouTubeFeed.SEARCH && !searchCollapsed->input
+        m.busy && m.videos.isEmpty()->selectedRail()
+        else->anchoredCard()?:firstCard()?:retry.takeIf{it.isShown}?:emptySignIn.takeIf{it.isShown}?:emptyRefresh.takeIf{it.isShown}?:
+            if(m.feed==YouTubeFeed.SEARCH)input else if(m.feed.library)libraryTarget() else selectedRail()
     }
-    override fun focusTarget():View?=firstCard()?:emptySignIn.takeIf{it.isShown}?:input
     override fun restoreFocus(tag:String,parentTag:String?):Boolean {
         if(!tag.startsWith("youtube-video:"))return false
         if(m.feed==YouTubeFeed.HOME) {
@@ -252,10 +309,15 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
             shelves.scrollToPosition(index);restore.start { (homeLayout.findViewByPosition(index) as? YouTubeShelfView)?.focusVideo(tag) };return true
         }
         val index=adapter.currentList.indexOfFirst { "youtube-video:${it.id}"==tag };if(index<0)return false
+        list.findTag(tag)?.takeIf{it.isShown}?.let{it.requestFocus();return true}
         list.scrollToPosition(index);restore.start { list.findTag(tag) };return true
     }
     override fun back():Boolean {
         if(m.resolving){m.cancelPlayback();return true}
+        if(m.feed==YouTubeFeed.SEARCH && !searchCollapsed && m.videos.isNotEmpty()) {
+            restore.cancel();hideKeyboard();searchCollapsed=true;searchTools.visibility=View.GONE
+            focusContent();return true
+        }
         if(m.feed!=YouTubeFeed.HOME){restore.cancel();hideKeyboard();m.select(YouTubeFeed.HOME);focusContent();return true}
         return false
     }
@@ -268,7 +330,6 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         account.textIfChanged(if(m.account==null)"Sign in" else "Account")
         if(input.text.toString()!=m.query) { syncing=true;input.setText(m.query);input.setSelection(input.text.length);syncing=false }
         if(lastFeed!=m.feed || lastQuery!=m.query && m.feed==YouTubeFeed.SEARCH) {
-            requestedFocusIndex=null
             if(lastFeed==YouTubeFeed.HOME)homeLayout.onSaveInstanceState()?.let { scrollStates[YouTubeFeed.HOME]=it }
             else lastFeed?.let { f->grid.onSaveInstanceState()?.let { scrollStates[f]=it } }
             grid.spanCount=if(m.feed==YouTubeFeed.SHORTS)5 else 4
@@ -278,6 +339,10 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
             lastFeed=m.feed;lastQuery=m.query
         }
         searchTools.visibility=if(m.feed==YouTubeFeed.SEARCH && !searchCollapsed)View.VISIBLE else View.GONE
+        searchHeader.visibility=if(m.feed==YouTubeFeed.SEARCH)View.VISIBLE else View.GONE
+        homeSearchRow.visibility=if(m.feed==YouTubeFeed.HOME)View.VISIBLE else View.GONE
+        heading.visibility=if(m.feed==YouTubeFeed.HOME || m.feed==YouTubeFeed.SEARCH)View.GONE else View.VISIBLE
+        heading.textIfChanged(when(m.feed){YouTubeFeed.SHORTS->"Shorts";YouTubeFeed.SUBSCRIPTIONS->"Subscriptions";else->"Library"})
         shelves.visibility=if(m.feed==YouTubeFeed.HOME)View.VISIBLE else View.GONE;list.visibility=if(m.feed==YouTubeFeed.HOME)View.GONE else View.VISIBLE
         if(submitted!==m.videos && m.feed!=YouTubeFeed.HOME) {
             submitted=m.videos;val state=pendingScroll;pendingScroll=null
@@ -290,7 +355,7 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         if(shownRecent!=m.recentQueries) {
             shownRecent=m.recentQueries;recent.removeAllViews()
             recent.add(a.text("Recent searches",12f,MUTED),height=a.dp(22))
-            if(m.recentQueries.isEmpty())recent.add(a.text("Find a video or channel",12f,MUTED).apply{maxLines=2})
+            if(m.recentQueries.isEmpty())recent.add(a.text("Find something to watch",12f,MUTED).apply{maxLines=2})
             else for(query in m.recentQueries.take(4))recent.add(a.action(query,"Search YouTube for $query"){input.setText(query);search()}.quiet().apply{
                 gravity=Gravity.START;setPadding(a.dp(8),0,a.dp(8),0);setSingleLine(true);textSize=13f
             },height=a.dp(32))
@@ -303,6 +368,7 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         val blankSearch=m.feed==YouTubeFeed.SEARCH && m.query.trim().length<2
         val needsAccount=m.feed.requiresAccount && m.account==null
         emptySignIn.visibility=if(needsAccount)View.VISIBLE else View.GONE
+        emptyRefresh.visibility=if(m.feed in setOf(YouTubeFeed.HOME,YouTubeFeed.SHORTS) && m.videos.isEmpty() && !m.busy && m.error==null)View.VISIBLE else View.GONE
         emptyTitle.textIfChanged(when(m.feed){YouTubeFeed.HOME->"No recommendations right now";YouTubeFeed.SHORTS->"No Shorts right now";YouTubeFeed.SEARCH->if(blankSearch)"Search YouTube" else "No videos found";YouTubeFeed.SUBSCRIPTIONS->if(needsAccount)"Your subscriptions" else "No new videos";YouTubeFeed.HISTORY->"Nothing watched yet";YouTubeFeed.WATCH_LATER->"Watch Later";YouTubeFeed.LIKED->"Liked videos"})
         emptyBody.textIfChanged(when(m.feed){YouTubeFeed.HOME->m.message.ifBlank{"Try refresh or search for a video. Sign-in is optional."};YouTubeFeed.SHORTS->"Try again in a moment, or search for a video.";YouTubeFeed.SEARCH->if(blankSearch)"Use the keyboard above to find something to watch." else "Try a different search.";else->if(needsAccount)"Sign in to see this part of your YouTube account." else if(m.feed==YouTubeFeed.HISTORY && m.account==null)"Videos you watch on this TV appear here." else "This part of your library is empty."})
         updateSignIn()
@@ -335,7 +401,10 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
                 setOnDismissListener {
                     qrJob?.cancel();qrJob=null;image.setImageDrawable(null);qr=null;shownCode=null;codeText=null;codeMessage=null;signInDialog=null
                     m.cancelSignIn()
-                    if(m.account!=null)focusContent() else account.postOnAnimation { if(!closed && account.isShown)account.requestFocus() }
+                    if(m.account!=null)focusContent() else {
+                        val generation=a.focusInputGeneration
+                        account.postOnAnimation { if(!closed && account.isShown && generation==a.focusInputGeneration)account.requestFocus() }
+                    }
                 }
                 show()
             }

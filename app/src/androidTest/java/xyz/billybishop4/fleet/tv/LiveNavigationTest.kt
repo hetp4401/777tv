@@ -60,6 +60,15 @@ class LiveNavigationTest : NativeTestBase() {
         SystemClock.sleep(850)
         assertEquals("Sidebar selection must not load a stream", before, links()); assertNull(ui { a.activePlayer })
     }
+    @Test fun leavingChannelsDismissesCategoryEditingWithoutChangingTheProfileOrStartingPlayback() {
+        val before=links()
+        liveAction("Edit categories")
+        await{device.findObject(By.text("Visible categories"))!=null && ui{!a.hasWindowFocus()}}
+        ui{a.model.top(Section.SEARCH)}
+        await{ui{a.model.route==Route.Browse(Section.SEARCH) && a.hasWindowFocus()} && device.findObject(By.text("Visible categories"))==null}
+        assertTrue(ui{a.model.providers.any{it.id==profile.id}})
+        assertEquals(before,links());assertNull(ui{a.activePlayer})
+    }
 
     @Test fun pictureControlsRequireAnActivePreviewAndPreserveTheLiveStream() {
         click("Live TV options")

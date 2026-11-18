@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.text.TextUtils
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.*
@@ -31,9 +32,16 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
         view.heading("Settings")
         val rail = a.column()
         for ((name, label) in listOf("Playback" to "Playback", "On demand" to "On demand", "Live TV settings" to "Live TV", "Appearance" to "Appearance", "Data & storage" to "Storage")) {
-            val button = a.action(label, name) { selectPage(name) }.apply {
+            val button = a.action(label, name) { enterPage(name) }.apply {
                 id = View.generateViewId(); gravity = Gravity.START or Gravity.CENTER_VERTICAL
                 maxLines = 1; ellipsize = TextUtils.TruncateAt.END
+                setOnFocusChangeListener { _, focused -> if (focused) selectPage(name) }
+                setOnKeyListener { _, key, event ->
+                    if (key == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) enterPage(name)
+                        true
+                    } else false
+                }
                 background = android.graphics.drawable.StateListDrawable().apply {
                     addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, WHITE))
                     addState(intArrayOf(android.R.attr.state_selected), a.round(RAISED))
@@ -54,6 +62,10 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
         if (selected == name) return
         positions[selected] = scroll.scrollY; selected = name; localStatus = ""
         showPage()
+    }
+    private fun enterPage(name: String) {
+        selectPage(name)
+        firstControl(page)?.requestFocus()
     }
     private fun heading(text: String) {
         page.add(a.text(text, 13f, MUTED, true)); page.gap(8)
@@ -110,7 +122,7 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
                 heading("Navigation")
                 choice("Startup screen", listOf("On-Demand", "Live TV", "YouTube"), { m.preferences.startSection }) { m.updatePreferences(m.preferences.copy(startSection = it)) }
                 choice("Poster size", listOf(false, true), { m.preferences.largePosters }, { if (it) "Large" else "Standard" }) { m.updatePreferences(m.preferences.copy(largePosters = it)) }
-                page.gap(12); heading("Search home")
+                page.gap(12); heading("On-demand home")
                 toggle("Show continue watching", { m.preferences.showContinue }) { m.updatePreferences(m.preferences.copy(showContinue = !m.preferences.showContinue)) }
                 toggle("Show recently watched", { m.preferences.showRecent }) { m.updatePreferences(m.preferences.copy(showRecent = !m.preferences.showRecent)) }
                 toggle("Show My list", { m.preferences.showMyList }) { m.updatePreferences(m.preferences.copy(showMyList = !m.preferences.showMyList)) }
@@ -118,7 +130,7 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
             else -> {
                 m.store.readWarning?.let { page.add(a.text(it, 13f, MUTED)); page.gap(12) }
                 heading("Data on this TV")
-                page.add(a.action("Refresh content") { m.refreshContent(); localStatus = "Movies and shows will reload when you return to Search."; update() }); page.gap(8)
+                page.add(a.action("Refresh content") { m.refreshContent(); localStatus = "Movies and shows will reload when you return to On-Demand."; update() }); page.gap(8)
                 page.add(a.action("Clear watch history") { a.confirm("Clear watch history? Saved titles and profiles will remain.", "Confirm reset") { m.clearHistory(); localStatus = "Watch history cleared."; update() } }); page.gap(8)
                 page.add(a.action("Reset playback and appearance") { a.confirm("Reset playback and appearance? Profiles and history will remain.", "Confirm reset") { m.updatePreferences(Preferences(defaultProfileId = m.preferences.defaultProfileId)); localStatus = "Playback and appearance reset."; update() } }); page.gap(8)
                 page.add(a.action("Reset provider storage") { a.confirm("Delete all profiles, credentials and channel favorites?", "Confirm reset") { m.resetProviders(); localStatus = if (m.error == null) "IPTV profiles removed." else ""; update() } }); page.gap(18)
@@ -128,6 +140,7 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
                 page.add(a.action("Open source licenses") { licenses() }.quiet(), width = -2)
             }
         }
+        linkPageToRail(page)
         val first = firstControl(page)
         if (first != null) {
             if (first.id == View.NO_ID) first.id = View.generateViewId()
@@ -136,6 +149,10 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
         val position = positions[selected] ?: 0
         scroll.post { if (!closed) scroll.scrollTo(0, position) }
         update()
+    }
+    private fun linkPageToRail(control:View) {
+        if(control.isFocusable)control.nextFocusLeftId=categories.getValue(selected).id
+        if(control is android.view.ViewGroup)for(index in 0 until control.childCount)linkPageToRail(control.getChildAt(index))
     }
     private fun firstControl(group: View): View? {
         if (group.isFocusable && group.isEnabled && group.visibility == View.VISIBLE) return group

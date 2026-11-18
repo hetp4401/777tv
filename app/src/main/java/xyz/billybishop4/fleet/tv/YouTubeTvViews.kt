@@ -59,15 +59,16 @@ internal class YouTubeKeyboard(
     private val numbers=("1 2 3 4 5 6 7 ⌫ 8 9 0 @ # $ & ABC ( ) / : ; ! ? ⌨ . , + = _ - ' ·").split(' ')
     private val actions=listOf("Space","Clear","Search")
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG);private val rect=RectF()
+    private val radius=context.dp(10).toFloat();private val textPixels=context.dp(15).toFloat()
     private var numeric=false;private var selected=0
     init {
-        tag="youtube-keyboard";isFocusable=true;isFocusableInTouchMode=true;isClickable=true
+        id=View.generateViewId();tag="youtube-keyboard";isFocusable=true;isFocusableInTouchMode=true;isClickable=true
         if(Build.VERSION.SDK_INT>=26)defaultFocusHighlightEnabled=false
         describe()
     }
     private fun label(index:Int)=if(index<32)(if(numeric)numbers else letters)[index] else actions[index-32]
     private fun describe(){contentDescription="YouTube keyboard, ${when(val key=label(selected)){"⌫"->"Delete";"⌨"->"System keyboard";else->key}}"}
-    private fun choose(index:Int) { selected=index.coerceIn(0,34);describe();invalidate() }
+    private fun choose(index:Int) { selected=index.coerceIn(0,34).let{if(it==31)30 else it};describe();invalidate() }
     override fun onFocusChanged(gainFocus:Boolean,direction:Int,previouslyFocusedRect:Rect?) {
         super.onFocusChanged(gainFocus,direction,previouslyFocusedRect);invalidate()
     }
@@ -78,11 +79,12 @@ internal class YouTubeKeyboard(
     }
     override fun onDraw(canvas:Canvas) {
         super.onDraw(canvas)
-        paint.typeface=Typeface.DEFAULT;paint.textAlign=Paint.Align.CENTER;paint.textSize=context.dp(15).toFloat()
+        paint.typeface=Typeface.DEFAULT;paint.textAlign=Paint.Align.CENTER;paint.textSize=textPixels
         val baseline=-(paint.ascent()+paint.descent())/2
         for(i in 0..34) {
+            if(i==31)continue // The final alphabet row has seven real keys, not a focusable spacer.
             bounds(i,rect);val focused=hasFocus() && i==selected
-            paint.color=if(focused)WHITE else PANEL;canvas.drawRoundRect(rect,context.dp(10).toFloat(),context.dp(10).toFloat(),paint)
+            paint.color=if(focused)WHITE else PANEL;canvas.drawRoundRect(rect,radius,radius,paint)
             paint.color=if(focused)INK else WHITE
             canvas.drawText(label(i),rect.centerX(),rect.centerY()+baseline,paint)
         }
@@ -112,7 +114,7 @@ internal class YouTubeKeyboard(
     }
     override fun onTouchEvent(event:MotionEvent):Boolean {
         if(event.action==MotionEvent.ACTION_DOWN){requestFocus();return true}
-        if(event.action==MotionEvent.ACTION_UP){for(i in 0..34){bounds(i,rect);if(rect.contains(event.x,event.y)){choose(i);performClick();break}};return true}
+        if(event.action==MotionEvent.ACTION_UP){for(i in 0..34){if(i==31)continue;bounds(i,rect);if(rect.contains(event.x,event.y)){choose(i);performClick();break}};return true}
         return super.onTouchEvent(event)
     }
 }

@@ -3,9 +3,12 @@ package xyz.billybishop4.fleet.tv
 
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.os.SystemClock
 import android.view.KeyEvent
+import android.view.KeyCharacterMap
 import android.view.View
 import androidx.recyclerview.widget.RecyclerView
+import androidx.media3.common.Player
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
 import kotlinx.coroutines.runBlocking
@@ -14,6 +17,7 @@ import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Worker emulator + generated media/JSON only. Never targets a physical user TV. */
 class YouTubeWatchUiTest:NativeTestBase() {
@@ -121,5 +125,77 @@ class YouTubeWatchUiTest:NativeTestBase() {
         click("3 replies");await{tagged("youtube-comment:reply-1")?.isShown==true}
         click("Close video panel");await{panel()?.visibility==View.GONE}
         assertTrue(ui{a.player!!.isPlaying});assertEquals(View.GONE,ui{tagged("vod-controls")!!.visibility})
+    }
+    @Test fun openingWatchPanelsFocusesTheirContentWithoutAnExtraDownPress() {
+        play();val player=player();openRelated()
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000040"}}
+        click("Comments tab");await{ui{a.currentFocus?.tag=="youtube-comment:comment-1"}}
+        assertSame(player,player());assertTrue(ui{a.player!!.isPlaying})
+    }
+    @Test fun relatedAndCommentsRestoreTheirOwnPositionAcrossTabSwitchesAndReopening() {
+        play();val original=player()!!;val seeks=AtomicInteger()
+        val listener=object:Player.Listener {
+            override fun onPositionDiscontinuity(old:Player.PositionInfo,new:Player.PositionInfo,reason:Int){if(reason==Player.DISCONTINUITY_REASON_SEEK)seeks.incrementAndGet()}
+        }
+        ui{original.addListener(listener)}
+        try {
+            openRelated();ui{list().scrollToPosition(12)}
+            await{tagged("youtube-video:V0000000052")?.isShown==true}
+            ui{tagged("youtube-video:V0000000052")!!.requestFocus()}
+            click("Comments tab");await{tagged("youtube-comment:comment-1")?.isShown==true}
+            ui{list().scrollToPosition(12)};await{tagged("youtube-comment:comment-13")?.isShown==true}
+            ui{tagged("youtube-comment:comment-13")!!.requestFocus()}
+            click("Related videos tab");await{ui{a.currentFocus?.tag=="youtube-video:V0000000052"}}
+            click("Comments tab");await{ui{a.currentFocus?.tag=="youtube-comment:comment-13"}}
+            ui{a.onBackPressedDispatcher.onBackPressed()};await{panel()?.visibility==View.GONE}
+            sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP);await{tagged("vod-controls")?.isShown==true}
+            click("Video comments");await{ui{a.currentFocus?.tag=="youtube-comment:comment-13"}}
+            assertSame(original,player());assertEquals("Panel navigation issued a user seek",0,seeks.get())
+            assertTrue(ui{"Panel navigation changed play intent: state=${original.playbackState}, position=${original.currentPosition}, duration=${original.duration}"},ui{original.playWhenReady})
+            // A viewport change can briefly rebuffer on the software renderer. A persistent
+            // stall or finite-fixture end still fails with diagnostics captured before cleanup.
+            playing()
+        }finally{ui{original.removeListener(listener)}}
+    }
+    @Test fun returningFromRepliesRestoresTheCommentBeingRead() {
+        play();openComments();val player=player();ui{list().scrollToPosition(12)}
+        await{tagged("youtube-comment:comment-13")?.isShown==true}
+        ui{tagged("youtube-comment:comment-13")!!.requestFocus();tagged("youtube-comment:comment-13")!!.performClick()}
+        click("3 replies");await{ui{a.currentFocus?.tag=="youtube-comment:reply-1"}}
+        ui{a.onBackPressedDispatcher.onBackPressed()};await{ui{a.currentFocus?.tag=="youtube-comment:comment-13"}}
+        assertEquals(20,ui{list().adapter!!.itemCount});assertSame(player,player());assertTrue(ui{a.player!!.isPlaying})
+    }
+    @Test fun appendingCommentsFocusesTheNewPageWhenTheMoreButtonDisappears() {
+        play();openComments();click("Load more comments")
+        await{ui{a.currentFocus?.tag=="youtube-comment:comment-21"}}
+        assertEquals(40,ui{list().adapter!!.itemCount});assertNull(find("Load more comments"));assertTrue(ui{a.player!!.isPlaying})
+    }
+    @Test fun aLatePanelResponseDoesNotStealFocusFromTheCloseButton() {
+        control("slow=1");play();click("Related videos")
+        ui{find("Related videos tab")!!.requestFocus()}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT);sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
+        await{ui{a.currentFocus?.contentDescription=="Close video panel"}}
+        await{tagged("youtube-video:V0000000040")?.isShown==true}
+        assertEquals("Close video panel",ui{a.currentFocus?.contentDescription});assertTrue(ui{a.player!!.isPlaying})
+    }
+    @Test fun relatedShortcutRecoversAnOrphanReleaseWithoutRepeatingOrHijackingNormalNavigation() {
+        play();val original=player();val down=SystemClock.uptimeMillis()
+        ui{a.playback!!.dismissControls();a.playback!!.dispatchKey(KeyEvent(down,down,KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_DOWN,0))}
+        await{panel()?.isShown==true && tagged("youtube-video:V0000000040")?.isShown==true}
+        // The opening key's UP reaches the pane, leaving an older consumed entry.
+        ui{a.playback!!.dispatchKey(KeyEvent(down,down+1,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_DOWN,0));a.onBackPressedDispatcher.onBackPressed()}
+        await{panel()?.visibility==View.GONE}
+        val release=KeyEvent(down+10,down+11,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_DOWN,0)
+        assertTrue(ui{a.playback!!.dispatchKey(release)})
+        await{panel()?.isShown==true && tagged("youtube-video:V0000000040")?.isShown==true}
+        ui{a.onBackPressedDispatcher.onBackPressed()};await{panel()?.visibility==View.GONE}
+        assertTrue(ui{a.playback!!.dispatchKey(release)});assertEquals(View.GONE,ui{panel()!!.visibility})
+        val cancelled=KeyEvent(down+20,down+21,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_DOWN,0,0,KeyCharacterMap.VIRTUAL_KEYBOARD,0,KeyEvent.FLAG_CANCELED)
+        assertTrue(ui{a.playback!!.dispatchKey(cancelled)});assertEquals(View.GONE,ui{panel()!!.visibility})
+        ui{tagged("native-player")!!.performClick()};await{tagged("vod-controls")?.isShown==true}
+        ui{tagged("vod-progress")!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
+        await{tagged("vod-play-pause")?.hasFocus()==true}
+        assertEquals("A matched timeline Down/Up should only reach transport",View.GONE,ui{panel()!!.visibility})
+        assertSame(original,player());playing()
     }
 }

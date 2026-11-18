@@ -39,7 +39,9 @@ playback, ExoPlayer, preview/fullscreen layout, live controls,
 failure recovery, category visibility, memory-pressure recovery, history-cache
 consistency, Unicode rows and logo recycling, Search/IME focus, compact horizontal
 sources, add-on installation/configuration/recovery, series resume and native
-on-demand controls (current count is recorded in the versioned verification report). Separate performance workloads cover scrolling
+on-demand controls, YouTube Home/search/rail/library, comments/replies, all four
+player presentations and shared-dialog/artwork lifecycle. Exact classes, source
+scopes and counts are recorded in each versioned verification report. Separate performance workloads cover scrolling
 and repeated tuning with 6,000 generated channels. Performance samples on a remote
 software-rendered emulator measure that environment; they do not predict the
 TCL TV's frame rate.

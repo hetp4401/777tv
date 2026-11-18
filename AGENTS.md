@@ -2,10 +2,16 @@
 
 - Latest instruction: "don’t test or deploy to tcl now I’ll tell you to do it
   later" holds all physical TCL testing and installation again. Continue local
-  development and worker emulator checks. 0.18.0 and 0.18.1 have not been deployed to the TCL;
+  development and worker emulator checks. 0.18.0, 0.18.1 and 0.19.0 have not been deployed to the TCL;
   the earlier 0.17.0 installation remains. Do not contact, launch, install, run
   instrumentation, or make changes on the TCL without fresh authorization.
   Preserve app data, sign-ins, profiles, add-ons and history. No default IPTV profiles.
+- 0.19.0 is the team UI review: compact YouTube Home Search shortcut, TV grid/rail
+  focus, preserved comments/related positions, immediate hidden-arrow seeking,
+  settings entry, background Live filtering and shared-dialog lifecycle fixes.
+  Keep input-generation guards and cancelled/duplicate key-release protection.
+  Supported YouTube TV flows are closer to the reference; voice/channel pages,
+  account mutations, casting and Google watch-history synchronization remain absent.
 - 0.18.0 work adds guest recommendations, account/library browsing, and distinct
   Shorts, YouTube, on-demand and Live TV presentations. Keep ExoPlayer as the only
   engine, native views, bounded caches/buffers, no seek/transport UI for live TV,

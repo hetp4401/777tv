@@ -42,6 +42,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var youtube:Button
     private lateinit var settings: Button
     private var screen: NativeScreen? = null
+    private val ownedDialogs=linkedSetOf<android.app.Dialog>()
+    internal fun ownDialog(dialog:android.app.Dialog){ownedDialogs.add(dialog)}
+    internal fun releaseDialog(dialog:android.app.Dialog){ownedDialogs.remove(dialog)}
+    private fun dismissOwnedDialogs(){val old=ownedDialogs.toList();ownedDialogs.clear();old.forEach{it.dismiss()}}
     private var screenKey = ""
     private var screenRoute:Route?=null
     private var queued = false
@@ -143,6 +147,11 @@ class MainActivity : ComponentActivity() {
             }
         }
         live = tab("Live TV", Section.LIVE); search = tab("On-Demand", Section.SEARCH);youtube=tab("YouTube",Section.YOUTUBE)
+        youtube.setOnKeyListener { _,code,event->
+            if(code==KeyEvent.KEYCODE_DPAD_DOWN && event.action==KeyEvent.ACTION_DOWN && model.route==Route.Browse(Section.YOUTUBE))
+                screen?.focusTarget()?.takeIf{it.isShown && it.isFocusable}?.requestFocus()==true
+            else false
+        }
         tabs.addView(live, LinearLayout.LayoutParams(dp(112), dp(42)).apply { marginEnd=dp(6) })
         tabs.addView(search, LinearLayout.LayoutParams(dp(132), dp(42)).apply { marginEnd=dp(6) })
         tabs.addView(youtube,LinearLayout.LayoutParams(dp(112),dp(42)))
@@ -245,6 +254,7 @@ class MainActivity : ComponentActivity() {
         previewHost=null;previewIdentity=null;inlineFullscreen=false
     }
     private fun retireScreen() {
+        dismissOwnedDialogs()
         (getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
             .hideSoftInputFromWindow(host.windowToken,0)
         currentFocus?.takeIf(::insideHost)?.let(::rememberFocus)
@@ -326,7 +336,11 @@ class MainActivity : ComponentActivity() {
             }
         } else search.nextFocusDownId=View.NO_ID
         if(route==Route.Browse(Section.YOUTUBE)) {
-            screen!!.view.findTag("field:Search YouTube")?.let { input ->youtube.nextFocusDownId=input.id;input.nextFocusUpId=youtube.id }
+            val target=screen?.focusTarget()?.takeIf{it.isShown && it.isFocusable}
+            if(target!=null) {
+                if(target.id==View.NO_ID)target.id=View.generateViewId()
+                youtube.nextFocusDownId=target.id
+            }else youtube.nextFocusDownId=View.NO_ID
         } else youtube.nextFocusDownId=View.NO_ID
         if(pendingFocus!=null)root.postOnAnimation { restorePendingFocus() }
     }
@@ -343,7 +357,7 @@ class MainActivity : ComponentActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) { super.onWindowFocusChanged(hasFocus); if(hasFocus)restorePendingFocus() }
     override fun onStop() { screen?.background();model.youTubeBackground(); playback?.stop(); super.onStop() }
     override fun onDestroy() {
-        playback?.close(); playback = null; screen?.close(); posterPool.clear(); super.onDestroy()
+        dismissOwnedDialogs();playback?.close(); playback = null; screen?.close(); posterPool.clear(); super.onDestroy()
     }
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)

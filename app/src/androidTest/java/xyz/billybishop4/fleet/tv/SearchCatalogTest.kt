@@ -72,6 +72,27 @@ class SearchCatalogTest : NativeTestBase() {
         null
     }
 
+    @Test fun catalogRowsPreserveFocusAndAvoidDiffWorkForUnrelatedSettings() {
+        await{ui{!a.model.busy && rows("search-home").isNotEmpty()}}
+        val list=tagged("search-home") as RecyclerView
+        await{ui{list.childCount>0 && list.getChildAt(0) is ShelfCard}}
+        val before=ui{list.adapter as NativeAdapter<*>}
+        val rowData=ui{before.currentList}
+        val first=ui{list.getChildAt(0) as ShelfCard}
+        val title=ui{before.currentList.filterIsInstance<HomeRow>().first{it.key==first.shelfKey}.titles.first()}
+        await{ui{first.focusTitle("title:${title.key}")?.requestFocus()==true}}
+        val focused=ui{a.currentFocus}
+        ui{a.model.updatePreferences(a.model.preferences.copy(speed=1.25f))}
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+        assertSame("Unrelated preferences must not rebuild catalog rows",rowData,ui{before.currentList})
+        assertSame(focused,ui{a.currentFocus})
+        val saved=Title("tt-review-saved","A saved review fixture")
+        ui{a.model.toggle(saved)}
+        await{rows("search-home").any{it.name=="My list" && it.titles.any{t->t.key==saved.key}}}
+        assertNotSame(rowData,ui{before.currentList})
+        ui{a.model.toggle(saved)}
+    }
+
     @Test fun catalogYearAndGenreChoicesUseTheirManifestAndCancelOlderResponses() {
         click("Catalog type"); choose("Movies")
         await { ui { a.model.catalogFilter.type == "movie" && !a.model.busy } }

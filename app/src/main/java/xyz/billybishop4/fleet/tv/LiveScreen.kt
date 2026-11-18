@@ -55,6 +55,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
     private var shownPrograms: List<GuideProgram>? = null
     private var shownGuideMessage = ""
     private var shownCurrentStart: Long? = null
+    private var dialog: android.app.AlertDialog? = null
     private val adapter = NativeAdapter<Channel>({ it.identity }, { _, _ ->
         LiveChannelRow(a, ::openChannel, { m.toggleFavorite(provider, it) })
     }, { v, c, _ ->
@@ -148,7 +149,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
             "Edit categories" to { editCategories() },
             "Manage IPTV profiles" to { m.manageProfiles() },
         ))
-        a.showActions("Live TV",actions)
+        dialog?.dismiss();dialog=a.showActions("Live TV",actions)
     }
     private fun clearQuery() { searchInput.setText(""); searchInput.requestFocus() }
     private fun activateGroup(item: LiveGroup, source: View) {
@@ -243,22 +244,24 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
             return
         }
         val checked = BooleanArray(names.size) { names[it] !in m.hiddenCategories[provider.id].orEmpty() }
-        val dialog = android.app.AlertDialog.Builder(a).setTitle("Visible categories")
+        dialog?.dismiss()
+        val categoriesDialog = android.app.AlertDialog.Builder(a).setTitle("Visible categories")
             .setMultiChoiceItems(names.toTypedArray(), checked) { _, index, visible -> m.setCategoryVisible(provider.id, names[index], visible) }
             .setNeutralButton("Show all", null).setPositiveButton("Done", null).create()
-        dialog.setOnShowListener {
-            dialog.window?.setBackgroundDrawable(a.round(PANEL)); dialog.window?.decorView?.clipToOutline = true
-            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).quiet().isAllCaps = false
-            dialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).quiet().isAllCaps = false
-            dialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+        dialog=categoriesDialog
+        categoriesDialog.setOnShowListener {
+            categoriesDialog.window?.setBackgroundDrawable(a.round(PANEL)); categoriesDialog.window?.decorView?.clipToOutline = true
+            categoriesDialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).quiet().isAllCaps = false
+            categoriesDialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).quiet().isAllCaps = false
+            categoriesDialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 m.showAllCategories(provider.id)
-                names.indices.forEach { checked[it] = true; dialog.listView.setItemChecked(it, true) }
+                names.indices.forEach { checked[it] = true; categoriesDialog.listView.setItemChecked(it, true) }
             }
             // Options may have been chosen with a touch/mouse click. Enter
             // keyboard focus explicitly so the next OK toggles the first row.
-            dialog.listView.requestFocusFromTouch(); dialog.listView.setSelection(0)
+            categoriesDialog.listView.requestFocusFromTouch(); categoriesDialog.listView.setSelection(0)
         }
-        dialog.show()
+        categoriesDialog.show()
     }
     private fun hasPreview(c: Channel) = selectedId == c.identity && a.playback != null
     /** Focus only browses. The first OK previews; another OK on that channel expands it. */
@@ -390,7 +393,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
     @Suppress("DEPRECATION") override fun restoreState(state: Parcelable?) {
         if (state is Bundle) { restored = state.getParcelable("list"); selectedId = state.getString("selected").orEmpty() } else restored = state
     }
-    override fun background() { cancelRowFocus(); guideJob?.cancel() }
-    override fun foreground() { selected?.takeIf { guideJob?.isActive != true }?.let(::loadGuide) }
-    override fun close() { closed = true; filterJob?.cancel(); cancelRowFocus(); guideJob?.cancel(); grid.adapter = null; groups.adapter = null }
+    override fun background() { cancelRowFocus(); guideJob?.cancel();filterJob?.cancel();filterKey=null }
+    override fun foreground() { if(filterKey==null)update();selected?.takeIf { guideJob?.isActive != true }?.let(::loadGuide) }
+    override fun close() { closed = true; filterJob?.cancel(); cancelRowFocus(); guideJob?.cancel();dialog?.dismiss();dialog=null; grid.adapter = null; groups.adapter = null }
 }

@@ -112,7 +112,7 @@ internal fun Context.field(label: String, value: String, password: Boolean = fal
 internal fun Context.confirm(question: String, positive: String, action: () -> Unit):AlertDialog {
     val restore=captureDialogFocus()
     return AlertDialog.Builder(this).setMessage(question).setNegativeButton("Cancel", null).setPositiveButton(positive) { _, _ -> action() }.create().apply {
-        setOnDismissListener { restore() }
+        ownDialog(this,restore)
         setOnShowListener { styleDialog(this);getButton(AlertDialog.BUTTON_NEGATIVE).apply { isFocusableInTouchMode = true; requestFocus() } }; show()
     }
 }
@@ -120,7 +120,7 @@ internal fun Context.confirm(question: String, positive: String, action: () -> U
 internal fun Context.showInfo(title:String,body:String):AlertDialog {
     val restore=captureDialogFocus()
     return AlertDialog.Builder(this).setTitle(title).setMessage(body).setPositiveButton("Done",null).create().apply {
-        setOnDismissListener { restore() }
+        ownDialog(this,restore)
         setOnShowListener { styleDialog(this);getButton(AlertDialog.BUTTON_POSITIVE).requestFocusFromTouch() };show()
     }
 }
@@ -129,7 +129,7 @@ internal fun Context.showActions(title:String,actions:List<Pair<String,()->Unit>
     val restore=captureDialogFocus()
     return AlertDialog.Builder(this).setTitle(title).setItems(actions.map{it.first}.toTypedArray()) { _,index -> actions[index].second() }
         .setNegativeButton("Cancel",null).create().apply {
-            setOnDismissListener { restore() }
+            ownDialog(this,restore)
             setOnShowListener { styleDialog(this);listView.requestFocusFromTouch();listView.setSelection(0) };show()
         }
 }
@@ -140,9 +140,14 @@ internal fun Context.chooseOption(title:String,values:List<String>,selected:Int,
         if(index!=selected)onChoose(index)
         dialog.dismiss()
     }.setNegativeButton("Cancel",null).create().apply {
-        setOnDismissListener { restore() }
+        ownDialog(this,restore)
         setOnShowListener { styleDialog(this);listView.requestFocusFromTouch();listView.setSelection(selected.coerceIn(values.indices)) };show()
     }
+}
+private fun Context.ownDialog(dialog:AlertDialog,restore:()->Unit) {
+    val activity=this as? MainActivity
+    activity?.ownDialog(dialog)
+    dialog.setOnDismissListener { activity?.releaseDialog(dialog);restore() }
 }
 private fun Context.styleDialog(dialog:AlertDialog) {
     dialog.window?.apply {
@@ -153,9 +158,10 @@ private fun Context.styleDialog(dialog:AlertDialog) {
 }
 private fun Context.captureDialogFocus():()->Unit {
     val anchor=(this as? android.app.Activity)?.currentFocus
+    val activity=this as? MainActivity
     val tag=anchor?.tag;val parent=anchor?.parent
-    return { anchor?.postOnAnimation {
-        if(anchor.isAttachedToWindow && anchor.isShown && anchor.hasWindowFocus() && anchor.tag==tag && anchor.parent===parent)anchor.requestFocus()
+    return { val generation=activity?.focusInputGeneration;anchor?.postOnAnimation {
+        if(generation==activity?.focusInputGeneration && anchor.isAttachedToWindow && anchor.isShown && anchor.hasWindowFocus() && anchor.tag==tag && anchor.parent===parent)anchor.requestFocus()
     };Unit }
 }
 internal fun View.findTag(value: String): View? {
@@ -164,6 +170,7 @@ internal fun View.findTag(value: String): View? {
     return null
 }
 internal class ArtworkLoader private constructor(context: Context) {
+    private data class Request(val url:String,val width:Int,val height:Int)
     companion object {
         @Volatile private var shared: ArtworkLoader? = null
         fun get(context: Context): ArtworkLoader = shared ?: synchronized(this) { shared ?: ArtworkLoader(context.applicationContext).also { shared = it } }
@@ -175,8 +182,9 @@ internal class ArtworkLoader private constructor(context: Context) {
         .bitmapFactoryMaxParallelism(if(lowRam)1 else 2)
         .crossfade(false).allowHardware(true).build()
     fun show(view: ImageView, url: String, width: Int, height: Int) {
-        if (view.tag == url) return
-        view.tag = url
+        val previous=view.tag as? Request
+        if (previous?.url==url && previous.width==width && previous.height==height) return
+        view.tag = Request(url,width,height)
         if (url.isBlank()) { view.dispose();view.setImageDrawable(null); return }
         view.load(url, loader) { size(width, height);precision(coil.size.Precision.EXACT);addHeader("User-Agent", "FleetTV/0.5 (Android TV)"); crossfade(false); allowHardware(true) }
     }

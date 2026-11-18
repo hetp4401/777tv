@@ -34,6 +34,15 @@ class YouTubeAccountFeedsTest:NativeTestBase() {
         assertNull(player());assertTrue(requests().all{!it.optBoolean("authenticated")})
         screenshot("youtube-guest-discover")
     }
+    @Test fun anEmptyGuestFeedOffersARealRefreshActionAndRecoversWithoutSigningIn() {
+        control("empty_guest=1");ui{a.model.youtube.refresh()}
+        await{ui{!a.model.youtube.busy && a.model.youtube.videos.isEmpty()}}
+        await{tagged("youtube-empty-refresh")?.isShown==true}
+        assertFalse(tagged("field:Search YouTube")!!.isShown)
+        control("empty_guest=0");click("Refresh YouTube")
+        await{ui{!a.model.youtube.busy && a.model.youtube.videos.isNotEmpty() && a.currentFocus?.tag.toString().startsWith("youtube-video:")}}
+        assertNull(player());assertNull(ui{a.model.youtube.account})
+    }
     @Test fun localHistoryWorksSignedOutAndIsReachableWithOneLibraryAction() {
         ui{a.model.store.youTubeProgress(history())};click("YouTube library");ready(YouTubeFeed.HISTORY)
         await{tagged("youtube-video:W0000000001")?.isShown==true}
@@ -92,5 +101,6 @@ class YouTubeAccountFeedsTest:NativeTestBase() {
         assertNull(ui{a.model.youtube.account});assertFalse(find("Sign in to YouTube")?.isShown==true)
         control("guest_fail=0");click("Retry YouTube")
         await{ui{!a.model.youtube.busy && a.model.youtube.error==null && a.model.youtube.videos.isNotEmpty()}}
+        await{ui{a.currentFocus?.tag?.toString()?.startsWith("youtube-video:")==true}}
     }
 }

@@ -741,3 +741,47 @@ OK DOWN but still delivers its UP. The focused Shorts surface accepts that
 unmatched release once, ignores duplicates/cancellation and keeps normal pairs
 at one action. The actual remote-flow, duplicate-release and cancelled-release
 checks pass alongside the existing seeking, pause and focus scenarios.
+
+## Whole-app UI review (0.19.0)
+
+Three domain reviewers covered YouTube, playback, and on-demand/Live/settings.
+An independent customer reviewer inspected 26 emulator screenshots across all
+sections. The supported YouTube layouts follow the official TV reference more
+closely: compact Home Search, prominent horizontal shelves, a recent-search
+keyboard, predictable grid edges and remembered rail/content focus. Keyboard
+Back retains results. Comments, replies and related videos restore their own
+reading positions and receive content focus without an extra Down.
+
+Settings selects its matching page on rail focus and enters its first control
+with OK/Right. Shared dialogs retire with their screen; delayed focus restoration
+respects newer input. Live filtering cancels in the background, and guide gaps
+retain known upcoming programmes. The live-facing player cannot be paused by
+an external controller; the engine still handles transient audio-focus loss.
+Manual pause and resume remain available for ordinary playback.
+
+Hidden Left/Right now seeks immediately and one uninterrupted hold accelerates
+on the timeline. Closing a watch panel exposed first directional presses whose
+DOWN was consumed by Android's focus-mode transition. Related Down and ordinary
+video Up recover a fresh unmatched release once, with cancellation/deduplication
+guards. Tests retain continuous playback, player identity, pause intent and
+zero unintended seeks while checking panel restoration.
+
+On-demand reuses unchanged catalog rows/scopes. Fixed artwork redraws without
+remeasuring parent shelves, and size-aware request identity prevents a small
+image from suppressing a larger request for the same URL. Normal YouTube grid
+movement uses RecyclerView instead of restarting a scroll for every repeat.
+Existing cache/buffer limits and the single-player design remain.
+
+[Verification](releases/0.19.0/verification.json) records source scopes, scenarios,
+paired measurements and resolved development failures. Browse validation
+predates only the final input-specific VodControls edit; the player and YouTube
+suites cover that final implementation. Standalone before/after benchmarks use
+the same worker, measurement code and fresh process history. The larger mixed
+suite's PSS samples are excluded from that comparison. These emulator results
+do not establish physical-TV performance or universal frame-rate/RAM gains.
+
+No blocking visual findings remain. Neighboring-season episode labels are an
+optional polish item. Full YouTube parity is not claimed: voice, channel pages,
+account mutations, casting and Google watch-history upload remain absent.
+Google account-owner approval was not exercised. No TCL contact, testing or
+deployment occurred; the latest user hold remains in force.
