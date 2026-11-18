@@ -38,6 +38,8 @@ class MainActivity : ComponentActivity() {
     private val artworkDelegate = lazy { ArtworkLoader.get(this) }
     internal val artwork get() = artworkDelegate.value
     private var lastLarge: Boolean? = null
+    private var appearanceId="classic"
+    private var appearanceGradient=true
     internal val posterPool = androidx.recyclerview.widget.RecyclerView.RecycledViewPool()
     private lateinit var root: FrameLayout
     private lateinit var chrome: LinearLayout
@@ -88,6 +90,8 @@ class MainActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppTheme.apply(model.preferences.appearanceFor(model.route).id,model.preferences.themeGradient)
+        appearanceId=AppTheme.palette.id;appearanceGradient=model.preferences.themeGradient
         youtubeVoice=YouTubeVoice(this)
         savedInstanceState?.getBundle("screen-states")?.let { saved -> saved.keySet().forEach { key -> saved.getParcelable<Parcelable>(key)?.let { states[key]=it } } }
         savedInstanceState?.getBundle("screen-focus")?.let { saved -> saved.keySet().forEach { key -> saved.getBundle(key)?.let { b ->
@@ -100,21 +104,10 @@ class MainActivity : ComponentActivity() {
                 if (playback?.dispatchKey(event) == true) return true
                 return super.dispatchKeyEvent(event)
             }
-        }.apply { setBackgroundColor(INK) }
-        chrome = column(); chrome.add(topBar(), height = dp(66))
-        val content = column().apply { setPadding(dp(24), 0, dp(24), dp(18)) }
-        error = text("", 13f, 0xFFFFC4C4.toInt()).apply { tag = "error";maxLines=3 }
-        retry = action("Retry","Try again") { model.retry() }.quiet()
-        errorRow=row().apply {
-            background=round(PANEL);pad(10);visibility=View.GONE
-            addView(error,LinearLayout.LayoutParams(0,-2,1f));button(retry)
-        }
-        content.add(errorRow)
-        host = FrameLayout(this)
-        content.addView(host, LinearLayout.LayoutParams(-1, 0, 1f))
-        chrome.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
-        root.addView(chrome, FrameLayout.LayoutParams(-1, -1)); setContentView(root)
-        loading=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
+        }.apply { tag="app-background";background=themeBackground() }
+        buildChrome()
+        setContentView(root)
+        loading=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).themeTint().apply {
             isIndeterminate=true;visibility=View.GONE;tag="loading";importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         root.addView(loading,FrameLayout.LayoutParams(-1,dp(2)).apply { topMargin=dp(64);leftMargin=dp(24);rightMargin=dp(24) })
@@ -132,6 +125,33 @@ class MainActivity : ComponentActivity() {
             override fun handleOnBackPressed() { if (playback?.dismissControls()!=true && !collapsePreview() && screen?.back()!=true && !model.back()) finish() }
         })
         render()
+    }
+    private fun buildChrome() {
+        chrome=column();chrome.add(topBar(),height=dp(66))
+        val content=column().apply { setPadding(dp(24),0,dp(24),dp(18)) }
+        error=text("",13f,ERROR_TEXT).apply { tag="error";maxLines=3 }
+        retry=action("Retry","Try again") { model.retry() }.quiet()
+        errorRow=row().apply {
+            background=round(PANEL);pad(10);visibility=View.GONE
+            addView(error,LinearLayout.LayoutParams(0,-2,1f));button(retry)
+        }
+        content.add(errorRow)
+        host=FrameLayout(this)
+        content.addView(host,LinearLayout.LayoutParams(-1,0,1f))
+        chrome.addView(content,LinearLayout.LayoutParams(-1,0,1f))
+        root.addView(chrome,0,FrameLayout.LayoutParams(-1,-1))
+    }
+    private fun applyAppearance() {
+        val id=model.preferences.appearanceFor(model.route).id
+        if(appearanceId==id && appearanceGradient==model.preferences.themeGradient)return
+        AppTheme.apply(id,model.preferences.themeGradient)
+        appearanceId=id;appearanceGradient=model.preferences.themeGradient
+        // Retire old color snapshots once. Model/history/artwork and any decoder survive.
+        retireScreen();posterPool.clear()
+        root.removeView(chrome)
+        root.background=themeBackground()
+        loading.themeTint()
+        buildChrome()
     }
     override fun dispatchTouchEvent(event:android.view.MotionEvent):Boolean {
         if(event.actionMasked==android.view.MotionEvent.ACTION_DOWN){pendingFocus=null;focusInputGeneration++}
@@ -151,7 +171,7 @@ class MainActivity : ComponentActivity() {
             id=View.generateViewId()
             tag = "navigation:$label"
             background = android.graphics.drawable.StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_focused), round(RAISED, WHITE))
+                addState(intArrayOf(android.R.attr.state_focused), round(RAISED, FOCUS))
                 addState(intArrayOf(android.R.attr.state_selected), round(RAISED))
                 addState(intArrayOf(), round(android.graphics.Color.TRANSPARENT))
             }
@@ -208,7 +228,7 @@ class MainActivity : ComponentActivity() {
             addView(text("LIVE",10f,bold=true).apply{background=round(0xFFD43242.toInt(),radius=4);pad(4)},FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.END).apply{setMargins(dp(8),dp(8),dp(8),0)})
             addView(text("Full screen",11f).apply{tag="preview-fullscreen-hint";background=round(0xB0000000.toInt(),radius=6);pad(5);visibility=View.GONE},FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.END).apply{setMargins(0,0,dp(8),dp(8))})
             foreground=android.graphics.drawable.StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_selected),round(android.graphics.Color.TRANSPARENT,WHITE))
+                addState(intArrayOf(android.R.attr.state_selected),round(android.graphics.Color.TRANSPARENT,FOCUS))
                 addState(intArrayOf(),round(android.graphics.Color.TRANSPARENT))
             }
             setOnClickListener{expandPreview()};isFocusable=false;isFocusableInTouchMode=false
@@ -306,11 +326,13 @@ class MainActivity : ComponentActivity() {
         } finally { restoringFocus=false }
     }
     internal fun render() {
+        applyAppearance()
         val route = model.route; val next = key(route)
         youtubeVoice.navigationChanged(route);youtubePhone?.navigationChanged()
         val changed=screenKey!=next || screenRoute!=route
         if (lastLarge != model.preferences.largePosters) { posterPool.clear(); lastLarge = model.preferences.largePosters }
         if (route is Route.Player) {
+            chrome.visibility=View.GONE
             if (changed) {
                 retireScreen(); closePlayback(); chrome.visibility = View.GONE
                 playback = NativePlayback(this, model, route.watch) { model.back() }.also { root.addView(it.view, FrameLayout.LayoutParams(-1, -1)); if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) it.start() }
@@ -343,6 +365,9 @@ class MainActivity : ComponentActivity() {
             pendingFocus=next
         }
         screen!!.update()
+        if(previewIdentity!=null && previewHost?.isAttachedToWindow!=true) {
+            previewHost=host.findTag("preview-video") as? FrameLayout
+        }
         if(route==Route.Browse(Section.SEARCH)) {
             screen!!.view.findTag("field:Search movies and shows")?.let { input ->
                 search.nextFocusDownId=input.id;input.nextFocusUpId=search.id

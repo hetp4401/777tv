@@ -107,6 +107,7 @@ internal class YouTubePhoneLink(private val a:MainActivity,private val client:Yo
             a.releaseDialog(sheet);codeJob?.cancel();codeJob=null;dialog=null;codeView=null;statusView=null
         }
         sheet.setOnShowListener {
+            a.styleDialog(sheet)
             sheet.window?.setBackgroundDrawable(a.round(PANEL,radius=16));sheet.window?.setLayout(a.dp(600),-2)
             sheet.getButton(AlertDialog.BUTTON_POSITIVE).requestFocusFromTouch()
             sheet.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener{newCode()}

@@ -866,3 +866,35 @@ minor polish. The release stays open on On-Demand; test instrumentation,
 diagnostic downloads, reverse forwarding and the local media server were removed.
 The [TCL report](releases/0.21.1/README.md) and its verification JSON retain exact
 metrics, source hashes, scope and remaining owner/IPTV acceptance limits.
+
+
+## App and independent section themes (0.22.0)
+
+Classic remains the app and upgrade default. Ten presets coordinate backgrounds,
+solid surfaces, readable text, focused/selected controls and progress accents.
+Each area can inherit the app theme or keep its own explicit override. Settings
+uses the app palette; YouTube livestreams retain YouTube styling. Background
+Theme default follows the preset, while Solid keeps only its coordinated colors.
+
+A dedicated visual-design reviewer refined Cinema violet/blue-black, solid Tube
+black/white/red with neutral white focus, and Aurora charcoal teal/mint. Tube's
+selected surface meets 4.56:1 contrast for its red labels. Recommended presets
+appear first in section pickers; a check identifies saved selection separately
+from focus and the explicit inheritance control. The final three-area native
+captures and Classic settings received visual approval without blocking findings.
+
+The implementation shares immutable palette data and static native drawables,
+retains model/navigation/artwork state, clears old colored recycled views, and
+keeps any active decoder. The native scenario verifies exact player identity,
+position, pause intent and decoder-init count; a fresh player verifies the saved
+accent. No wallpaper bitmap, blur, animation or new rendering dependency is added.
+
+218 ordinary JVM tests, lint and 31 unique native emulator scenarios pass. All
+63 production-file hashes match the signed candidate. The installed release
+passes ten actual TCL picker selections and independent section routing, with
+73–158 ms commit-to-focused-row timings (median146 ms, including probe overhead).
+The short PSS workload reclaims memory naturally; it does not prove long-term
+leak freedom or video FPS. Original appearance/preferences, profiles and add-ons
+were preserved, and temporary instrumentation/downloads removed. The
+[release record](releases/0.22.0/verification.json) keeps corrected test readiness,
+selection and contrast findings, exact scopes and the reviewed screenshot hashes.

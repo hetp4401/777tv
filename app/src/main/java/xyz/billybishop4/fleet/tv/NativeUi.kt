@@ -21,22 +21,23 @@ import coil.dispose
 import coil.disk.DiskCache
 import java.io.File
 
-internal const val INK = 0xFF080808.toInt()
-internal const val PANEL = 0xFF171717.toInt()
-internal const val RAISED = 0xFF29292C.toInt()
-internal const val MUTED = 0xFFAAAAAF.toInt()
-internal const val WHITE = Color.WHITE
+internal val INK get()=AppTheme.palette.background
+internal val PANEL get()=AppTheme.palette.panel
+internal val RAISED get()=AppTheme.palette.raised
+internal val MUTED get()=AppTheme.palette.muted
+internal val WHITE get()=AppTheme.palette.text
 internal fun Context.dp(n: Int) = (n * resources.displayMetrics.density + .5f).toInt()
 internal fun View.pad(n: Int) = setPadding(context.dp(n), context.dp(n), context.dp(n), context.dp(n))
 internal fun Context.round(color: Int, stroke: Int = Color.TRANSPARENT, radius: Int = 16) = GradientDrawable().apply {
     setColor(color); cornerRadius = dp(radius).toFloat(); setStroke(dp(2), stroke)
 }
 internal fun Context.focusBackground(prominent: Boolean = false) = StateListDrawable().apply {
-    addState(intArrayOf(android.R.attr.state_focused), round(0xFF3A3A3D.toInt(), WHITE))
-    addState(intArrayOf(android.R.attr.state_pressed), round(0xFF48484A.toInt(), WHITE))
-    addState(intArrayOf(), round(if (prominent) 0xFFF3F3F6.toInt() else PANEL))
+    addState(intArrayOf(android.R.attr.state_focused), round(AppTheme.palette.focusFill, FOCUS))
+    addState(intArrayOf(android.R.attr.state_pressed), round(AppTheme.palette.pressedFill, FOCUS))
+    addState(intArrayOf(), round(if (prominent) AppTheme.palette.prominentFill else PANEL))
 }
 internal fun Context.text(value: String, size: Float = 16f, color: Int = WHITE, bold: Boolean = false) = TextView(this).apply {
+    setTag(R.id.theme_bound,true)
     text = value; textSize = size; setTextColor(color); includeFontPadding = false
     if (bold) typeface = Typeface.DEFAULT_BOLD
 }
@@ -49,11 +50,12 @@ internal fun ViewGroup.add(view: View, width: Int = ViewGroup.LayoutParams.MATCH
 }
 internal fun LinearLayout.gap(n: Int = 10) { addView(Space(context), LinearLayout.LayoutParams(1, context.dp(n))) }
 internal fun Context.action(label: String, description: String = label, prominent: Boolean = false, click: () -> Unit) = Button(this).apply {
+    setTag(R.id.theme_bound,true)
     text = label; contentDescription = description; tag = "button:$description"; isAllCaps = false
     textSize = 14f; typeface = Typeface.DEFAULT_BOLD; minHeight = dp(44); minimumHeight = dp(44); minWidth = 0; minimumWidth = 0
     setPadding(dp(16), dp(9), dp(16), dp(9)); background = focusBackground(prominent)
-    setTextColor(ColorStateList(arrayOf(intArrayOf(android.R.attr.state_focused),intArrayOf(android.R.attr.state_pressed),intArrayOf()),
-        intArrayOf(WHITE,WHITE,if(prominent)INK else WHITE)))
+    setTextColor(ColorStateList(arrayOf(intArrayOf(android.R.attr.state_focused),intArrayOf(android.R.attr.state_pressed),intArrayOf(android.R.attr.state_selected),intArrayOf()),
+        intArrayOf(WHITE,WHITE,if(prominent)ON_ACCENT else ACCENT,if(prominent)ON_ACCENT else WHITE)))
     isFocusable = true; isFocusableInTouchMode = true
     setOnClickListener { click() }
     stateListAnimator = null
@@ -63,7 +65,7 @@ internal fun LinearLayout.button(view: View, weight: Float = 0f) {
 }
 internal fun Button.quiet() = apply {
     background = StateListDrawable().apply {
-        addState(intArrayOf(android.R.attr.state_focused), context.round(RAISED, WHITE))
+        addState(intArrayOf(android.R.attr.state_focused), context.round(RAISED, FOCUS))
         addState(intArrayOf(android.R.attr.state_selected), context.round(PANEL))
         addState(intArrayOf(), context.round(Color.TRANSPARENT))
     }
@@ -84,7 +86,7 @@ internal fun Context.field(label: String, value: String, password: Boolean = fal
         setSingleLine(true); imeOptions = EditorInfo.IME_ACTION_DONE or EditorInfo.IME_FLAG_NO_EXTRACT_UI
         inputType = if (password) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
         background = StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused), round(PANEL, WHITE))
+            addState(intArrayOf(android.R.attr.state_focused), round(PANEL, FOCUS))
             addState(intArrayOf(), round(PANEL))
         }
         setPadding(dp(14), dp(10), dp(14), dp(10)); setText(value)
@@ -149,12 +151,38 @@ private fun Context.ownDialog(dialog:AlertDialog,restore:()->Unit) {
     activity?.ownDialog(dialog)
     dialog.setOnDismissListener { activity?.releaseDialog(dialog);restore() }
 }
-private fun Context.styleDialog(dialog:AlertDialog) {
+internal fun Context.styleDialog(dialog:AlertDialog) {
     dialog.window?.apply {
         setBackgroundDrawable(round(PANEL,radius=16));decorView.clipToOutline=true
         setLayout(dp(500).coerceAtMost(resources.displayMetrics.widthPixels-dp(48)),ViewGroup.LayoutParams.WRAP_CONTENT)
     }
-    for(button in listOf(AlertDialog.BUTTON_POSITIVE,AlertDialog.BUTTON_NEGATIVE,AlertDialog.BUTTON_NEUTRAL))dialog.getButton(button)?.quiet()?.isAllCaps=false
+    fun tint(view:View) {
+        if(view.getTag(R.id.theme_bound)!=true)when(view) {
+            is Button -> { view.quiet();view.isAllCaps=false;view.setTextColor(WHITE) }
+            is CheckedTextView -> {
+                view.setTextColor(WHITE);view.checkMarkTintList=ColorStateList.valueOf(ACCENT)
+                view.background=StateListDrawable().apply {
+                    addState(intArrayOf(android.R.attr.state_focused),round(AppTheme.palette.focusFill,FOCUS))
+                    addState(intArrayOf(android.R.attr.state_selected),round(AppTheme.palette.focusFill,FOCUS))
+                    addState(intArrayOf(android.R.attr.state_pressed),round(AppTheme.palette.pressedFill,FOCUS))
+                    addState(intArrayOf(),round(PANEL))
+                }
+            }
+            is TextView -> view.setTextColor(WHITE)
+            is ProgressBar -> view.themeTint()
+        }
+        if(view is ViewGroup)for(index in 0 until view.childCount)tint(view.getChildAt(index))
+    }
+    dialog.window?.decorView?.let(::tint)
+    dialog.listView?.apply {
+        selector=round(AppTheme.palette.focusFill,FOCUS)
+        // List rows can be bound after this window is styled.
+        setOnHierarchyChangeListener(object:ViewGroup.OnHierarchyChangeListener {
+            override fun onChildViewAdded(parent:View?,child:View?){child?.let(::tint)}
+            override fun onChildViewRemoved(parent:View?,child:View?){}
+        })
+    }
+
 }
 private fun Context.captureDialogFocus():()->Unit {
     val anchor=(this as? android.app.Activity)?.currentFocus

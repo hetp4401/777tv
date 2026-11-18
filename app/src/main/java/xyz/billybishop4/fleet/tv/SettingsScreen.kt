@@ -43,7 +43,7 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
                     } else false
                 }
                 background = android.graphics.drawable.StateListDrawable().apply {
-                    addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, WHITE))
+                    addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, FOCUS))
                     addState(intArrayOf(android.R.attr.state_selected), a.round(RAISED))
                     addState(intArrayOf(), a.round(android.graphics.Color.TRANSPARENT))
                 }
@@ -128,7 +128,18 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
                 page.gap(8); page.add(a.text("Hold OK on a channel to add or remove a favorite.", 13f, MUTED))
             }
             "Appearance" -> {
-                heading("Navigation")
+                heading("Theme")
+                setting("App theme", { ThemeCatalog.resolve(m.preferences.themeId).name }) { a.showThemePicker() }
+                for((section,name) in listOf(Section.SEARCH to "On-Demand theme",Section.YOUTUBE to "YouTube theme",Section.LIVE to "Live TV theme")) {
+                    setting(name, {
+                        val id=when(section){Section.SEARCH->m.preferences.onDemandThemeId;Section.YOUTUBE->m.preferences.youtubeThemeId;Section.LIVE->m.preferences.liveThemeId}
+                        if(id.isBlank())"Use app theme" else ThemeCatalog.resolve(id).name
+                    }) { a.showThemePicker(section) }
+                }
+                choice("Background",listOf(true,false),{ m.preferences.themeGradient },{ if(it)"Theme default" else "Solid" }) {
+                    m.updatePreferences(m.preferences.copy(themeGradient=it))
+                }
+                page.gap(12);heading("Navigation")
                 choice("Startup screen", listOf("On-Demand", "Live TV", "YouTube"), { m.preferences.startSection }) { m.updatePreferences(m.preferences.copy(startSection = it)) }
                 choice("Poster size", listOf(false, true), { m.preferences.largePosters }, { if (it) "Large" else "Standard" }) { m.updatePreferences(m.preferences.copy(largePosters = it)) }
                 page.gap(12); heading("On-demand home")
@@ -172,7 +183,7 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
         bindings.forEach { it() }
         val text = m.error ?: localStatus
         status.text = text; status.visibility = if (text.isBlank()) View.GONE else View.VISIBLE
-        status.setTextColor(if (m.error != null) 0xFFFFC4C4.toInt() else MUTED)
+        status.setTextColor(if (m.error != null) ERROR_TEXT else MUTED)
     }
     override fun focusTarget(): View? = categories[selected]
     override fun saveState(): Parcelable = Bundle().apply {
@@ -194,10 +205,10 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
                 if (closed) return@launch
                 val text = a.text(content, 13f).apply { pad(16); setTextIsSelectable(true) }
                 licenseDialog = android.app.AlertDialog.Builder(a).setTitle(names[index]).setView(ScrollView(a).apply { addView(text) }).setPositiveButton("Done", null).show().apply {
-                    window?.setBackgroundDrawable(a.round(PANEL))
+                    a.styleDialog(this)
                 }
             }
-        }.setNegativeButton("Done", null).show().apply { window?.setBackgroundDrawable(a.round(PANEL)) }
+        }.setNegativeButton("Done", null).show().apply { a.styleDialog(this) }
     }
 }
 
@@ -216,7 +227,7 @@ private class SettingRow(context: Context, name: String, private val checkable: 
     fun bind(text: String, selected: Boolean?) {
         if (value.text.toString() != text) value.text = text
         checked = selected == true
-        value.setTextColor(if (checked) WHITE else MUTED)
+        value.setTextColor(if (checked) ACCENT else MUTED)
     }
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
         super.onInitializeAccessibilityNodeInfo(info)

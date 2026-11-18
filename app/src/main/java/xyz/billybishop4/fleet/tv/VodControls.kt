@@ -47,20 +47,20 @@ internal class VodControls(
     private val bar = SeekBar(a).apply {
         tag = "vod-progress"; id = View.generateViewId(); max = 100000
         isFocusable = true; isFocusableInTouchMode = true
-        progressTintList = ColorStateList.valueOf(WHITE)
-        secondaryProgressTintList = ColorStateList.valueOf(0x66FFFFFF)
-        progressBackgroundTintList = ColorStateList.valueOf(0x33FFFFFF)
-        thumbTintList = ColorStateList.valueOf(WHITE)
+        progressTintList = ColorStateList.valueOf(ACCENT)
+        secondaryProgressTintList = ColorStateList.valueOf((ACCENT and 0x00FFFFFF) or 0x66000000)
+        progressBackgroundTintList = ColorStateList.valueOf((ACCENT and 0x00FFFFFF) or 0x33000000)
+        thumbTintList = ColorStateList.valueOf(ACCENT)
         minimumHeight = a.dp(44); contentDescription = "Playback position"
         background = null
         fun line(color: Int) = GradientDrawable().apply { setColor(color); cornerRadius = a.dp(1).toFloat() }
-        progressDrawable = LayerDrawable(arrayOf(line(0x33FFFFFF),
-            ClipDrawable(line(0x66FFFFFF), Gravity.LEFT, ClipDrawable.HORIZONTAL),
-            ClipDrawable(line(WHITE), Gravity.LEFT, ClipDrawable.HORIZONTAL))).apply {
+        progressDrawable = LayerDrawable(arrayOf(line((ACCENT and 0x00FFFFFF) or 0x33000000),
+            ClipDrawable(line((ACCENT and 0x00FFFFFF) or 0x66000000), Gravity.LEFT, ClipDrawable.HORIZONTAL),
+            ClipDrawable(line(ACCENT), Gravity.LEFT, ClipDrawable.HORIZONTAL))).apply {
             setId(0, android.R.id.background); setId(1, android.R.id.secondaryProgress); setId(2, android.R.id.progress)
             for (index in 0..2) { setLayerHeight(index, a.dp(2)); setLayerGravity(index, Gravity.CENTER_VERTICAL) }
         }
-        fun dot(size: Int) = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(WHITE); setSize(a.dp(size), a.dp(size)) }
+        fun dot(size: Int) = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(ACCENT); setSize(a.dp(size), a.dp(size)) }
         thumb = StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_focused), dot(10))
             addState(intArrayOf(android.R.attr.state_pressed), dot(10))
@@ -275,10 +275,10 @@ internal class VodControls(
         isFocusable = true; isFocusableInTouchMode = true; scaleType = ImageView.ScaleType.FIT_CENTER; setImageDrawable(drawable)
         val inset = a.dp(11)
         setPadding(inset, inset, inset, inset)
-        imageTintList = ColorStateList(arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf()), intArrayOf(WHITE, 0xDDFFFFFF.toInt()))
+        imageTintList = ColorStateList(arrayOf(intArrayOf(android.R.attr.state_focused), intArrayOf()), intArrayOf(FOCUS, 0xDDFFFFFF.toInt()))
         background = StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused), a.round(0x33FFFFFF, radius = 12))
-            addState(intArrayOf(android.R.attr.state_pressed), a.round(0x55FFFFFF, radius = 12))
+            addState(intArrayOf(android.R.attr.state_focused), a.round((ACCENT and 0x00FFFFFF) or 0x33000000, radius = 12))
+            addState(intArrayOf(android.R.attr.state_pressed), a.round((ACCENT and 0x00FFFFFF) or 0x55000000, radius = 12))
             addState(intArrayOf(), a.round(Color.TRANSPARENT, radius = 12))
         }
         stateListAnimator = null; setOnClickListener { interacted(); action() }

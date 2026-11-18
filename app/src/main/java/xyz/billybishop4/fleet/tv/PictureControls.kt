@@ -29,7 +29,7 @@ internal fun showPictureControls(
     val main = Handler(Looper.getMainLooper())
     val anchor = a.currentFocus
     val body = a.column().apply { tag = "picture-controls"; contentDescription = "Picture controls"; pad(12) }
-    val error = a.text("", 12f, 0xFFFFC4C4.toInt()).apply {
+    val error = a.text("", 12f, ERROR_TEXT).apply {
         tag = "picture-error"; visibility = View.GONE; maxLines = 3
         accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
     }
@@ -74,10 +74,10 @@ internal fun showPictureControls(
             tag = "picture-${setting.key}"; id = View.generateViewId(); max = (setting.max - setting.min) / 5
             keyProgressIncrement = 1; contentDescription = setting.label
             isFocusable = true; isFocusableInTouchMode = true; minimumHeight = a.dp(44)
-            progressTintList = ColorStateList.valueOf(WHITE); secondaryProgressTintList = ColorStateList.valueOf(WHITE)
-            progressBackgroundTintList = ColorStateList.valueOf(0x44FFFFFF)
+            progressTintList = ColorStateList.valueOf(ACCENT); secondaryProgressTintList = ColorStateList.valueOf(ACCENT)
+            progressBackgroundTintList = ColorStateList.valueOf((ACCENT and 0x00FFFFFF) or 0x44000000)
             setPadding(a.dp(6), 0, a.dp(6), 0); background = null
-            fun dot(size: Int) = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(WHITE); setSize(a.dp(size), a.dp(size)) }
+            fun dot(size: Int) = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(ACCENT); setSize(a.dp(size), a.dp(size)) }
             thumb = StateListDrawable().apply {
                 addState(intArrayOf(android.R.attr.state_focused), dot(12))
                 addState(intArrayOf(android.R.attr.state_pressed), dot(12))
@@ -116,6 +116,7 @@ internal fun showPictureControls(
     val dialog = AlertDialog.Builder(a).setTitle("Picture controls").setView(body)
         .setNeutralButton("Reset picture", null).setPositiveButton("Done", null).create()
     dialog.setOnShowListener {
+        a.styleDialog(dialog)
         dialog.window?.apply {
             setBackgroundDrawable(a.round(PANEL, radius = 16)); decorView.clipToOutline = true
             setLayout(a.dp(560).coerceAtMost(a.resources.displayMetrics.widthPixels - a.dp(48)), ViewGroup.LayoutParams.WRAP_CONTENT)

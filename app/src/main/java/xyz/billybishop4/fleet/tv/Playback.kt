@@ -37,7 +37,8 @@ internal fun playbackStartPosition(watch:Watch,resumeEnabled:Boolean,localPositi
 /** One hardware-decoded player per visible attachment; direct add-on URLs. */
 internal class NativePlayback(private val a: MainActivity, private val m: FleetModel, private val original: Watch, private var fullscreen: Boolean = true, private val exit: () -> Unit) {
     internal val watch:Watch get()=original
-    val view = FrameLayout(a).apply { setBackgroundColor(INK) }
+    // Video and letterbox areas remain neutral; themes only color interface surfaces.
+    val view = FrameLayout(a).apply { setBackgroundColor(0xFF080808.toInt()) }
     var player: ExoPlayer? = null; private set
     var mediaPlayer: Player? = null; private set
     var picture=VideoPicture(); private set
@@ -75,7 +76,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     fun setFullscreen(value:Boolean) {
         fullscreen=value
         view.descendantFocusability=if(value)ViewGroup.FOCUS_AFTER_DESCENDANTS else ViewGroup.FOCUS_BLOCK_DESCENDANTS
-        view.background=a.round(INK,radius=if(value)0 else 12);view.clipToOutline=!value
+        view.background=a.round(0xFF080808.toInt(),radius=if(value)0 else 12);view.clipToOutline=!value
         if(value)(playerView?:view.findTag("button:Retry"))?.requestFocus()
         if(value)liveInfo?.show() else liveInfo?.hide()
     }
@@ -193,8 +194,8 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         p.setPlaybackParameters(savedPlaybackParameters?:PlaybackParameters(if(w.live)1f else prefs.speed));p.prepare();p.playWhenReady=playIntent
         view.tag="playback-mode:${w.playbackMode.name.lowercase()}"
         buffering=a.column().apply {
-            tag="playback-buffering";gravity=Gravity.CENTER;pad(12);background=a.round(0xB0080808.toInt())
-            add(ProgressBar(a),width=a.dp(32),height=a.dp(32));gap(8)
+            tag="playback-buffering";gravity=Gravity.CENTER;pad(12);background=a.round(a.panelOverlay(176))
+            add(ProgressBar(a).themeTint(),width=a.dp(32),height=a.dp(32));gap(8)
             add(a.text("Buffering…",13f),width=-2)
             importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_YES;contentDescription="Buffering video"
             visibility=if(p.playbackState==Player.STATE_READY || p.playbackState==Player.STATE_ENDED)View.GONE else View.VISIBLE

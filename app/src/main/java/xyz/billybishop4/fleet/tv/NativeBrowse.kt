@@ -116,7 +116,7 @@ private class ProfileCard(a:MainActivity,open:(Provider)->Unit,options:(Provider
     val primary=a.column().apply {
         gravity=Gravity.CENTER_VERTICAL;pad(12);isFocusable=true;isFocusableInTouchMode=true;isClickable=true
         background=StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused),a.round(RAISED,WHITE))
+            addState(intArrayOf(android.R.attr.state_focused),a.round(RAISED,FOCUS))
             addState(intArrayOf(),a.round(Color.TRANSPARENT))
         }
         add(name);gap(4);add(subtitle)
@@ -179,7 +179,7 @@ private class StreamChoices(private val a:MainActivity,private val showErrors:Bo
     private var focusFirstGeneration:Int?=null
     private val refresh=a.action("Refresh streams") { focusFirstGeneration=a.focusInputGeneration;m.retryStreams() }.quiet()
     private val retry=a.action("Retry streams") { focusFirstGeneration=a.focusInputGeneration;m.retryStreams() }.quiet()
-    private val streamError=a.text("",13f,0xFFFFC4C4.toInt()).apply { tag="streams-error";maxLines=3;ellipsize=TextUtils.TruncateAt.END }
+    private val streamError=a.text("",13f,ERROR_TEXT).apply { tag="streams-error";maxLines=3;ellipsize=TextUtils.TruncateAt.END }
     private val failure=a.row().apply {
         addView(streamError,LinearLayout.LayoutParams(0,-2,1f).apply { marginEnd=a.dp(12) });add(retry,width=-2)
     }
@@ -431,7 +431,7 @@ internal class DetailScreen(private val a:MainActivity,private val initial:Title
             layoutParams=RecyclerView.LayoutParams(a.dp(200),a.dp(48)).apply { marginEnd=a.dp(8) }
             gravity=Gravity.START or Gravity.CENTER_VERTICAL;maxLines=2;ellipsize=TextUtils.TruncateAt.END;textSize=13f
             background=StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_focused),a.round(RAISED,WHITE))
+                addState(intArrayOf(android.R.attr.state_focused),a.round(RAISED,FOCUS))
                 addState(intArrayOf(android.R.attr.state_selected),a.round(RAISED))
                 addState(intArrayOf(),a.round(PANEL))
             }

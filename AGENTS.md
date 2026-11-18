@@ -1,6 +1,19 @@
 # 777tv Android TV workflow (formerly Fleet)
 
-- Latest user instruction authorizes physical TCL deployment/testing. On
+- Current release is 0.22.0/code 29, installed in place on the TCL November 18,
+  2026, with the original appearance and other app data preserved. Theming has
+  a Classic app/upgrade default plus independent area overrides and mixed solid/
+  static-gradient presets. Latest user direction: On-Demand Cinema violet/blue-
+  black, YouTube Tube black/white/red, Live Aurora charcoal/teal/mint. These are
+  the reviewed preview recipe; do not silently replace saved preferences.
+  A dedicated visual-design agent refined and approved the final native gallery.
+  Keep Tube focus white, saturated red selection readable, and Live backgrounds
+  restrained. Focus previews; OK applies; inheritance differs from explicit Classic.
+  See `docs/themes.md` and `releases/0.22.0/verification.json`: 218 JVM tests,
+  31 native scenarios, all 63 production hashes matched; ten real TCL theme
+  selections and independent section palettes passed. Temporary device probe
+  and diagnostic downloads removed. Private captures stay in `.tools/theme022/`.
+- Prior user instruction authorized physical TCL deployment/testing. On
   November 18, 2026, 0.21.0 was installed in place, then 0.21.1/code 28 added a
   verified fix for numeric YouTube reply labels. Nine final signed-release
   physical stages pass; see `releases/0.21.1/verification.json`. The release is

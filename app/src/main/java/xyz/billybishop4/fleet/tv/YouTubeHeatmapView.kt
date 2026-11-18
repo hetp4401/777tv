@@ -10,8 +10,8 @@ import android.widget.SeekBar
 /** One cached path above the existing seek track. No timer, bitmap, extra hit target or layout height. */
 internal class YouTubeHeatmapView(context:Context,private val track:SeekBar):View(context) {
     private val path=Path()
-    private val fill=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=0x38FFFFFF }
-    private val outline=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=0x70FFFFFF;style=Paint.Style.STROKE;strokeWidth=context.dp(1).toFloat() }
+    private val fill=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=(ACCENT and 0x00FFFFFF) or 0x38000000 }
+    private val outline=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=(ACCENT and 0x00FFFFFF) or 0x70000000;style=Paint.Style.STROKE;strokeWidth=context.dp(1).toFloat() }
     private var markers:List<YouTubeHeatMarker> = emptyList()
     private var durationMs=0L
     private var dirty=true

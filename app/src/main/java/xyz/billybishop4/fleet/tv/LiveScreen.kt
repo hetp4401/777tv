@@ -31,7 +31,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
     private val guideHeading = a.text("Schedule", 11f, MUTED).apply { visibility = View.GONE }
     private val guide = a.column().apply { tag = "channel-guide"; visibility = View.GONE }
     private val empty = a.column().apply { gravity = Gravity.CENTER; pad(12); visibility = View.GONE }
-    private val emptyProgress = ProgressBar(a).apply { isIndeterminate = true; visibility = View.GONE }
+    private val emptyProgress = ProgressBar(a).themeTint().apply { isIndeterminate = true; visibility = View.GONE }
     private val emptyTitle = a.text("", 15f, bold = true).apply { gravity = Gravity.CENTER }
     private val emptyMessage = a.text("", 12f, MUTED).apply { gravity = Gravity.CENTER }
     private val emptyAction = a.action("", "Channel recovery") {}.quiet().apply { visibility = View.GONE }
@@ -67,7 +67,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
             gravity = Gravity.START or Gravity.CENTER_VERTICAL; maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END; textSize = 13f
             background = android.graphics.drawable.StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, WHITE))
+                addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, FOCUS))
                 addState(intArrayOf(android.R.attr.state_selected), a.round(PANEL))
                 addState(intArrayOf(), a.round(Color.TRANSPARENT))
             }
@@ -119,7 +119,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
         }, FrameLayout.LayoutParams(-1, -1))
         preview.addView(previewHost, FrameLayout.LayoutParams(-1, -1))
         preview.foreground = android.graphics.drawable.StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused), a.round(Color.TRANSPARENT, WHITE))
+            addState(intArrayOf(android.R.attr.state_focused), a.round(Color.TRANSPARENT, FOCUS))
             addState(intArrayOf(), a.round(Color.TRANSPARENT))
         }
         preview.setOnFocusChangeListener { _, focus -> a.previewFocused(focus) }
@@ -250,6 +250,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
             .setNeutralButton("Show all", null).setPositiveButton("Done", null).create()
         dialog=categoriesDialog
         categoriesDialog.setOnShowListener {
+            a.styleDialog(categoriesDialog)
             categoriesDialog.window?.setBackgroundDrawable(a.round(PANEL)); categoriesDialog.window?.decorView?.clipToOutline = true
             categoriesDialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).quiet().isAllCaps = false
             categoriesDialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).quiet().isAllCaps = false
@@ -306,7 +307,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
                 tag = "guide:${p.startMs}"; isFocusable = true; isFocusableInTouchMode = true
                 setPadding(a.dp(6), a.dp(8), a.dp(6), a.dp(8))
                 background = android.graphics.drawable.StateListDrawable().apply {
-                    addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, WHITE))
+                    addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, FOCUS))
                     addState(intArrayOf(), a.round(Color.TRANSPARENT))
                 }
             }

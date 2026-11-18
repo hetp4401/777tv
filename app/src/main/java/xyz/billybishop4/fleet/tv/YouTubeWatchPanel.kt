@@ -30,7 +30,7 @@ internal class YouTubeWatchPanel(
     private var commentDialog:AlertDialog?=null
     private var videoActions:YouTubeVideoActions?=null
     val view=object:LinearLayout(a) {
-        init { orientation=VERTICAL;tag="youtube-watch-panel";setBackgroundColor(0xF20A0A0A.toInt());setPadding(a.dp(28),a.dp(10),a.dp(28),a.dp(16));visibility=View.GONE }
+        init { orientation=VERTICAL;tag="youtube-watch-panel";setBackgroundColor(a.panelOverlay());setPadding(a.dp(28),a.dp(10),a.dp(28),a.dp(16));visibility=View.GONE }
         override fun focusSearch(focused:View,direction:Int):View? {
             val next=super.focusSearch(focused,direction)?:return focused
             var node:View?=next
@@ -47,7 +47,7 @@ internal class YouTubeWatchPanel(
     private val actionsButton=a.action("•••","Video panel actions") {
         if(videoActions?.visible!=true)videoActions=YouTubeVideoActions(a,YouTubeVideo(watch.title.id,watch.title.name,watch.title.poster,isShort=watch.short,live=watch.live)).also{it.show()}
     }.quiet().apply{setPadding(0,0,0,0)}
-    private val progress=ProgressBar(a,null,android.R.attr.progressBarStyleHorizontal).apply {
+    private val progress=ProgressBar(a,null,android.R.attr.progressBarStyleHorizontal).themeTint().apply {
         tag="youtube-panel-loading";isIndeterminate=true;visibility=View.INVISIBLE;importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
     }
     private val status=a.text("",13f,MUTED).apply { tag="youtube-panel-status";maxLines=3 }
@@ -199,7 +199,7 @@ internal class YouTubeWatchPanel(
         if(comment.repliesToken!=null)builder.setPositiveButton(comment.repliesLabel.ifBlank{"View replies"}){_,_->
             cancelRequest();thread=comment;repliesPage=null;planFocus(Position());bindList();render();load();backButton.requestFocus()
         }
-        commentDialog=builder.create().also { dialog->dialog.setOnDismissListener { commentDialog=null };dialog.show() }
+        commentDialog=builder.create().also { dialog->dialog.setOnDismissListener { commentDialog=null };dialog.setOnShowListener { a.styleDialog(dialog) };dialog.show() }
     }
     private fun backThread() { cancelRequest();thread=null;repliesPage=null;error=null;planFocus(commentsPosition);bindList();render();commentsButton.requestFocus() }
     private fun cancelRequest(){request?.cancel();request=null;generation++;busy=false;restore.cancel();pendingFocus=null}
@@ -226,7 +226,7 @@ private class CommentRow(private val a:MainActivity):LinearLayout(a) {
     init {
         orientation=VERTICAL;isFocusable=true;isFocusableInTouchMode=true;isClickable=true;pad(12)
         if(android.os.Build.VERSION.SDK_INT>=26)defaultFocusHighlightEnabled=false
-        background=StateListDrawable().apply { addState(intArrayOf(android.R.attr.state_focused),a.round(PANEL,WHITE));addState(intArrayOf(),a.round(0x22FFFFFF)) }
+        background=StateListDrawable().apply { addState(intArrayOf(android.R.attr.state_focused),a.round(PANEL,FOCUS));addState(intArrayOf(),a.round((ACCENT and 0x00FFFFFF) or 0x22000000)) }
         layoutParams=RecyclerView.LayoutParams(-1,ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin=a.dp(8) }
         add(author);gap(5);add(body);gap(5);add(meta)
     }

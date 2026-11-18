@@ -45,6 +45,7 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
         dialog=sheet;a.ownDialog(sheet)
         sheet.setOnKeyListener { _,_,event->if(event.action==android.view.KeyEvent.ACTION_DOWN)inputGeneration++;false }
         sheet.setOnShowListener {
+            a.styleDialog(sheet)
             sheet.window?.apply {
                 setBackgroundDrawable(a.round(PANEL,radius=16))
                 setLayout(a.dp(460).coerceAtMost(a.resources.displayMetrics.widthPixels-a.dp(48)),-2)
@@ -121,7 +122,7 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
         rows.removeAllViews()
         rows.add(a.text(video.name,14f,bold=true).apply { maxLines=2;ellipsize=TextUtils.TruncateAt.END },height=-2);rows.gap(7)
         val status=error?:notice
-        rows.add(a.text(status,12f,if(error!=null)0xFFFFC4C4.toInt() else MUTED).apply {
+        rows.add(a.text(status,12f,if(error!=null)ERROR_TEXT else MUTED).apply {
             tag="youtube-actions-status";maxLines=3;visibility=if(status.isBlank())View.GONE else View.VISIBLE
         })
         if(m.account==null || requireSignIn)row("Sign in for account actions","youtube-actions-signin") { signedIn{} }

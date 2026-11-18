@@ -104,7 +104,7 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         imeOptions=EditorInfo.IME_ACTION_SEARCH or EditorInfo.IME_FLAG_NO_EXTRACT_UI;showSoftInputOnFocus=false
         filters=arrayOf(android.text.InputFilter.LengthFilter(200));setPadding(a.dp(16),a.dp(8),a.dp(16),a.dp(8))
         background=StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused),a.round(PANEL,WHITE,24));addState(intArrayOf(),a.round(PANEL,radius=24))
+            addState(intArrayOf(android.R.attr.state_focused),a.round(PANEL,FOCUS,24));addState(intArrayOf(),a.round(PANEL,radius=24))
         }
         setText(m.query);setSelection(text.length)
         val icon=a.getDrawable(R.drawable.ic_search)!!.mutate().apply{setBounds(0,0,a.dp(18),a.dp(18))}
@@ -122,7 +122,7 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         id=View.generateViewId();tag="youtube-home-search";gravity=Gravity.CENTER_VERTICAL or Gravity.START
         minHeight=0;minimumHeight=0;setPadding(a.dp(13),0,a.dp(13),0)
         background=StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused),a.round(PANEL,WHITE,24));addState(intArrayOf(),a.round(PANEL,radius=24))
+            addState(intArrayOf(android.R.attr.state_focused),a.round(PANEL,FOCUS,24));addState(intArrayOf(),a.round(PANEL,radius=24))
         }
         val icon=a.getDrawable(R.drawable.ic_search)!!.mutate().apply{setBounds(0,0,a.dp(16),a.dp(16))}
         setCompoundDrawablesRelative(icon,null,null,null);compoundDrawablePadding=a.dp(10)
@@ -157,7 +157,7 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
     private val status=a.text("",13f,MUTED).apply{tag="youtube-status";maxLines=2}
     private val retry=a.action("Retry","Retry YouTube"){m.refresh();focusContent()}.quiet().apply { id=View.generateViewId() }
     private val feedback=a.row().apply { addView(status,LinearLayout.LayoutParams(0,-2,1f));add(retry,width=-2);visibility=View.GONE }
-    private val progress=ProgressBar(a,null,android.R.attr.progressBarStyleHorizontal).apply {
+    private val progress=ProgressBar(a,null,android.R.attr.progressBarStyleHorizontal).themeTint().apply {
         tag="youtube-loading";isIndeterminate=true;visibility=View.INVISIBLE;importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
     }
     private val keyboard:YouTubeKeyboard=YouTubeKeyboard(a,::insert,::erase,{input.setText("")},::search,::systemKeyboard) { direction->

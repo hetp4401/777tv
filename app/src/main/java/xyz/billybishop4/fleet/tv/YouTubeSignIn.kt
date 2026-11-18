@@ -43,6 +43,7 @@ internal class YouTubeSignIn(private val a:MainActivity) {
             .setNegativeButton("Cancel",null).setPositiveButton("New code",null).create()
         dialog=sheet;a.ownDialog(sheet);a.lifecycle.addObserver(lifecycle)
         sheet.setOnShowListener {
+            a.styleDialog(sheet)
             sheet.window?.apply { setBackgroundDrawable(a.round(PANEL,radius=16));setLayout(a.dp(540).coerceAtMost(a.resources.displayMetrics.widthPixels-a.dp(48)),-2) }
             sheet.getButton(AlertDialog.BUTTON_NEGATIVE).quiet().apply { isAllCaps=false;requestFocusFromTouch() }
             sheet.getButton(AlertDialog.BUTTON_POSITIVE).quiet().apply { isAllCaps=false;setOnClickListener { m.startSignIn() } }

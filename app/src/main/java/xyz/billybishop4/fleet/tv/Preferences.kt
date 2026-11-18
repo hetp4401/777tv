@@ -4,6 +4,11 @@ import org.json.JSONObject
 
 data class Preferences(
     val startSection: String = "On-Demand",
+    val themeId: String = "classic",
+    val themeGradient: Boolean = true,
+    val onDemandThemeId: String = "",
+    val youtubeThemeId: String = "",
+    val liveThemeId: String = "",
     val largePosters: Boolean = false,
     val showRecent: Boolean = true,
     val showContinue: Boolean = true,
@@ -24,6 +29,8 @@ data class Preferences(
 ) {
     fun json() = JSONObject().apply {
         put("startupScreen", startSection); put("largePosters", largePosters)
+        put("themeId",themeId);put("themeGradient",themeGradient)
+        put("onDemandThemeId",onDemandThemeId);put("youtubeThemeId",youtubeThemeId);put("liveThemeId",liveThemeId)
         put("showRecent", showRecent); put("showContinue", showContinue); put("showMyList", showMyList)
         put("resume", resume); put("largestFirst", largestFirst)
         put("speed", speed); put("seekSeconds", seekSeconds)
@@ -32,11 +39,25 @@ data class Preferences(
         put("defaultProfileId", defaultProfileId)
         put("youtubeAutoplay",youtubeAutoplay)
     }
+    fun themeFor(section:Section):String {
+        val selected=when(section) {
+            Section.SEARCH -> onDemandThemeId
+            Section.YOUTUBE -> youtubeThemeId
+            Section.LIVE -> liveThemeId
+        }
+        return if(ThemeCatalog.contains(selected))selected else ThemeCatalog.resolve(themeId).id
+    }
     companion object {
+        private fun overrideId(value:String)=if(ThemeCatalog.contains(value))value else ""
         fun decode(j: JSONObject) = Preferences(
             // The new key separates a deliberate choice from the old saved
             // Live TV default, so upgrades also start on On-Demand once.
             startSection = j.optString("startupScreen").takeIf { it in listOf("On-Demand", "Live TV", "YouTube") } ?: "On-Demand",
+            themeId = ThemeCatalog.resolve(j.optString("themeId","classic")).id,
+            themeGradient = j.optBoolean("themeGradient",true),
+            onDemandThemeId = overrideId(j.optString("onDemandThemeId")),
+            youtubeThemeId = overrideId(j.optString("youtubeThemeId")),
+            liveThemeId = overrideId(j.optString("liveThemeId")),
             largePosters = j.optBoolean("largePosters"), showRecent = j.optBoolean("showRecent", true),
             showContinue = j.optBoolean("showContinue", true), showMyList = j.optBoolean("showMyList", true),
             resume = j.optBoolean("resume", true),

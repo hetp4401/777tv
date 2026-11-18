@@ -25,7 +25,7 @@ internal class LiveChannelRow(private val a: MainActivity,
         color=WHITE;textSize=14*a.resources.displayMetrics.scaledDensity;typeface=Typeface.DEFAULT_BOLD
     }
     private val numberPaint=TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color=MUTED;textSize=11*a.resources.displayMetrics.scaledDensity }
-    private val starPaint=TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color=WHITE;textSize=15*a.resources.displayMetrics.scaledDensity }
+    private val starPaint=TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color=ACCENT;textSize=15*a.resources.displayMetrics.scaledDensity }
     private var channel:Channel?=null
     private var favorite=false
     private var showGroup=true
@@ -42,7 +42,7 @@ internal class LiveChannelRow(private val a: MainActivity,
         layoutParams=RecyclerView.LayoutParams(-1,a.dp(58)).apply { bottomMargin=a.dp(3) }
         isFocusable=true;isFocusableInTouchMode=true;isClickable=true;isLongClickable=true
         background=StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused),a.round(0xFF39393C.toInt(),WHITE))
+            addState(intArrayOf(android.R.attr.state_focused),a.round(AppTheme.palette.focusFill,FOCUS))
             addState(intArrayOf(android.R.attr.state_selected),a.round(PANEL))
             addState(intArrayOf(),a.round(android.graphics.Color.TRANSPARENT))
         }

@@ -29,7 +29,7 @@ internal class AddonSettingsScreen(private val a: MainActivity) : NativeScreen {
         tag = "addons-status"; visibility = View.GONE
         accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
     }
-    private val storageWarning = a.text("Add-on storage could not be read. Reset add-ons to restore the defaults.", 13f, 0xFFFFC4C4.toInt()).apply {
+    private val storageWarning = a.text("Add-on storage could not be read. Reset add-ons to restore the defaults.", 13f, ERROR_TEXT).apply {
         tag = "addons-storage-warning"; visibility = View.GONE
     }
     private val install = a.action("Install add-on", prominent = true) { submit() }
@@ -150,7 +150,7 @@ internal class AddonSettingsScreen(private val a: MainActivity) : NativeScreen {
         val error = localError ?: m.error?.let(::safeMessage)
         val message = error ?: m.addonStatus?.let(::safeMessage) ?: if (m.busy) "Updating add-ons…" else ""
         status.text = message; status.visibility = if (message.isBlank()) View.GONE else View.VISIBLE
-        status.setTextColor(if (error != null) 0xFFFFC4C4.toInt() else MUTED)
+        status.setTextColor(if (error != null) ERROR_TEXT else MUTED)
         if (installing && !m.busy) {
             installing = false
             if (a.focusInputGeneration != installInputGeneration) return

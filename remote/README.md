@@ -5,8 +5,8 @@ replicas. Existing Shellboxes remain separate. Each development container has
 two CPUs, a 7 GiB memory limit and access to `/dev/kvm` for its Android TV
 emulator. The workflow below runs compilation, lint, unit tests, fixture
 generation and emulator tests remotely, with local APK signing. Local Mac
-development/builds/tests remain authorized. The latest instruction holds TCL
-testing and deployment; these workers only run generated-media emulator checks.
+development/builds/tests remain authorized. Physical TCL work follows the latest
+user steering in `AGENTS.md`; these workers only run generated-media emulator checks.
 
 Run from the project root using Node 18+ and Python 3.11+:
 
@@ -84,7 +84,9 @@ rebuilt automatically. No persistent source backup depends on a worker.
 
 ## Recorded verification
 
-Current production is 777tv 0.14.1, using ExoPlayer only. The current source/APK
+The installed TCL release is now 0.22.0; its exact source and native/device scopes
+are in [`0.22.0 verification`](../releases/0.22.0/verification.json). The original
+production import was 777tv 0.14.1 using ExoPlayer only. That snapshot's source/APK
 checksums and focused regression results are in
 [`releases/0.14.1/production.json`](../releases/0.14.1/production.json).
 The following measurements describe earlier development builds; the artifact

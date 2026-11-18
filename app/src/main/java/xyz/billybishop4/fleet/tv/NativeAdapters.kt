@@ -58,7 +58,7 @@ internal class PosterCard(context: Context, private val loader: ArtworkLoader, p
         image.clipToOutline = true; image.background = context.round(PANEL)
         image.setDuplicateParentStateEnabled(true)
         image.foreground = StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused),context.round(Color.TRANSPARENT,WHITE))
+            addState(intArrayOf(android.R.attr.state_focused),context.round(Color.TRANSPARENT,FOCUS))
             addState(intArrayOf(),context.round(Color.TRANSPARENT))
         }
         add(image, height = context.dp(widthDp * 3 / 2)); gap(6)

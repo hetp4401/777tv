@@ -101,6 +101,43 @@ class TclDeviceExperienceProbe {
                 .put("installedReleaseDebuggable",i.targetContext.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE!=0)
                 .put("profilesCount",providers.size).put("addonsCount",addons.size).put("displayHz",ui{a.window.decorView.display.refreshRate}).put("initialMemory",memory())
             try {
+                stage("theme appearance"){r->
+                    val switches=JSONArray();r.put("switches",switches)
+                    try {
+                        ui{m.open(Route.Settings)};press("button:Appearance")
+                        await{tagged("setting:App theme")?.isShown==true}
+                        for(theme in ThemeCatalog.all) {
+                            val beforeId=ui{m.preferences.themeId}
+                            press("setting:App theme")
+                            fun choice():View?=ui{android.view.inspector.WindowInspector.getGlobalWindowViews()
+                                .firstOrNull{it.hasWindowFocus() && it.findTag("theme-picker")!=null}?.findTag("theme-choice:"+theme.id)}
+                            await{choice()?.isShown==true}
+                            ui{check(choice()!!.requestFocusFromTouch())};check(ui{m.preferences.themeId==beforeId})
+                            val start=SystemClock.elapsedRealtime();key(KeyEvent.KEYCODE_DPAD_CENTER)
+                            await{ui{m.preferences.themeId==theme.id && AppTheme.palette.id==theme.id &&
+                                tagged("setting:App theme")?.hasFocus()==true && a.hasWindowFocus()}}
+                            switches.put(JSONObject().put("id",theme.id).put("commitToFocusedRowMs",SystemClock.elapsedRealtime()-start)
+                                .put("focusDidNotApply",true).put("memory",memory()))
+                            shot("theme-"+theme.id)
+                        }
+                        r.put("themeCount",switches.length()).put("scope","Real remote OK through palette commit, screen rebuild and focused Appearance row; includes instrumentation input/await overhead")
+                        ui{m.updatePreferences(prefs.copy(onDemandThemeId="cinema",youtubeThemeId="tube",liveThemeId="aurora"))}
+                        val areas=JSONArray()
+                        for((section,id) in listOf(Section.SEARCH to "cinema",Section.YOUTUBE to "tube",Section.LIVE to "aurora")) {
+                            ui{m.top(section)}
+                            await{ui{AppTheme.palette.id==id && tagged("navigation:"+section.label)?.isSelected==true}}
+                            areas.put(JSONObject().put("section",section.label).put("palette",id))
+                            shot("theme-area-"+section.name.lowercase())
+                        }
+                        r.put("independentSections",areas)
+                        ui{m.open(Route.Settings)}
+
+                    } finally {
+                        ui{m.updatePreferences(prefs)}
+                        await{ui{AppTheme.palette.id==prefs.appearanceFor(m.route).id && AppTheme.gradient==prefs.themeGradient}}
+                    }
+                    r.put("originalPreferencesRestored",ui{m.preferences==prefs && m.store.preferences()==prefs})
+                }
                 stage("catalog and settings"){r->
                     ui{m.top(Section.SEARCH)};await(65000){ui{!m.busy}}
                     r.put("initialCatalogError",ui{m.error}).put("shelves",ui{m.shelves.size}).put("addonHosts",ui{JSONArray(m.addons.map{JSONObject().put("host",runCatching{java.net.URI(it.manifestUrl).host}.getOrNull()).put("enabled",it.enabled)})})

@@ -60,7 +60,7 @@ internal class SearchScreen(private val a:MainActivity):NativeScreen {
         imeOptions=EditorInfo.IME_ACTION_SEARCH or EditorInfo.IME_FLAG_NO_EXTRACT_UI
         showSoftInputOnFocus=false
         background=StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused),a.round(PANEL,WHITE))
+            addState(intArrayOf(android.R.attr.state_focused),a.round(PANEL,FOCUS))
             addState(intArrayOf(),a.round(PANEL))
         }
         setPadding(a.dp(14),a.dp(10),a.dp(14),a.dp(10))

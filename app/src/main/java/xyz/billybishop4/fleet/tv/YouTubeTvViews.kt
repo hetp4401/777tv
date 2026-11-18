@@ -58,6 +58,7 @@ internal class YouTubeKeyboard(
     private val letters=("A B C D E F G ⌫ H I J K L M N &123 O P Q R S T U ⌨ V W X Y Z - ' ·").split(' ')
     private val numbers=("1 2 3 4 5 6 7 ⌫ 8 9 0 @ # $ & ABC ( ) / : ; ! ? ⌨ . , + = _ - ' ·").split(' ')
     private val actions=listOf("Space","Clear","Search")
+    private val palette=AppTheme.palette
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG);private val rect=RectF()
     private val radius=context.dp(10).toFloat();private val textPixels=context.dp(15).toFloat()
     private var numeric=false;private var selected=0
@@ -84,8 +85,8 @@ internal class YouTubeKeyboard(
         for(i in 0..34) {
             if(i==31)continue // The final alphabet row has seven real keys, not a focusable spacer.
             bounds(i,rect);val focused=hasFocus() && i==selected
-            paint.color=if(focused)WHITE else PANEL;canvas.drawRoundRect(rect,radius,radius,paint)
-            paint.color=if(focused)INK else WHITE
+            paint.color=if(focused)palette.accent else palette.surface;canvas.drawRoundRect(rect,radius,radius,paint)
+            paint.color=if(focused)palette.onAccent else palette.text
             canvas.drawText(label(i),rect.centerX(),rect.centerY()+baseline,paint)
         }
     }
@@ -134,7 +135,7 @@ internal class YouTubeCard(
         if(Build.VERSION.SDK_INT>=26)defaultFocusHighlightEnabled=false
         layoutParams=RecyclerView.LayoutParams(if(horizontal)frameWidth+context.dp(8) else -1,frameHeight+context.dp(69)).apply { marginEnd=context.dp(8);bottomMargin=context.dp(6) }
         image.foreground=StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused),context.round(Color.TRANSPARENT,WHITE));addState(intArrayOf(),context.round(Color.TRANSPARENT))
+            addState(intArrayOf(android.R.attr.state_focused),context.round(Color.TRANSPARENT,FOCUS));addState(intArrayOf(),context.round(Color.TRANSPARENT))
         }
         add(FrameLayout(context).apply {
             clipToOutline=true;background=context.round(PANEL);setDuplicateParentStateEnabled(true)
@@ -219,7 +220,7 @@ internal class YouTubePlaylistCard(context:Context,private val loader:ArtworkLoa
     private val image=FixedArtworkView(context).apply {
         scaleType=ImageView.ScaleType.CENTER_CROP;clipToOutline=true;background=context.round(PANEL);setDuplicateParentStateEnabled(true)
         foreground=StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused),context.round(Color.TRANSPARENT,WHITE));addState(intArrayOf(),context.round(Color.TRANSPARENT))
+            addState(intArrayOf(android.R.attr.state_focused),context.round(Color.TRANSPARENT,FOCUS));addState(intArrayOf(),context.round(Color.TRANSPARENT))
         }
     }
     private val name=context.text("",14f).apply{maxLines=2;ellipsize=TextUtils.TruncateAt.END}

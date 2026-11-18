@@ -31,7 +31,9 @@ adb -s "$DEVICE_SERIAL" reverse tcp:8893 tcp:8893
 ```
 
 Explicitly opt in and select the probe class. An optional single-word stage
-prefix, such as `-e stage episodes` or `-e stage regular`, limits the workload:
+prefix, such as `-e stage theme`, `-e stage episodes` or `-e stage regular`, limits
+the workload. The theme stage uses actual picker selections, checks all ten
+presets and three independent sections, then restores the original preferences:
 
 ```sh
 adb -s "$DEVICE_SERIAL" shell am instrument -w -r -e physicalTv true \

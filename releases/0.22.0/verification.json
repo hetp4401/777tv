@@ -1,0 +1,404 @@
+{
+  "application": "777tv",
+  "versionName": "0.22.0",
+  "versionCode": 29,
+  "verifiedAt": "2026-11-18T21:38:42.115791+00:00",
+  "apk": {
+    "file": "777tv-0.22.0-preview.apk",
+    "bytes": 8384520,
+    "sha256": "d4f208bb6aa28d21617443979933c4d55a53c675620eb5214c71ad76d5c382b3",
+    "signatureV2": true,
+    "certificateSha256": "c906793c72e69055a73004ea97bff7ce8059ac511c9a692e785db810d3f3ff02",
+    "alignment16KiB": true,
+    "nativeLibraries": [],
+    "bytesAddedSince0211": 14760
+  },
+  "productionSourceSha256": {
+    "app/build.gradle.kts": "ccac06ae1351524dbe204b77bc386fe388343a02dc9305bcefbfe534bf45e21c",
+    "app/src/main/AndroidManifest.xml": "1bbfdf5ae2fc10badeea46083d24ef1a992798bad7a633c86c8a1f64cf0c9347",
+    "app/src/main/assets/THIRD_PARTY_NOTICES.md": "38af7247d1b3b937b0eb1b4eceafbe79737c433f98383293fbedb0f16e229217",
+    "app/src/main/assets/licenses/NewPipeExtractor-LICENSE.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "app/src/main/assets/licenses/Rhino-LICENSE.txt": "ada0787f27b581e024972a18b51db92c8e8508d0f05017d104a1c70a61b59951",
+    "app/src/main/assets/licenses/jsoup-LICENSE.txt": "f5d724c5818010c61bff2e177f5b6452434bc054807522bf241940bca8b1d6b1",
+    "app/src/main/assets/licenses/nanojson-LICENSE.txt": "2794f8db476aea7b3da16caba160038f57bc8ee63750361c64e7d5ab501141ab",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/AddonSettingsScreen.kt": "e702e12108be6956887a6def5627fa7ee56a859c5dd405db8d4c6a1d49d8cb80",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Addons.kt": "8ce012ae17e02e39dc24adab4151893378e77156cdcce8895b803c9e171cf6bb",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ArtworkMemoryCache.kt": "e00692abfff8a6753866a5038c53084f08a6c9d012091d665108d486f6d0c7bc",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/FleetModel.kt": "6f74c46ea99631c618f6eadfc6869352b3e1ecea7d00f1b8bc6bec67add0fb67",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Guide.kt": "e4afb9f80a40f1aca03e12e75a2e8a1f8823d0ca7d899cb4842e7b7ad51c0d46",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Http.kt": "24b5e8a90d77c368c303e67329992a2614792f1cb79a26b81f510c828f34334b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveChannelRow.kt": "18bcd075b9bf55c28a97f10c76ad880b93917d259ef3d71f21b53c5633382a30",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveInfoOverlay.kt": "277f5a84dd5e004938565838ba4623f00772604433361abfbe7db0735605a32c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveScreen.kt": "e991fd0683238274de233605f1ce43943b2ee2eb91d41737dd83f4bc95d69edc",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/MainActivity.kt": "5cbc4ead1a17fd246ffd3fa6c461449ae077ba06da90a15931d86a3f489f4829",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Models.kt": "ef80816cbf0b140518b98048feb5cefe6764735655115540d3524b2c08bc6f4a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeAdapters.kt": "26d7d51393ee4badadaca3f189138f975b66f7b8974b66908a6aad03ba7c0160",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeBrowse.kt": "996aecf44c85e81fb6464c122b0d473777d6f58107df9674b539c1c731c4dbdf",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeUi.kt": "dcb0fccdad0e9197182686942bd857fea7708d7776ef9e1311b61a2f05063c0c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/PictureControls.kt": "7e90b5044c05749e9287d72617a4067d6c5e9f21c30ca7b4c31e20fbb2128be2",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Playback.kt": "2fb9af36edf2532c1987d56a842b78c64ee9555708913eaeb5f3a0549f1d4aa3",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Preferences.kt": "8aa1c974293d6356b5bf17f2c407f81f6dca38ad74b36dd6f6a814e715125508",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ProviderForm.kt": "ed953e8bb1ebe5754011e78d249fde1219d05640b940747903357e9bfd162aa4",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Repository.kt": "3ca9e8ca1d0515f29619806c189e31ed9a43f23b58da63ec5fff51f7f381746c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SearchScreen.kt": "cf4e5ee277f07b9ccd8d17eec625c6b17d192bfff561e9c35be3f19a122d47a5",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SettingsScreen.kt": "e01583664b08262bd3152629ca9dba1a9aa9aefa6b09ea237d01c7398c845297",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Stalker.kt": "0e245be28f87b071f5cb2867fb13fcfda1efd1b4a09d417a2188fb5ac07ff832",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Store.kt": "93a302e07375682737ee29bb33f7b2d2c3aad4857ba47993729c298f32234e9c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ThemePicker.kt": "04b92d20d73fed104b38677c6d20aa6cc9af91626e233e7c4bfc839e5d72cf4b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ThemeUi.kt": "e12b15d7dd32deea4910615ac6be42891021763bad3162db00766e50302e7441",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Themes.kt": "56a47cb26baa2ea2bf53946994ac9d7fc5f12d18376555781e0606eb6e05413f",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VideoPicture.kt": "61e99faabd02f03e60f179bcb48c9ec62f77b64b797e79328ae8a44b0044e3e0",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VodControls.kt": "2031b93faac9d8a5f677bc410fe97518a690ce766d5d44109f2d7d95cada90b8",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeClient.kt": "8c002f2cd0e9bb13e0982463eee569c7960670696dd29b1b037956f752b83b09",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeData.kt": "3442dddea7c327f84cfbf4bcebd7c75bca7ad2e5a21a451972c0b9f34a88dff3",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeHeatmapView.kt": "97c6f41c3407675814658b7e1ae98692de105090a82faf6127974faf93e90f41",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeHistory.kt": "96912a83456be32f84162b4cc3a6e955dc102406d1b3af4301ffa37004995e90",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLibraryData.kt": "597ff676032ca02a6f78372a4898aa4c56680ace8cc6fd3f9475f1cba8e48351",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLocalQueue.kt": "4fd85b0e47c7a55d42b14178ff24856b01d37ec389487476f5805da4cd2a1d99",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLounge.kt": "7151b3985be7f6aac8d4f5ec973c35ac21224cb45949c39a43081a0b031aba76",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeModel.kt": "a9ab7b3b75689f2d4ebba96f48bfc6acf3765f9bc8a8eb6360da2fa2727391c5",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubePhoneLink.kt": "7d6e12a6cf4d69359db684c6c0420e44b97541f5fde8d1402d336a551dd53ad2",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeResolver.kt": "e733757df8f317dd22f97232c8d58d2cf4be738bfdde858c65f0745ec0718df9",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeScreen.kt": "f5a308311e6e0a58b01df2e59c45433f655f323f3ae2c5af38ce00aa38512dab",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSearchData.kt": "bbd63f1371c18926449d0efecd8170d801cb92e5da57d330eaf64487e8a73e34",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSignIn.kt": "4fc45fce90cf228b11f472c58013d9e6ae335ed9dd5ab7b9c6ce8af968a4fe66",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSocialData.kt": "16a6862a89729ca0e75fb0fb7d8db1612f31a96d467fc48126595c8768ef70f2",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTransport.kt": "33b61f96975d5d90b908a309c1aedc936fe0d6a75c423403f11a10ce5d000e7f",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTvViews.kt": "a8cb2437c15a6311ae9fb90409492a469f365f40467a6ff51aeace22123cd6c6",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeVideoActions.kt": "67f9b77f180118c9b9b83d89e2e7024526033c451b8072d34a5f29de4c35377a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeVoice.kt": "afbce73f2346a050d1cb67d130a469f6f6f01a1c6517f5f6566e0aa85786e10e",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchData.kt": "adf28de875dd5efeb9eee1d8615dea0826cf44802eb22c85a6eefb2c58c540ce",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchPanel.kt": "74921caaa038df154e672e73d11da157e5973a93bc185e6210a1a4c48bfbd27d",
+    "app/src/main/res/drawable/fleet_icon.xml": "7ee412788f6f077cc84c61259207d56834047c53047395582ac0b81b571a05b3",
+    "app/src/main/res/drawable/ic_search.xml": "cbad918ba86c29515012c5b56976fdd423b9bf58e955b03de5f81610b1d3b19f",
+    "app/src/main/res/drawable/tv_banner.xml": "14983758b8949f645eee6dfb5796d35dc44ad0b3e8d1c56b38f181979da48116",
+    "app/src/main/res/layout/live_player.xml": "424758bc787f01863866ecae626f2775dedba88fbe97052bad908de60eb9ea39",
+    "app/src/main/res/layout/live_player_content.xml": "23c97249640061e9b6d66103b7895838e0ec6eed00d8e304b348fbb5b8203730",
+    "app/src/main/res/values/ids.xml": "247b141256795c4c4b720a4cf3257b46dbac70fde6f202a10231953d8db044ba",
+    "app/src/main/res/values/styles.xml": "eda8d33d4cd76ce9dd84e5b3f6ad57691f67f1c4f8933c77ae1c4e251043ef08",
+    "app/src/main/res/xml/data_extraction_rules.xml": "4c6f140d42cbf35e21ef83cd909993da77c8cdc67a7c0c5a31536ddcc438f7b0"
+  },
+  "build": {
+    "tasks": [
+      "testDebugUnitTest",
+      "lintDebug",
+      "assembleRelease"
+    ],
+    "logSha256": "93da51a8675768067bada2dee84ce157b3c07d235fdf91c9cde722c43574592c",
+    "unit": {
+      "cases": 221,
+      "skipped": 3,
+      "failed": 0,
+      "errors": 0,
+      "passed": 218
+    },
+    "lintErrors": 0
+  },
+  "nativeValidation": {
+    "uniqueScenarios": 31,
+    "failed": 0,
+    "jobs": [
+      {
+        "role": "theme-settings-dialogs",
+        "id": "3bf2fed0fa084090a22796fa1d4f5029",
+        "passed": 18,
+        "sourceArchiveSha256": "b2eb6b063615edf1dfbaa3536dadb9c4b2596b5a4b6abeebd9afbb37a3308b7e",
+        "allProductionFilesMatch": true,
+        "instrumentationSha256": "5358c4563851b50b44af9b2cbccb141ddea68ece1d4824a4a26a27b1915761c3"
+      },
+      {
+        "role": "navigation-player-modes",
+        "id": "91d9a5ccbb5f43f3abeea1ad0b839084",
+        "passed": 13,
+        "sourceArchiveSha256": "b2eb6b063615edf1dfbaa3536dadb9c4b2596b5a4b6abeebd9afbb37a3308b7e",
+        "allProductionFilesMatch": true,
+        "instrumentationSha256": "2eeb667387e4f6599bc2478fe3bf47c98bcc482ec517bc9e0bb4c7c829b0ec76"
+      },
+      {
+        "role": "three-area-gallery",
+        "id": "9664517af8614a9798c6364bccc37251",
+        "passed": 1,
+        "sourceArchiveSha256": "b2eb6b063615edf1dfbaa3536dadb9c4b2596b5a4b6abeebd9afbb37a3308b7e",
+        "allProductionFilesMatch": true,
+        "instrumentationSha256": "3cad133930326467bfd06b37f8d0f1cb56fa69ccd18b83f1856c61ec8098ca71"
+      }
+    ],
+    "note": "Gallery case is also in the full theme suite and is counted once. All 63 production files match the signed-release source. Worker instrumentation runs debug builds with generated data; signed release is checked separately on the TCL."
+  },
+  "themes": {
+    "defaultApp": "classic",
+    "defaultAreaOverrides": "inherit app theme",
+    "presets": 10,
+    "recommended": {
+      "onDemand": "cinema",
+      "youtube": "tube",
+      "liveTv": "aurora"
+    },
+    "solidDefaults": [
+      "classic",
+      "tube",
+      "sand",
+      "moss"
+    ],
+    "gradientDefaults": [
+      "cinema",
+      "aurora",
+      "midnight",
+      "ocean",
+      "rose",
+      "ember"
+    ],
+    "backgroundOverride": "Theme default or Solid",
+    "settingsScope": "App theme; content/player scope follows area; YouTube livestreams retain YouTube scope",
+    "selection": "Focus does not apply; OK commits; saved selection and inheritance remain separate."
+  },
+  "designReview": {
+    "independentRoles": [
+      "UX/contrast reviewer",
+      "professional visual-design agent"
+    ],
+    "actualNativeCaptures": true,
+    "approved": true,
+    "blockingFindings": [],
+    "polish": [
+      "Neutral white Tube focus, saturated red selection/progress, selected-label contrast 4.56:1.",
+      "Darker charcoal/teal Aurora background with distinct panel elevation.",
+      "Cinema violet/blue-black surfaces and violet accents.",
+      "Recommended theme first per section; saved selection and inherited choice remain distinct.",
+      "App theme label makes global vs section scope explicit."
+    ],
+    "gallery": {
+      "docs/images/themes/live.png": "3c8569cef96cb41ecbacae525cdda0ab94e32c847a02994f85c52707ce6345b2",
+      "docs/images/themes/on-demand.png": "84bff2df781853d20e5a348fd2259799c3b7045de430a2b809191b817ec5bfc6",
+      "docs/images/themes/settings-classic.png": "622dcb472a9d749493ad69286c4d7304e82edb7af6f7d2efce8b81819e7e29be",
+      "docs/images/themes/youtube.png": "39d9a6e2e7908f7bb948c3961f504e701990be3706c896eee333d4eb47419a64"
+    },
+    "testContent": "Generated sparse catalog/YouTube data and unsaved fixture Stalker provider; images are native screenshots, not mockups.",
+    "limits": "Visual approval does not establish motion or physical-device FPS."
+  },
+  "physicalTV": {
+    "device": "Smart TV Pro",
+    "api": 34,
+    "installedReleaseDebuggable": false,
+    "deployment": {
+      "installedAt": "2026-11-18T21:38:42.115791+00:00",
+      "previousVersion": "0.21.1",
+      "version": "0.22.0",
+      "code": 29,
+      "sameUid": true,
+      "dataCleared": false,
+      "probeRemoved": true,
+      "originalPreferencesRestored": true,
+      "stageSuccess": true
+    },
+    "themeCount": 10,
+    "allFocusMovesNonMutating": true,
+    "commitToFocusedRowMs": {
+      "samples": [
+        73,
+        158,
+        146,
+        148,
+        141,
+        146,
+        148,
+        152,
+        143,
+        141
+      ],
+      "median": 146.0,
+      "max": 158,
+      "scope": "Real remote OK through palette commit, screen rebuild and focused Appearance row; includes instrumentation input/await overhead"
+    },
+    "switches": [
+      {
+        "id": "classic",
+        "commitToFocusedRowMs": 73,
+        "focusDidNotApply": true,
+        "memory": {
+          "pssKiB": 73044,
+          "privateDirtyKiB": 40792,
+          "nativeAllocatedBytes": 14926208,
+          "managedUsedBytes": 25815544,
+          "artworkBytes": 2545920,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      },
+      {
+        "id": "midnight",
+        "commitToFocusedRowMs": 158,
+        "focusDidNotApply": true,
+        "memory": {
+          "pssKiB": 75469,
+          "privateDirtyKiB": 43216,
+          "nativeAllocatedBytes": 16688608,
+          "managedUsedBytes": 27582032,
+          "artworkBytes": 2545920,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      },
+      {
+        "id": "ocean",
+        "commitToFocusedRowMs": 146,
+        "focusDidNotApply": true,
+        "memory": {
+          "pssKiB": 78778,
+          "privateDirtyKiB": 46456,
+          "nativeAllocatedBytes": 19908512,
+          "managedUsedBytes": 29332560,
+          "artworkBytes": 2545920,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      },
+      {
+        "id": "aurora",
+        "commitToFocusedRowMs": 148,
+        "focusDidNotApply": true,
+        "memory": {
+          "pssKiB": 83723,
+          "privateDirtyKiB": 51108,
+          "nativeAllocatedBytes": 20093280,
+          "managedUsedBytes": 31738528,
+          "artworkBytes": 2545920,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      },
+      {
+        "id": "cinema",
+        "commitToFocusedRowMs": 141,
+        "focusDidNotApply": true,
+        "memory": {
+          "pssKiB": 86739,
+          "privateDirtyKiB": 54100,
+          "nativeAllocatedBytes": 21943056,
+          "managedUsedBytes": 33489056,
+          "artworkBytes": 2545920,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      },
+      {
+        "id": "rose",
+        "commitToFocusedRowMs": 146,
+        "focusDidNotApply": true,
+        "memory": {
+          "pssKiB": 90117,
+          "privateDirtyKiB": 57456,
+          "nativeAllocatedBytes": 23723040,
+          "managedUsedBytes": 35223200,
+          "artworkBytes": 2545920,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      },
+      {
+        "id": "ember",
+        "commitToFocusedRowMs": 148,
+        "focusDidNotApply": true,
+        "memory": {
+          "pssKiB": 94593,
+          "privateDirtyKiB": 61808,
+          "nativeAllocatedBytes": 25495792,
+          "managedUsedBytes": 36990112,
+          "artworkBytes": 2545920,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      },
+      {
+        "id": "sand",
+        "commitToFocusedRowMs": 152,
+        "focusDidNotApply": true,
+        "memory": {
+          "pssKiB": 68063,
+          "privateDirtyKiB": 35364,
+          "nativeAllocatedBytes": 22428880,
+          "managedUsedBytes": 9076040,
+          "artworkBytes": 2545920,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      },
+      {
+        "id": "tube",
+        "commitToFocusedRowMs": 143,
+        "focusDidNotApply": true,
+        "memory": {
+          "pssKiB": 70763,
+          "privateDirtyKiB": 38064,
+          "nativeAllocatedBytes": 24114992,
+          "managedUsedBytes": 10793344,
+          "artworkBytes": 2545920,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      },
+      {
+        "id": "moss",
+        "commitToFocusedRowMs": 141,
+        "focusDidNotApply": true,
+        "memory": {
+          "pssKiB": 73723,
+          "privateDirtyKiB": 41024,
+          "nativeAllocatedBytes": 25831488,
+          "managedUsedBytes": 12543416,
+          "artworkBytes": 2545920,
+          "artworkMaxBytes": 8388608,
+          "forcedGc": false
+        }
+      }
+    ],
+    "independentSections": [
+      {
+        "section": "On-Demand",
+        "palette": "cinema"
+      },
+      {
+        "section": "YouTube",
+        "palette": "tube"
+      },
+      {
+        "section": "Live TV",
+        "palette": "aurora"
+      }
+    ],
+    "originalPreferencesRestored": true,
+    "profilesPreserved": true,
+    "profilesCount": 0,
+    "addonsPreserved": true,
+    "addonsCount": 2,
+    "mediaPlaybackTestedThisStage": false,
+    "probeRemoved": true,
+    "diagnosticDownloadsRemoved": true,
+    "appLeftOpen": "On-Demand with original appearance preferences"
+  },
+  "efficiency": {
+    "technique": "Immutable palette data and static native gradient/color drawables; no bitmap wallpaper, blur, animation or new rendering dependency.",
+    "cacheBudgetUnchanged": true,
+    "artworkMaxBytes": 8388608,
+    "decoderPreservedOnThemeChange": "Native scenario verifies exact ExoPlayer instance, decoder-init count, position and pause intent; fresh themed transport verifies accent tint.",
+    "memory": "Physical PSS snapshots across ten changes fluctuate and reclaim memory naturally; this short run is not a long-term leak guarantee.",
+    "memoryPssKiBRange": [
+      68063,
+      94593
+    ],
+    "firstVideoFrameOrFpsBenchmark": false
+  },
+  "resolvedFindings": [
+    "TV Home model readiness preceded bound metadata views; fixture test now waits for a real bound card before asserting palette colors.",
+    "Initial picker used a nested receiver for its checkmark; fixed to use the card saved-state value.",
+    "Equal selected/focused outlines were simplified to one focus outline plus a selection check.",
+    "Saturated red selection text needed a darker Tube surface; contrast regression now covers accent labels.",
+    "Test annotation uses SdkSuppress, not RequiresApi; lint passes."
+  ],
+  "limits": [
+    "Original appearance preferences restored on the TCL; the section recipe in gallery captures is an explicit preview, not a new default.",
+    "No real IPTV profile was added or tested; fixture portal/preview is remote-emulator-only.",
+    "No Google account mutations, owner sign-in, actual phone pairing or history-sync acceptance performed.",
+    "No matched performance benchmark versus TizenTube or other release; original 0.21.1 playback measurements remain separately scoped."
+  ]
+}
