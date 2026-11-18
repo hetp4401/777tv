@@ -72,8 +72,8 @@ class ThemeTest {
         assertEquals(themes.size, themes.map { it.id }.distinct().size)
         assertEquals(themes.size, themes.map { it.name }.distinct().size)
         assertEquals(themes.size, themes.map { Triple(it.background, it.panel, it.accent) }.distinct().size)
-        assertEquals(6, themes.count { it.prefersGradient })
-        assertEquals(4, themes.count { !it.prefersGradient })
+        assertEquals(5, themes.count { it.prefersGradient })
+        assertEquals(5, themes.count { !it.prefersGradient })
         for (theme in themes) {
             assertTrue(theme.name.isNotBlank())
             assertTrue(theme.pairing.isNotBlank())

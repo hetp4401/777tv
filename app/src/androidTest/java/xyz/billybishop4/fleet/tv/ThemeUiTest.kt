@@ -236,7 +236,8 @@ class ThemeUiTest : NativeTestBase() {
         val movieCard = firstMovieCard()!!
         ui { assertTrue(movieCard.requestFocusFromTouch()) }; await { ui { a.currentFocus === movieCard } }
         val cinema = backgroundSamples(ui { appRoot().background })
-        assertNotEquals(cinema.first, cinema.second)
+        assertEquals(0xFF000000.toInt(), cinema.first)
+        assertEquals(cinema.first, cinema.second)
         screenshot("theme-area-on-demand")
 
         nav("YouTube"); awaitBoundYouTubeHomeCard()

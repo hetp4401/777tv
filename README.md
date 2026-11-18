@@ -6,19 +6,19 @@ and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
 ## Development candidate
 
-**0.22.0 · version code 29 · Android 7.0 / API 24 or later**
+**0.22.1 · version code 30 · Android 7.0 / API 24 or later**
 
 This branch contains the native YouTube integration and continuing TizenTube
-functional review, with independent app and section themes. Version 0.22.0 is
-installed on the TCL with the original appearance and data preserved. The release
+functional review, with independent app and section themes. Version 0.22.1 is
+installed on the TCL, with black Cinema selected for On-Demand and other settings/data preserved. The release
 record separates final-source native scenarios from signed-release device checks.
 Development also uses local checks and worker emulators.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Candidate verification](releases/0.22.0/verification.json) records the APK checksum,
+[Candidate verification](releases/0.22.1/verification.json) records the APK checksum,
 source/build checksums and validation scope.
-[SHA256SUMS](releases/0.22.0/SHA256SUMS) identifies the installed APK. The original
+[SHA256SUMS](releases/0.22.1/SHA256SUMS) identifies the installed APK. The original
 production import remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
@@ -27,11 +27,11 @@ are excluded from Git.
 
 - Ten coordinated **themes**, with Classic preserving the current default.
   On-Demand, YouTube and Live TV can each override or inherit the app palette.
-  Cinema uses violet/blue-black, Tube uses solid black/white/red, and Aurora uses
+  Cinema uses black backgrounds with violet accents, Tube uses solid black/white/red, and Aurora uses
   charcoal teal/mint. Focus, saved selection and inheritance remain distinct.
   Static native backgrounds and tinted controls add no blur, animated wallpaper
   or decoder restart. See the [theme guide](docs/themes.md) and
-  [reviewed native screenshots](releases/0.22.0/README.md).
+  [reviewed native screenshots](releases/0.22.1/README.md).
 
 - A **YouTube** section beside On-Demand: a collapsible left rail, native TV
   keyboard and platform voice search. Home preserves real TV recommendation
@@ -153,13 +153,15 @@ adb -s emulator-5554 shell am start -n xyz.billybishop4.fleet.tv/.MainActivity
 
 ## Tests and verification
 
-0.22.0 passes 218 ordinary JVM tests, Android lint, and 31 unique native TV-emulator
-scenarios against the same 63 production files as the signed release. Three
-opt-in JVM probes are skipped. The signed-release TCL theme check applies all ten
-presets, verifies independent section palettes and restores original preferences.
+0.22.1 passes 218 ordinary JVM tests and Android lint. Its updated native
+three-area journey verifies the rendered On-Demand backdrop is black, independent
+section choices persist, and Live preview still plays. All 63 production hashes
+match the signed patch source. The preceding 0.22.0 release records its separate
+31-scenario native regression suite. Three opt-in JVM probes are skipped.
 
-[Theme release results](releases/0.22.0/README.md) record screenshots, source hashes,
-contrast review and physical switch timings. The preceding
+[Theme patch results](releases/0.22.1/README.md) record screenshots, source hashes
+and contrast review. [0.22.0](releases/0.22.0/README.md) retains physical theme-switch
+timings. The preceding
 [0.21.1 playback report](releases/0.21.1/README.md) retains its separate media,
 frame-deadline and memory scope. The [dedicated device probe](scripts/device_probe/README.md)
 preserves configured app data; ordinary fixture suites must not run on a configured TV.
@@ -246,6 +248,7 @@ historical artifact paths in that file refer to untracked local evidence.
 | `remote/` | Optional build/test worker service and pinned toolchain |
 | `releases/0.21.0/` | Prior candidate emulator verification and APK checksum |
 | `releases/0.21.1/` | Previous physical playback measurements and checksum |
-| `releases/0.22.0/` | Installed themed release, native gallery and exact verification |
+| `releases/0.22.0/` | Original themed release and full native regression record |
+| `releases/0.22.1/` | Black On-Demand patch and exact verification |
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency notices.

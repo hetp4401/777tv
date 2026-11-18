@@ -1,6 +1,14 @@
 # 777tv Android TV workflow (formerly Fleet)
 
-- Current release is 0.22.0/code 29, installed in place on the TCL November 18,
+- Latest user clarification makes the whole On-Demand area black with accents,
+  not just stream cards. 0.22.1/code 30 is installed on the TCL; Cinema is now
+  selected only for On-Demand. Its backdrop is true black, cards/fields neutral
+  charcoal, with retained violet selection/focus/action accents. App/YouTube/
+  Live/background choices were preserved through the actual settings UI.
+  `releases/0.22.1/verification.json` records 218 JVM passes, lint0 and the updated
+  native section journey with all 63 source hashes matched. Keep real TV artwork/
+  history captures private in `.tools/cinema-black0221/`.
+- Prior release was 0.22.0/code 29, installed in place on the TCL November 18,
   2026, with the original appearance and other app data preserved. Theming has
   a Classic app/upgrade default plus independent area overrides and mixed solid/
   static-gradient presets. Latest user direction: On-Demand Cinema violet/blue-

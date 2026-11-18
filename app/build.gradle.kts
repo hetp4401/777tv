@@ -13,8 +13,8 @@ android {
         applicationId = "xyz.billybishop4.fleet.tv"
         minSdk = 24
         targetSdk = 36
-        versionCode = 29
-        versionName = "0.22.0"
+        versionCode = 30
+        versionName = "0.22.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters.addAll(fleetAbis) }
     }

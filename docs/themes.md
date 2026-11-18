@@ -13,7 +13,7 @@ LIVE/error indicators keep their original meaning.
 | Preset | Pairing | Default backdrop |
 | --- | --- | --- |
 | Classic | Ink and silver | Solid |
-| Cinema | Violet and midnight blue | Subtle dark gradient |
+| Cinema | Black with violet-blue accents | Solid |
 | Tube | Black, white and red | Solid |
 | Aurora | Charcoal teal and mint | Subtle dark gradient |
 | Midnight | Blue and indigo | Subtle dark gradient |
@@ -45,7 +45,7 @@ and keeps any active decoder and playback position. No wallpaper bitmaps, blur,
 background animation, web UI or new rendering library is added. The existing
 artwork and encoded-video buffer budgets are unchanged.
 
-[Release verification](../releases/0.22.0/verification.json) separates automated
+[Release verification](../releases/0.22.1/verification.json) separates automated
 fixture scenarios from opt-in signed-release device checks. Gallery captures use
 generated content and an unsaved fixture portal; no IPTV profile ships with the
 app. Private TCL captures and raw device reports stay outside Git.

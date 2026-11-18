@@ -898,3 +898,20 @@ leak freedom or video FPS. Original appearance/preferences, profiles and add-ons
 were preserved, and temporary instrumentation/downloads removed. The
 [release record](releases/0.22.0/verification.json) keeps corrected test readiness,
 selection and contrast findings, exact scopes and the reviewed screenshot hashes.
+
+
+## Black On-Demand refinement (0.22.1)
+
+The user clarified that the whole On-Demand area should use black with accents.
+Cinema now has a true black solid backdrop and neutral charcoal surfaces, keeping
+violet focus, selection and action accents. Layout and artwork/video pixels are
+unchanged. The visual designer approved the new fixture and private real-TCL
+captures. Existing contrast checks pass; the native section journey now verifies
+pure black samples across the page instead of a gradient.
+
+218 JVM checks and lint pass. The updated native journey matches all 63 production
+hashes; the two production changes are the palette and version declaration.
+The patch is installed in place on the TCL and Cinema was selected only for
+On-Demand through Settings. Other visible appearance choices and the app UID/data
+are preserved. The full 0.22.0 native suite remains a separately scoped historical
+record. See [patch verification](releases/0.22.1/verification.json).
