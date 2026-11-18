@@ -4,6 +4,7 @@ package xyz.billybishop4.fleet.tv
 import android.view.KeyEvent
 import android.view.View
 import android.widget.EditText
+import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.RecyclerView
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
@@ -182,6 +183,34 @@ class YouTubeNavigationTest:NativeTestBase() {
         await{ui{!a.model.youtube.resolving && a.model.youtube.error!=null}}
         assertNull(player());assertEquals("fixture",ui{a.model.youtube.query})
         control("fail_playback=0");ui{tagged("youtube-video:${first.id}")!!.performClick()};playing();returnFromPlayer()
+    }
+    @Test fun aRejectedYouTubeMediaUrlUsesOneFallbackAndKeepsTheReturnSelection() {
+        search("fixture");val selected=videos()[2];control("rejected_media=1")
+        await{tagged("youtube-video:${selected.id}")?.isShown==true}
+        ui{tagged("youtube-video:${selected.id}")!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
+        playing()
+        val resolved=audit().getJSONArray("resolved").let{items->(0 until items.length()).map{items.getString(it)}}
+        assertEquals(listOf(selected.id,selected.id),resolved)
+        assertEquals(listOf(selected.id),audit().getJSONArray("fallbackResolved").let{items->(0 until items.length()).map{items.getString(it)}})
+        assertEquals("ExoPlayer",JSONObject(ui{a.playbackInfo}).getString("engine"))
+        assertNull(find("Retry"));assertTrue(ui{a.player!!.playWhenReady})
+        rule.scenario.moveToState(Lifecycle.State.CREATED);await{ui{a.activePlayer==null}}
+        rule.scenario.moveToState(Lifecycle.State.RESUMED);playing()
+        assertEquals("Returning from background must retain the recovered source",2,audit().getJSONArray("resolved").length())
+        returnFromPlayer();await{ui{a.currentFocus?.tag=="youtube-video:${selected.id}"}}
+        assertEquals("fixture",ui{a.model.youtube.query});assertNull(player())
+    }
+    @Test fun aRejectedFallbackStopsAfterOneAttemptAndAnExplicitRetryCanRecover() {
+        search("fixture");val selected=videos().first();control("rejected_media=1&rejected_fallback=1")
+        ui{tagged("youtube-video:${selected.id}")!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
+        await{find("Retry")?.isShown==true && ui{a.model.route is Route.Player}}
+        android.os.SystemClock.sleep(600)
+        assertEquals(2,audit().getJSONArray("resolved").length())
+        assertEquals(1,audit().getJSONArray("fallbackResolved").length())
+        assertFalse(ui{a.player?.isPlaying==true});assertEquals("fixture",ui{a.model.youtube.query})
+        control("rejected_media=0&rejected_fallback=0");click("Retry");playing()
+        assertEquals(3,audit().getJSONArray("resolved").length())
+        returnFromPlayer();await{ui{a.currentFocus?.tag=="youtube-video:${selected.id}"}}
     }
     @Test fun switchingSectionsKeepsSeparateSearchesAndReleasesPlayerAndViews() {
         search("youtube query");nav("On-Demand")

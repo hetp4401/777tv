@@ -10,11 +10,14 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONArray
 import org.json.JSONObject
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -24,6 +27,7 @@ internal class YouTubeClient(
     private val credentials:YouTubeCredentials, private val transport:YouTubeTransport=YouTubeHttp(),
     internal val origin:String="https://www.youtube.com", private val now:()->Long=System::currentTimeMillis,
     private val localHistory:()->List<Progress> = { emptyList() },
+    private val guestRequestTimeoutMs:Long=5_000,
 ) : YouTubeHistoryBackend {
     private val configMutex=Mutex();private var config:YouTubeBootstrap?=null;private var configAt=0L
     private val accountMutex=Mutex();private var loaded=false;private var session:YouTubeSession?=null
@@ -32,6 +36,7 @@ internal class YouTubeClient(
     private val refreshMutex=Mutex()
     private val accountRequests=mutableSetOf<Job>()
     private val trackingTransport:YouTubeTransport=if(transport is YouTubeHttp)YouTubeHttp(YouTubeHttp.trackingClient) else transport
+    private val suggestionTransport:YouTubeTransport=if(transport is YouTubeHttp)YouTubeHttp(YouTubeHttp.suggestionClient,64*1024) else transport
     private val webMutex=Mutex();private var webConfig:Pair<String,String>?=null;private var webAt=0L
     private var emptyGuestHomeAt:Long?=null
     var accountStorageError=false;private set
@@ -159,6 +164,25 @@ internal class YouTubeClient(
         val result=api(if(feed==YouTubeFeed.SEARCH)"search" else "browse",body)
         return withContext(Dispatchers.Default){when(feed){YouTubeFeed.HOME->YouTubeDecode.home(result);YouTubeFeed.SEARCH->YouTubeSearchPages.decode(result);else->YouTubeDecode.page(result)}}
     }
+    /** Public TV query completion; never attach the account bearer or visitor
+     * identity. Failure must leave the local keyboard and recent searches usable. */
+    suspend fun searchSuggestions(query:String):List<String> {
+        val text=YouTubeSuggestions.clean(query)
+        if(text.isBlank())return emptyList()
+        val base=if(origin=="https://www.youtube.com")"https://clients1.google.com" else origin
+        val url="$base/complete/search".toHttpUrlOrNull()?.newBuilder()
+            ?.addQueryParameter("client","youtube-lr")?.addQueryParameter("ds","yt")?.addQueryParameter("xhr","t")
+            ?.addQueryParameter("oe","utf-8")?.addQueryParameter("xssi","t")?.addQueryParameter("hl","en")
+            ?.addQueryParameter("gl","US")?.addQueryParameter("q",text)?.build()?.toString()?:return emptyList()
+        return try {
+            withTimeoutOrNull(4_000) {
+                val response=suggestionTransport.request(url)
+                if(response.status !in 200..299)emptyList()
+                else withContext(Dispatchers.Default){YouTubeSuggestions.decode(response.text,text)}
+            }.orEmpty()
+        }catch(e:CancellationException){throw e}
+        catch(_:Exception){emptyList()}
+    }
     private suspend fun history():List<Progress> = withContext(Dispatchers.IO) {
         localHistory().filter{YouTubeDecode.validId(it.title.id) && it.title.type=="youtube" && it.positionMs>0}
             .sortedByDescending{it.updated}.distinctBy{it.title.id}.take(50)
@@ -173,10 +197,14 @@ internal class YouTubeClient(
         // round-trip before the public topics. Failed requests are not cached.
         if(emptyGuestHomeAt?.let{now()-it in 0..300_000L}!=true) {
             try {
-                val result=api("browse",JSONObject().put("browseId","default"),authenticated=false)
-                val page=withContext(Dispatchers.Default){YouTubeDecode.home(result)}
-                if(page.videos.isNotEmpty())return page
-                emptyGuestHomeAt=now()
+                val result=withTimeoutOrNull(guestRequestTimeoutMs.coerceIn(1,5_000)) {
+                    api("browse",JSONObject().put("browseId","default"),authenticated=false)
+                }
+                if(result!=null) {
+                    val page=withContext(Dispatchers.Default){YouTubeDecode.home(result)}
+                    if(page.videos.isNotEmpty())return page
+                    emptyGuestHomeAt=now()
+                }
             }catch(e:CancellationException){throw e}
             catch(_:Exception){/* Public topics can still work when default Home is unavailable. */}
         }
@@ -193,9 +221,19 @@ internal class YouTubeClient(
             catch(_:Exception){null}
         }
         val topics=listOf("Music" to "FEtopics_music","Gaming" to "FEtopics_gaming","News" to "FEtopics_news")
-        val related=seed?.let{async { request("next",JSONObject().put("videoId",it.title.id)) }}
-        val pages=topics.map { (_,id)->async { request("browse",JSONObject().put("browseId",id)) } }.awaitAll()
-        val because=related?.await()?.videos.orEmpty().filter{it.id !in seen}.take(20)
+        var related:YouTubePage?=null
+        val pages=MutableList<YouTubePage?>(topics.size){null}
+        val tasks=ArrayList<Job>()
+        seed?.let{tasks+=launch { related=request("next",JSONObject().put("videoId",it.title.id)) }}
+        for((index,topic) in topics.withIndex())tasks+=launch {
+            pages[index]=request("browse",JSONObject().put("browseId",topic.second))
+        }
+        // Optional public topics must not wait for the transport's long feed
+        // timeout. Retain completed shelves in server/topic order, then cancel
+        // the unfinished calls so a single stalled topic cannot freeze Home.
+        try { withTimeoutOrNull(guestRequestTimeoutMs.coerceIn(1,5_000)){tasks.joinAll()} }
+        finally { tasks.forEach{it.cancel()} }
+        val because=related?.videos.orEmpty().filter{it.id !in seen}.take(20)
         if(pages.all{it==null} && because.isEmpty())throw UserMessage("Recommendations couldn't load. Check your connection and try again.")
         val rows=ArrayList<YouTubeShelf>();val shown=HashSet(seen)
         if(seed!=null && because.isNotEmpty()) {

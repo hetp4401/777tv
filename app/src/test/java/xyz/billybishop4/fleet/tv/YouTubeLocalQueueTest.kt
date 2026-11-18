@@ -62,11 +62,18 @@ class YouTubeLocalQueueTest {
         }finally{scope.cancel()}
     }
     @Test fun phoneOwnedPlaybackHasNoLocalAutoplayUntilDisconnectReleasesOwnership()=runBlocking {
-        val scope=CoroutineScope(coroutineContext+SupervisorJob());val t=FixtureYouTubeTransport();t.respond={next(video(2))};var opened:Watch?=null
+        val scope=CoroutineScope(coroutineContext+SupervisorJob());val t=FixtureYouTubeTransport();t.respond={
+            val response=JSONObject(next(video(2)).text).put("playerOverlays",JSONObject().put("chapterRenderer",
+                JSONObject().put("title","Introduction").put("timeRangeStartMillis",0)))
+            YouTubeHttpResponse(200,response.toString())
+        };var opened:Watch?=null
         try {
             val resolver=object:YouTubeStreamResolver{override suspend fun resolve(video:YouTubeVideo)=watch(video)}
             val model=YouTubeModel(YouTubeClient(MemoryYouTubeCredentials(),t),scope,{}, {w,_->opened=w},{},resolver)
-            model.playRemote(video(1));settled(model);model.prepareNext(opened!!);delay(10);assertTrue(t.requests.isEmpty())
+            model.playRemote(video(1));settled(model);model.prepareNext(opened!!)
+            withTimeout(3000){while(model.chapters(video(1).id).isEmpty())delay(1)}
+            assertEquals(listOf(YouTubeChapter("Introduction",0)),model.chapters(video(1).id))
+            assertEquals(1,t.requests.count{it.path.endsWith("/next")})
             model.watchDetails(video(1).id);assertFalse(model.canStepRegular(opened!!,1));assertFalse(model.onRegularEnded(opened!!,true));assertFalse(model.enqueue(video(3)))
             model.cancelRemotePlayback();assertTrue(model.canStepRegular(opened!!,1));assertTrue(model.stepRegular(opened!!,1));settled(model)
             assertEquals(video(2).id,opened!!.title.id);assertNull(opened!!.requestedPositionMs)

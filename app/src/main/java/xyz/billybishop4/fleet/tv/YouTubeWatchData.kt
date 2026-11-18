@@ -3,8 +3,9 @@ package xyz.billybishop4.fleet.tv
 import org.json.JSONObject
 
 internal data class YouTubeHeatMarker(val startMs:Long,val durationMs:Long,val intensity:Float)
+internal data class YouTubeChapter(val title:String,val startMs:Long)
 internal data class YouTubeWatchDetails(val related:YouTubePage,val commentsToken:String?,val commentsLabel:String="Comments",
-    val channel:YouTubeChannel?=null,val rating:YouTubeRating?=null)
+    val channel:YouTubeChannel?=null,val rating:YouTubeRating?=null,val chapters:List<YouTubeChapter> = emptyList())
 internal data class YouTubeComment(
     val id:String,val author:String,val body:String,val metadata:String,
     val repliesLabel:String="",val repliesToken:String?=null,
@@ -13,6 +14,8 @@ internal data class YouTubeCommentsPage(val comments:List<YouTubeComment>,val co
 
 /** Watch responses are reduced to bounded, plain data; no renderers or account payloads enter the view tree. */
 internal object YouTubeWatchDecode {
+    private val chapterNumber=Regex("[0-9]{1,12}")
+    private val chapterWhitespace=Regex("\\s+")
     private fun token(root:Any?):String? {
         val command=YouTubeDecode.find(root,setOf("nextContinuationData","reloadContinuationData","continuationCommand"),1).firstOrNull() as? JSONObject
         return command?.optString("continuation")?.ifBlank { command.optString("token") }
@@ -28,7 +31,29 @@ internal object YouTubeWatchDecode {
         val pivot=j.optJSONObject("contents")?.optJSONObject("singleColumnWatchNextResults")?.opt("pivot")
         val page=YouTubeDecode.page(if(pivot is JSONObject)pivot else j)
         return YouTubeWatchDetails(page.copy(videos=page.videos.filter { it.id!=videoId }.take(40)),comments,label,
-            YouTubeSocialDecode.watchChannel(j),YouTubeSocialDecode.rating(j))
+            YouTubeSocialDecode.watchChannel(j),YouTubeSocialDecode.rating(j),chapters(j,videoId))
+    }
+    /** Real chapter timestamps from the existing watch-next response. Chapter
+     * artwork/commands are discarded, and an unrelated watch endpoint is rejected. */
+    internal fun chapters(j:JSONObject,videoId:String):List<YouTubeChapter> {
+        fun millis(value:Any?,scale:Long):Long? {
+            val number=value?.toString()?.takeIf{it.matches(chapterNumber)}?.toLongOrNull()?:return null
+            return number.takeIf{it<=604_800_000L/scale}?.times(scale)
+        }
+        fun chapter(node:JSONObject,start:Long?):YouTubeChapter? {
+            val title=YouTubeDecode.text(node.opt("title")).replace(chapterWhitespace," ").trim().take(160)
+            return if(start==null || title.isBlank())null else YouTubeChapter(title,start)
+        }
+        val legacy=YouTubeDecode.find(j.opt("playerOverlays"),setOf("chapterRenderer"),160).filterIsInstance<JSONObject>()
+            .mapNotNull{chapter(it,millis(it.opt("timeRangeStartMillis"),1))}
+        val panels=YouTubeDecode.find(j.opt("engagementPanels"),setOf("engagementPanelSectionListRenderer"),20)
+            .filterIsInstance<JSONObject>().filter{it.optString("panelIdentifier").endsWith("-chapters")}
+        val items=panels.asSequence().flatMap{YouTubeDecode.find(it.opt("content"),setOf("macroMarkersListItemRenderer"),160).asSequence()}
+            .take(160).filterIsInstance<JSONObject>().mapNotNull { node->
+                val endpoint=YouTubeDecode.find(node.opt("onTap"),setOf("watchEndpoint"),1).firstOrNull() as? JSONObject
+                if(endpoint?.optString("videoId")!=videoId)null else chapter(node,millis(endpoint.opt("startTimeSeconds"),1000))
+            }.toList()
+        return (legacy+items).distinctBy{it.startMs}.sortedBy{it.startMs}.take(80)
     }
     private val replyCount=Regex("[0-9][0-9, .\\u00A0\\u202F]*[KMB]?",RegexOption.IGNORE_CASE)
     private fun repliesLabel(value:Any?):String {

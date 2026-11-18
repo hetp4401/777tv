@@ -16,9 +16,9 @@ CHANNEL_ID='UC'+'1'*22
 def reset():
     with _lock:
         _state.clear()
-        _state.update(requests=[],resolved=[],approve=False,deny=False,slow=False,fail=False,fail_playback=False,split_media=False,
-            no_heatmap=False,no_comments=False,fail_details=False,guest_fail=False,empty_guest=False,
-            history_paused=False,fail_actions=False,slow_actions=False,slow_remote=False,slow_next=False,grouped_search=False,stateful_account=False,ratings={},subscribed=False,
+        _state.update(requests=[],resolved=[],fallbackResolved=[],approve=False,deny=False,slow=False,fail=False,fail_playback=False,split_media=False,rejected_media=False,rejected_fallback=False,
+            no_heatmap=False,no_comments=False,no_chapters=False,fail_details=False,guest_fail=False,empty_guest=False,
+            history_paused=False,fail_actions=False,slow_actions=False,slow_remote=False,slow_next=False,slow_suggestions=False,grouped_search=False,stateful_account=False,ratings={},subscribed=False,
             playlists={'WL':{'name':'Watch later','videos':[]},'PLfixture':{'name':'Fixture playlist','videos':[]}},phone_events=[],phone_aid=4,phone_screen=0,slow_phone=False)
 
 
@@ -68,6 +68,14 @@ def reel(index):
 
 
 def handle_get(handler,path,query,root):
+    if path=='/youtube/complete/search':
+        text=parse_qs(query).get('q',[''])[0].strip()[:200]
+        with _lock:
+            _state['requests'].append({'path':path,'query':text,'authenticated':bool(handler.headers.get('Authorization'))});slow=_state['slow_suggestions']
+        if slow:time.sleep(.8)
+        values=[text+' videos',text+' music',text+' live',text+' tutorial',text+' documentary',text+' shorts'] if text else []
+        payload=")]}'\n"+json.dumps([text,[[value,0] for value in values]],ensure_ascii=False)
+        return handler.send(payload.encode('utf-8'),'application/json; charset=utf-8')
     if path.startswith('/youtube/api/lounge/'):return lounge_get(handler,path,parse_qs(query))
     if path in ['/youtube/api/stats/playback','/youtube/api/stats/watchtime']:
         values=parse_qs(query)
@@ -79,7 +87,7 @@ def handle_get(handler,path,query,root):
         q=parse_qs(query)
         if q.get('reset')==['1']:reset()
         with _lock:
-            for name in ['approve','deny','slow','fail','fail_playback','split_media','no_heatmap','no_comments','fail_details','guest_fail','empty_guest','history_paused','fail_actions','slow_actions','slow_phone','slow_remote','slow_next','grouped_search','stateful_account']:
+            for name in ['approve','deny','slow','fail','fail_playback','split_media','rejected_media','rejected_fallback','no_heatmap','no_comments','no_chapters','fail_details','guest_fail','empty_guest','history_paused','fail_actions','slow_actions','slow_phone','slow_remote','slow_next','slow_suggestions','grouped_search','stateful_account']:
                 if name in q:_state[name]=q[name]==['1']
         return handler.send({'ok':True})
     if path=='/youtube/state':return handler.send(snapshot())
@@ -93,10 +101,15 @@ def handle_get(handler,path,query,root):
         identifier=path.rsplit('/',1)[-1]
         if identifier=='B0000000009':
             return handler.send({'url':'http://10.0.2.2:8878/startup/media/master.m3u8'})
-        with _lock:_state['resolved'].append(identifier);fail=_state['fail_playback'];slow=_state['slow'];split=_state['split_media'];slow_remote=_state['slow_remote']
+        fallback=parse_qs(query).get('fallback')==['1']
+        with _lock:
+            _state['resolved'].append(identifier)
+            if fallback:_state['fallbackResolved'].append(identifier)
+            fail=_state['fail_playback'];slow=_state['slow'];split=_state['split_media'];slow_remote=_state['slow_remote'];rejected=_state['rejected_media'];rejected_fallback=_state['rejected_fallback']
         if slow_remote:time.sleep(3)
         if slow:time.sleep(1)
         if fail:return handler.send({'error':'fixture unavailable'},status=503)
+        if (rejected and not fallback) or (fallback and rejected_fallback):return handler.send({'url':'http://10.0.2.2:8878/youtube/media/rejected.m3u8'})
         if split:return handler.send({'url':'http://10.0.2.2:8878/youtube/media-split/video.mp4',
             'audioUrl':'http://10.0.2.2:8878/youtube/media-split/audio.m4a','videoMimeType':'video/mp4','audioMimeType':'audio/mp4'})
         address='http://10.0.2.2:8878/youtube/media-short/index.m3u8' if identifier.startswith('S') else 'http://10.0.2.2:8878/hls/fixture/orig.m3u8'
@@ -274,7 +287,7 @@ def handle_post(handler,path):
             **({'continuationContents':{'nextContinuationData':{'continuation':'fixture-page-2'}}} if start==1 else {})})
     if path.endswith('/next'):
         with _lock:
-            no_heatmap=_state['no_heatmap'];no_comments=_state['no_comments'];fail_details=_state['fail_details'];slow_next=_state['slow_next']
+            no_heatmap=_state['no_heatmap'];no_comments=_state['no_comments'];no_chapters=_state['no_chapters'];fail_details=_state['fail_details'];slow_next=_state['slow_next']
         web=body.get('context',{}).get('client',{}).get('clientName')=='WEB'
         if web:
             return handler.send({} if no_heatmap else {'frameworkUpdates':{'entityBatchUpdate':{'mutations':[{'payload':{
@@ -302,6 +315,8 @@ def handle_post(handler,path):
                 **({'continuations':[{'nextContinuationData':{'continuation':'fixture-comments-2'}}]} if page==1 and not reply else {})}}})
         with _lock:rating=_state['ratings'].get(body.get('videoId',''),'INDIFFERENT');subscribed=_state['subscribed']
         return handler.send({'contents':{'singleColumnWatchNextResults':{'pivot':{'sectionListRenderer':{'contents':[video(n) for n in range(40,60)]}}}},
+            **({} if no_chapters else {'playerOverlays':{'playerOverlayRenderer':{'multiMarkersPlayerBarRenderer':{'markersMap':[{'value':{'chapters':[
+                {'chapterRenderer':{'title':{'simpleText':title},'timeRangeStartMillis':start}} for title,start in [('Intro',0),('Main section',10000),('Finale',30000)]]}}]}}}}),
             'videoOwnerRenderer':{'title':{'simpleText':'Fixture creator'},'navigationEndpoint':{'browseEndpoint':{'browseId':CHANNEL_ID}}},
             'subscribeButtonRenderer':{'channelId':CHANNEL_ID,'subscribed':subscribed},
             'segmentedLikeDislikeButtonRenderer':{'likeButton':{'toggleButtonRenderer':{'isToggled':rating=='LIKE'}},

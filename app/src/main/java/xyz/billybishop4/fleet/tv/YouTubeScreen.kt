@@ -62,11 +62,14 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
                             if(m.feed==YouTubeFeed.CHANNEL)return channelTarget().requestFocus()
                             return topNavigation().requestFocus()
                         }
+                        // The last grid row must not jump to an unrelated header or rail item.
+                        KeyEvent.KEYCODE_DPAD_DOWN->if(position>=0 && position/grid.spanCount==(gridCount()-1)/grid.spanCount)return true
                     }
                 }
                 val shelf=focused?.let { focus->generateSequence(focus){it.parent as? View}.filterIsInstance<YouTubeShelfView>().firstOrNull() }
                 if(shelf!=null && shelves.isShown) {
                     if(event.keyCode==KeyEvent.KEYCODE_DPAD_LEFT && shelf.list.getChildAdapterPosition(focused!!)==0)return selectedRail().requestFocus()
+                    if(event.keyCode==KeyEvent.KEYCODE_DPAD_RIGHT && shelf.list.getChildAdapterPosition(focused!!)==(shelf.list.adapter?.itemCount?:0)-1)return true
                     val row=shelves.getChildAdapterPosition(shelf)
                     if(event.keyCode==KeyEvent.KEYCODE_DPAD_UP && row==0) {
                         if(m.feed==YouTubeFeed.SEARCH){expandSearch();return keyboard.requestFocus()}
@@ -161,13 +164,39 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         tag="youtube-loading";isIndeterminate=true;visibility=View.INVISIBLE;importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
     }
     private val keyboard:YouTubeKeyboard=YouTubeKeyboard(a,::insert,::erase,{input.setText("")},::search,::systemKeyboard) { direction->
-        when(direction) { View.FOCUS_UP->input.requestFocus();View.FOCUS_LEFT->recent.getChildAt(1)?.takeIf{it.isFocusable}?.requestFocus()?:searchNav.requestFocus();View.FOCUS_DOWN->firstCard()?.requestFocus()?:false;else->false }
+        when(direction) { View.FOCUS_UP->input.requestFocus();View.FOCUS_LEFT->suggestionRows.firstOrNull{it.isShown}?.requestFocus()?:searchNav.requestFocus();View.FOCUS_DOWN->firstCard()?.requestFocus()?:false;else->false }
     }
-    private val recent:LinearLayout=a.column().apply { tag="youtube-recent-searches" }
-    private var shownRecent:List<String>?=null
+    private val suggestionHeading=a.text("Recent searches",12f,MUTED).apply { tag="youtube-suggestions-heading" }
+    private val suggestionEmpty=a.text("Find something to watch",12f,MUTED).apply { maxLines=2 }
+    private var shownSuggestions:List<String> = emptyList()
+    // Six small rows are reused as suggestions arrive. Focus and keyboard navigation do not
+    // wait for another card diff or rebuild a hierarchy for every typed character.
+    private val suggestionRows=List(6) { index->
+        a.action("","Search suggestion") { shownSuggestions.getOrNull(index)?.let { query->input.setText(query);search() } }.quiet().apply {
+            id=View.generateViewId();tag="youtube-search-suggestion:$index";visibility=View.GONE
+            gravity=Gravity.CENTER_VERTICAL or Gravity.START;setPadding(a.dp(8),0,a.dp(8),0)
+            setSingleLine(true);ellipsize=android.text.TextUtils.TruncateAt.END;textSize=13f
+            minHeight=0;minimumHeight=0
+            setOnKeyListener { _,key,event->if(event.action!=KeyEvent.ACTION_DOWN)false else when(key) {
+                KeyEvent.KEYCODE_DPAD_RIGHT->keyboard.requestFocus()
+                KeyEvent.KEYCODE_DPAD_LEFT->searchNav.requestFocus()
+                KeyEvent.KEYCODE_DPAD_UP->if(index==0)input.requestFocus() else false
+                KeyEvent.KEYCODE_DPAD_DOWN->if(index==shownSuggestions.lastIndex)firstCard()?.requestFocus()?:true else false
+                else->false
+            } }
+        }
+    }
+    private val recent:LinearLayout=a.column().apply {
+        tag="youtube-recent-searches";add(suggestionHeading,height=a.dp(22));add(suggestionEmpty)
+        for(button in suggestionRows)add(button,height=a.dp(31))
+    }
+    private val suggestionsScroll=ScrollView(a).apply {
+        tag="youtube-suggestions";isVerticalScrollBarEnabled=false;overScrollMode=View.OVER_SCROLL_NEVER
+        addView(recent,FrameLayout.LayoutParams(-1,-2))
+    }
     private val searchTools=a.row().apply {
         gravity=Gravity.TOP;visibility=View.GONE;tag="youtube-search-tools"
-        add(recent,width=a.dp(190),height=-1)
+        add(suggestionsScroll,width=a.dp(190),height=-1)
         addView(keyboard,LinearLayout.LayoutParams(a.dp(338),a.dp(160)).apply { marginStart=a.dp(24) })
     }
     private val history=a.action("History","YouTube history"){browse(YouTubeFeed.HISTORY)}.quiet().apply { id=View.generateViewId() }
@@ -482,7 +511,18 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         list.scrollToPosition(index);return null
     }
     private fun firstGridCard():View?=list.getChildAt(0)?.takeIf { it.isShown && it.isFocusable }
-    private fun firstCard():View?=if(shelfFeed())(shelves.getChildAt(0) as? YouTubeShelfView)?.firstVideo() else firstGridCard()
+    private fun firstCard():View? {
+        if(!shelfFeed())return firstGridCard()
+        if(submittedShelves!==shelfSource() || submittedShelfScope!=shelfScope() || shelfAdapter.currentList!=presentedShelves)return null
+        val row=shelves.getChildAt(0) as? YouTubeShelfView?:return null
+        val expected=presentedShelves.getOrNull(shelves.getChildAdapterPosition(row))?:return null
+        // A committed diff can still have the previous query's identically named V1 card
+        // attached until the next layout. Its removal would strand focus in the app header.
+        if(row.stateKey!=expected.identity)return null
+        val card=row.firstVideo()?:return null
+        val id=(card.tag as? String)?.removePrefix("youtube-video:")?:return null
+        return card.takeIf{expected.data.videos.any{it.id==id}}
+    }
     override fun focusTarget():View?=when {
         m.feed==YouTubeFeed.SEARCH && !searchCollapsed->input
         m.feed==YouTubeFeed.CHANNEL && contentEmpty()->channelTarget()
@@ -569,13 +609,27 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
             presentedShelves=source.mapIndexed { index,row->ShelfRow(row,"$scope/${row.key}",if(row.portrait)2 else if(m.feed==YouTubeFeed.HOME && index==0)1 else 0) }
             shelfAdapter.submitList(presentedShelves) { if(state!=null)homeLayout.onRestoreInstanceState(state) }
         }
-        if(shownRecent!=m.recentQueries) {
-            shownRecent=m.recentQueries;recent.removeAllViews()
-            recent.add(a.text("Recent searches",12f,MUTED),height=a.dp(22))
-            if(m.recentQueries.isEmpty())recent.add(a.text("Find something to watch",12f,MUTED).apply{maxLines=2})
-            else for(query in m.recentQueries.take(4))recent.add(a.action(query,"Search YouTube for $query"){input.setText(query);search()}.quiet().apply{
-                gravity=Gravity.START;setPadding(a.dp(8),0,a.dp(8),0);setSingleLine(true);textSize=13f
-            },height=a.dp(32))
+        val typedQuery=m.query.trim()
+        val suggestions=(if(typedQuery.isEmpty())m.recentQueries else m.searchSuggestions.ifEmpty {
+            m.recentQueries.filter{it.startsWith(typedQuery,ignoreCase=true)}
+        }).take(suggestionRows.size)
+        suggestionHeading.textIfChanged(if(typedQuery.isEmpty())"Recent searches" else "Suggestions")
+        suggestionEmpty.textIfChanged(if(typedQuery.isEmpty())"Find something to watch" else "Type a search or press Search")
+        suggestionEmpty.visibility=if(suggestions.isEmpty())View.VISIBLE else View.GONE
+        if(shownSuggestions!=suggestions) {
+            val focused=if(view.hasWindowFocus())suggestionRows.indexOfFirst{it.hasFocus()} else -1
+            val focusedQuery=shownSuggestions.getOrNull(focused)
+            val retained=focusedQuery?.let(suggestions::indexOf)?:-1
+            // A late completion must not silently change what a focused OK will search for.
+            if(focusedQuery!=null && retained<0)keyboard.requestFocus()
+            shownSuggestions=suggestions
+            for((index,button) in suggestionRows.withIndex()) {
+                val query=suggestions.getOrNull(index)
+                button.visibility=if(query==null)View.GONE else View.VISIBLE
+                if(query!=null){button.textIfChanged(query);button.contentDescription="Search YouTube for $query"}
+            }
+            if(focusedQuery!=null && retained>=0 && retained!=focused)suggestionRows[retained].requestFocus()
+            if(!recent.hasFocus())suggestionsScroll.scrollTo(0,0)
         }
         val text=channelError?:m.error.orEmpty();feedback.visibility=if(text.isNotBlank())View.VISIBLE else View.GONE;status.textIfChanged(text)
         retry.visibility=if(m.error!=null)View.VISIBLE else View.GONE

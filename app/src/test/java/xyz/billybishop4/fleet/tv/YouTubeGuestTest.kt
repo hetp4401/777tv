@@ -93,4 +93,25 @@ class YouTubeGuestTest {
         assertEquals("next-subscriptions",transport.requests.last().body!!.getString("continuation"))
         assertFalse(transport.requests.last().body!!.has("browseId"))
     }
+    @Test fun oneStalledPublicTopicCannotHoldCompletedRecommendationShelves()=runBlocking {
+        val transport=FixtureYouTubeTransport();val cancelled=AtomicInteger()
+        transport.respond={r->if(r.body?.optString("browseId")=="FEtopics_music") {
+            try{delay(60_000);topicReply(r)}finally{cancelled.incrementAndGet()}
+        } else topicReply(r)}
+        val home=withTimeout(2_000){YouTubeClient(MemoryYouTubeCredentials(),transport,guestRequestTimeoutMs=120).page(YouTubeFeed.HOME)}
+        assertEquals(listOf("Gaming","News"),home.shelves.map{it.name});assertEquals(4,home.videos.size)
+        assertEquals(1,cancelled.get())
+    }
+    @Test fun stalledActualGuestHomeIsNotCachedAndAllStalledTopicsCancelWithARetryableFailure()=runBlocking {
+        val transport=FixtureYouTubeTransport();val active=AtomicInteger();var allTopicsStall=false
+        transport.respond={r->if(r.body?.optString("browseId")=="default" || allTopicsStall) {
+            active.incrementAndGet();try{delay(60_000);topicReply(r)}finally{active.decrementAndGet()}
+        } else topicReply(r)}
+        val client=YouTubeClient(MemoryYouTubeCredentials(),transport,guestRequestTimeoutMs=100)
+        assertEquals(6,withTimeout(2_000){client.page(YouTubeFeed.HOME)}.videos.size)
+        assertEquals(0,active.get());allTopicsStall=true
+        try{withTimeout(2_000){client.page(YouTubeFeed.HOME)};fail("All timed-out topics must be retryable")}
+        catch(e:UserMessage){assertTrue(e.message!!.contains("Recommendations"))}
+        assertEquals(0,active.get());assertEquals(2,transport.requests.count{it.body?.optString("browseId")=="default"})
+    }
 }

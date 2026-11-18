@@ -33,6 +33,23 @@ class YouTubeStartupModelTest {
             model.play(video(1));settled(model);assertEquals(3,calls);assertEquals(refreshed.stream,opened!!.stream)
         }finally{scope.cancel()}
     }
+    @Test fun rejectedMediaRefreshUsesTheFullResolverAndReplacesOnlyTheCachedSource()=runBlocking {
+        val scope=CoroutineScope(coroutineContext+SupervisorJob());var quick=0;var full=0;var opened:Watch?=null
+        try {
+            val resolver=object:YouTubeStreamResolver {
+                override suspend fun resolve(video:YouTubeVideo):Watch{quick++;return watch(video,sequence=quick)}
+                override suspend fun resolveFallback(video:YouTubeVideo):Watch{full++;return watch(video,sequence=100+full)}
+            }
+            val model=YouTubeModel(YouTubeClient(MemoryYouTubeCredentials(),FixtureYouTubeTransport()),scope,{}, {w,_->opened=w},{},resolver)
+            model.play(video(1));settled(model);assertTrue(model.enqueue(video(2)))
+            val original=opened!!;val fallback=model.refreshWatch(original,fallback=true)
+            assertEquals(1,quick);assertEquals(1,full);assertEquals(original.title,fallback.title)
+            assertNotEquals(original.stream.url,fallback.stream.url)
+            assertEquals(YouTubeQueueStatus.QUEUED,model.queueStatus(video(2)))
+            model.play(video(1));settled(model)
+            assertEquals(fallback.stream.url,opened!!.stream.url);assertEquals(1,quick);assertEquals(1,full)
+        }finally{scope.cancel()}
+    }
     @Test fun nextShortAdoptsItsRunningRequestWithoutRepeatingResolution()=runBlocking {
         val scope=CoroutineScope(coroutineContext+SupervisorJob());val calls=mutableListOf<String>();var opened:Watch?=null
         val started=CompletableDeferred<Unit>();val release=CompletableDeferred<Unit>();var cancelled=false

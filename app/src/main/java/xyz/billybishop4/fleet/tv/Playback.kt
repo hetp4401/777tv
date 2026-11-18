@@ -10,6 +10,7 @@ import android.widget.*
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.*
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.*
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
@@ -83,6 +84,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     private var playerView: PlayerView? = null
     private var session: MediaSession? = null
     private var attached: Watch? = null
+    private var sourceWatch=original
     private var resolution: Job? = null
     private var progressJob: Job? = null
     private var historyPlayback:YouTubeHistoryPlayback?=null
@@ -96,19 +98,21 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     private var closed = false
     private var transitioning = false
     private var retries = 0
+    private var youtubeFallbackAttempted=false
     private var startMs = playbackStartPosition(original,m.preferences.resume,m.resume(original.title,original.episode))
     private var playIntent=true
     fun start() { if (running || closed) return; if(original.live)playIntent=true;running=true; connect(false) }
     fun stop() { running=false; resolution?.cancel(); resolution=null; detach() }
     fun close() { stop(); closed=true;view.removeAllViews() }
     private fun message(text:String) { view.removeAllViews();view.addView(a.text(text,20f),FrameLayout.LayoutParams(-2,-2,Gravity.CENTER)) }
-    private fun connect(refresh:Boolean) {
+    private fun connect(refresh:Boolean,fallback:Boolean=false) {
         resolution?.cancel();detach();message("Connecting…")
         resolution=a.lifecycleScope.launch {
             try {
                 if(retries>0)delay((retries*1000L).coerceAtMost(3000))
-                val w=if(original.title.type=="youtube" && (refresh || System.currentTimeMillis()-original.resolvedAtMs !in 0..300_000L))m.youtube.refreshWatch(original)
-                    else if(original.live&&original.provider!=null&&original.channel!=null)m.repository.liveWatch(original.provider,original.channel,refresh) else original
+                val current=sourceWatch
+                val w=if(current.title.type=="youtube" && (refresh || System.currentTimeMillis()-current.resolvedAtMs !in 0..300_000L))m.youtube.refreshWatch(current,fallback)
+                    else if(original.live&&original.provider!=null&&original.channel!=null)m.repository.liveWatch(original.provider,original.channel,refresh) else current
                 ensureActive();if(running&&!closed)attach(w)
             } catch(e:CancellationException){throw e}
             catch(e:Exception){if(running){transitioning=false;if(original.live&&retries<m.preferences.liveRetries){retries++;connect(true)}else fail((e as? UserMessage)?.message?:if(original.title.type=="youtube")"YouTube couldn't play this video. Try again." else "Couldn't connect to this channel. Check the provider or try again.")}}
@@ -116,7 +120,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     }
     private fun attach(w:Watch) {
         if(firstFrameMs==0L)sourceMs=playbackNowMs()-requestedAtMs
-        attached=w;transitioning=false;historyFrameReady=false
+        attached=w;sourceWatch=w;transitioning=false;historyFrameReady=false
         val prefs=m.preferences
         val url=w.stream.url
         val p: Player
@@ -165,7 +169,21 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                         // Optional account work begins after a real frame, then waits
                         // for watched time. Nothing is requested by focus or source loading.
                         historyFrameReady=true;mediaPlayer?.let{sampleHistory(w,it)}
-                        if(w.playbackMode==PlaybackMode.YOUTUBE)refreshYouTubeNext()
+                        if(w.playbackMode==PlaybackMode.SHORTS)m.youtube.preloadShort(w)
+                        if(w.playbackMode==PlaybackMode.YOUTUBE) {
+                            refreshYouTubeNext()
+                            if(!replayRequested) {
+                                replayRequested=true
+                                replayRequest=a.lifecycleScope.launch {
+                                    // Optional replay data waits for visible video;
+                                    // READY alone need not mean a frame was rendered.
+                                    delay(750)
+                                    try { val markers=m.youtube.client.heatmap(w.title.id);if(player===exo)controls?.replayMarkers(markers) }
+                                    catch(e:CancellationException){throw e}
+                                    catch(_:Exception){ /* Replay metadata never interrupts playback. */ }
+                                }
+                            }
+                        }
                     }
                     if(player===exo && pendingPictureFrame) { pendingPictureFrame=false;pictureResult?.invoke(null) }
                 }
@@ -226,17 +244,6 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                 buffering?.visibility=if(state==Player.STATE_BUFFERING)View.VISIBLE else View.GONE
                 keepAwake(p)
                 if(state==Player.STATE_READY && w.live && !liveAnnounced){liveAnnounced=true;if(fullscreen)liveInfo?.show()}
-                if(state==Player.STATE_READY && w.playbackMode==PlaybackMode.SHORTS)m.youtube.preloadShort(w)
-                if(state==Player.STATE_READY && w.playbackMode==PlaybackMode.YOUTUBE && !replayRequested) {
-                    replayRequested=true
-                    replayRequest=a.lifecycleScope.launch {
-                        // No readiness polling, and fast clip changes cancel before optional metadata starts.
-                        delay(750)
-                        try { val markers=m.youtube.client.heatmap(w.title.id);if(mediaPlayer===p)controls?.replayMarkers(markers) }
-                        catch(e:CancellationException){throw e}
-                        catch(_:Exception){ /* Replay metadata never interrupts playback. */ }
-                    }
-                }
                 if(state==Player.STATE_ENDED){
                     historyPlayback?.sample(p.currentPosition,p.duration,false,ended=true)
                     m.saveProgress(w,p.duration.coerceAtLeast(0),p.duration);if(w.live)recover()
@@ -260,6 +267,11 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                     // A bounded return to the known direct hardware path if a
                     // device cannot run the optional effects pipeline.
                     view.post { rejectPicture(exo,"Picture controls aren't supported for this video on this device.") }
+                } else if(w.title.type=="youtube" && !youtubeFallbackAttempted && rejectedYouTubeSource(error)) {
+                    // A syntactically valid fast-path URL can still expire or
+                    // be rejected by the media host. Try the full extractor once.
+                    youtubeFallbackAttempted=true;transitioning=true
+                    view.post { if(running && mediaPlayer===p)connect(true,fallback=true) }
                 } else recover()
             }
 
@@ -327,6 +339,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             if(!closed && running && mediaPlayer===p && (m.route as? Route.Player)?.watch===original) {
                 nextAccountEpoch=m.youtube.client.historyAccountEpoch()
                 controls?.metadataChanged()
+                controls?.chapters(m.youtube.chapters(original.title.id))
                 // A short video may finish while its optional metadata is loading.
                 if(p.playbackState==Player.STATE_ENDED && p.playWhenReady)m.youtube.onRegularEnded(original,m.preferences.youtubeAutoplay)
             }
@@ -445,10 +458,20 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         if(original.live){if(retries<m.preferences.liveRetries){retries++;connect(true)}else fail("This channel stopped responding. Retry or choose another channel.");return}
         fail("This stream couldn't play. Try again or choose another stream.")
     }
+    private fun rejectedYouTubeSource(error:PlaybackException):Boolean {
+        if(error.errorCode!=PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS)return false
+        var reason:Throwable?=error
+        repeat(8) {
+            val response=reason as? HttpDataSource.InvalidResponseCodeException
+            if(response!=null)return response.responseCode in setOf(403,404,410)
+            reason=reason?.cause
+        }
+        return false
+    }
     private fun fail(text:String){
         resolution?.cancel();resolution=null;detach();view.removeAllViews()
         val box=a.column().apply{pad(24);gravity=Gravity.CENTER;add(a.text(text,19f));gap(20)}
-        val retry=a.action("Retry") {retries=0;transitioning=false;connect(original.live || original.title.type=="youtube")}
+        val retry=a.action("Retry") {retries=0;youtubeFallbackAttempted=false;transitioning=false;connect(original.live || original.title.type=="youtube")}
         box.add(a.row().apply{button(retry);button(a.action(if(original.title.type=="youtube")"Back to YouTube" else if(original.live)"Back to channels" else "Back to streams"){exit()})})
         view.addView(box,FrameLayout.LayoutParams(a.dp(640).coerceAtMost((view.width.takeIf{it>0}?:a.resources.displayMetrics.widthPixels)-a.dp(24)),-2,Gravity.CENTER))
         if(!fullscreen)return

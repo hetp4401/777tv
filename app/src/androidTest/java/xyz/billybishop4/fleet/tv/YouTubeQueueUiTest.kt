@@ -44,12 +44,15 @@ class YouTubeQueueUiTest:NativeTestBase() {
     }
     @Test fun nextAndPreviousUseWatchNextWithoutResolvingUnselectedVideos() {
         play();val first=player()
+        assertFalse(ui{tagged("youtube-previous")?.isShown==true})
         assertEquals(listOf("V0000000001"),resolved())
         ui{tagged("youtube-next")!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
         await{playingId("V0000000040")}
         assertNotSame(first,player());assertEquals(listOf("V0000000001","V0000000040"),resolved())
-        sendRemoteKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+        await{tagged("youtube-previous")?.isShown==true && tagged("youtube-previous")?.isEnabled==true}
+        ui{tagged("youtube-previous")!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
         await{playingId("V0000000001")}
+        assertFalse(ui{tagged("youtube-previous")!!.isShown})
         assertNull(tagged("vod-options"));screenshot("youtube-next-video-controls")
     }
     @Test fun explicitQueueWinsAndAutoplayCanBeTurnedOffWithoutBreakingNext() {

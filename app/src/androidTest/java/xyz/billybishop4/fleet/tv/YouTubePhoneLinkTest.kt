@@ -124,8 +124,18 @@ class YouTubePhoneLinkTest:NativeTestBase() {
         await{attachedAndPlaying("V0000000002")}
     }
     @Test fun cancellingCodeOrNavigatingAwayFromASlowRemotePlayCannotTakeOverLater() {
+        val original=ui{a}
         control("slow_phone=1");ui{a.connectYouTubePhone()}
-        InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(android.view.KeyEvent.KEYCODE_BACK)
+        // Dialog.show() returns before InputDispatcher transfers focus. Sending
+        // Back immediately can instead exit the root Activity. Wait for the
+        // actual sheet/button and loss of the Activity's window focus first.
+        await{device.hasObject(By.text("Link your phone")) && device.hasObject(By.text("Done").focused(true)) &&
+            ui{!a.hasWindowFocus() && !a.isFinishing && !a.isDestroyed}}
+        sendRemoteKey(android.view.KeyEvent.KEYCODE_BACK)
+        await{!device.hasObject(By.text("Link your phone")) && ui{a.hasWindowFocus()}}
+        assertSame("Cancelling the sheet must retain its Activity",original,ui{a})
+        assertTrue(ui{!a.isFinishing && !a.isDestroyed &&
+            a.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)})
         SystemClock.sleep(1200);assertFalse(ui{a.model.store.youTubePhoneEnabled()})
         control("slow_phone=0");connect();control("slow=1")
         command("setPlaylist",JSONObject().put("videoId","V0000000001"))

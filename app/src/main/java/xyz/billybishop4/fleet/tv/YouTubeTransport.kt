@@ -18,7 +18,7 @@ internal data class YouTubeHttpResponse(val status:Int,val text:String) { overri
 internal interface YouTubeTransport {
     suspend fun request(url:String,body:String?=null,headers:Map<String,String> = emptyMap()):YouTubeHttpResponse
 }
-internal class YouTubeHttp(private val calls:Call.Factory=client) : YouTubeTransport {
+internal class YouTubeHttp(private val calls:Call.Factory=client,private val responseLimitBytes:Int=8*1024*1024) : YouTubeTransport {
     override suspend fun request(url:String,body:String?,headers:Map<String,String>):YouTubeHttpResponse = suspendCancellableCoroutine { continuation ->
         val request=Request.Builder().url(url).header("User-Agent",USER_AGENT).apply {
             headers.forEach { (key,value)->header(key,value) }
@@ -30,7 +30,7 @@ internal class YouTubeHttp(private val calls:Call.Factory=client) : YouTubeTrans
             override fun onFailure(call:Call,e:IOException) { if(continuation.isActive)continuation.resumeWithException(e) }
             override fun onResponse(call:Call,response:Response) {
                 try {
-                    val result=response.use { YouTubeHttpResponse(it.code,readBounded(it)) }
+                    val result=response.use { YouTubeHttpResponse(it.code,readBounded(it,responseLimitBytes)) }
                     if(continuation.isActive)continuation.resume(result)
                 } catch(e:Exception) { if(continuation.isActive)continuation.resumeWithException(e) }
             }
@@ -43,6 +43,10 @@ internal class YouTubeHttp(private val calls:Call.Factory=client) : YouTubeTrans
         // Tracking requests contain account context: never follow a redirect, even
         // to another Google host. Keep the shared pool rather than a new socket pool.
         internal val trackingClient by lazy { client.newBuilder().followRedirects(false).followSslRedirects(false).build() }
+        // Suggestions are optional keystroke work. Reuse connections without
+        // allowing an unresponsive endpoint to queue behind the next query.
+        internal val suggestionClient by lazy { client.newBuilder().connectTimeout(4,TimeUnit.SECONDS).readTimeout(4,TimeUnit.SECONDS)
+            .callTimeout(4,TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build() }
         // Share DNS/TLS/HTTP2 connections with playback. Streaming calls have no total
         // duration deadline; read/connect timeouts still detect a broken connection.
         internal val mediaClient by lazy { client.newBuilder().readTimeout(20,TimeUnit.SECONDS).callTimeout(0,TimeUnit.SECONDS)
@@ -52,13 +56,13 @@ internal class YouTubeHttp(private val calls:Call.Factory=client) : YouTubeTrans
                     .removeHeader("Authorization").removeHeader("Cookie").removeHeader("Proxy-Authorization").build()
                 chain.proceed(safe)
             }.build() }
-        internal fun readBounded(response:Response):String {
+        internal fun readBounded(response:Response,maxBytes:Int=8*1024*1024):String {
             val body=response.body ?: return ""
-            if(body.contentLength()>8*1024*1024)throw IOException("YouTube response is too large")
+            if(body.contentLength()>maxBytes)throw IOException("YouTube response is too large")
             return body.byteStream().use { input ->
                 val output=ByteArrayOutputStream();val bytes=ByteArray(16*1024)
                 while(true) { val n=input.read(bytes);if(n<0)break
-                    if(output.size()+n>8*1024*1024)throw IOException("YouTube response is too large")
+                    if(output.size()+n>maxBytes)throw IOException("YouTube response is too large")
                     output.write(bytes,0,n)
                 }
                 output.toString("UTF-8")

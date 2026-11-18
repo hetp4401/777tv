@@ -4,6 +4,7 @@ import android.app.AlertDialog
 import android.graphics.drawable.StateListDrawable
 import android.text.TextUtils
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
@@ -40,9 +41,14 @@ internal class YouTubeWatchPanel(
     }
     val visible get()=view.visibility==View.VISIBLE
     private val relatedButton=a.action("Related","Related videos tab"){select(false)}.quiet()
-    private val commentsButton=a.action("Comments","Comments tab"){select(true)}.quiet()
+    private val commentsButton=a.action("Comments","Comments tab"){select(true)}.quiet().apply {
+        maxLines=1;ellipsize=TextUtils.TruncateAt.END
+    }
     private val backButton=a.action("‹","Back to comments"){backThread()}.quiet().apply{visibility=View.GONE;textSize=24f;setPadding(0,0,0,0)}
     private val heading=a.text(watch.title.name,13f,MUTED).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END }
+    private val commentHeading=a.text("",12f,MUTED).apply {
+        tag="youtube-comments-context";maxLines=1;ellipsize=TextUtils.TruncateAt.END;visibility=View.GONE
+    }
     private val closeButton=a.action("×","Close video panel"){hidePanel()}.quiet().apply{textSize=24f;setPadding(0,0,0,0)}
     private val actionsButton=a.action("•••","Video panel actions") {
         if(videoActions?.visible!=true)videoActions=YouTubeVideoActions(a,YouTubeVideo(watch.title.id,watch.title.name,watch.title.poster,isShort=watch.short,live=watch.live)).also{it.show()}
@@ -71,7 +77,9 @@ internal class YouTubeWatchPanel(
     private val related=NativeAdapter<YouTubeVideo>({it.id},{parent,_->YouTubeCard(parent.context,a.artwork,false,a.dp(218),true)},
         {v,value,_->(v as YouTubeCard).bind(value,::play)},type={101},recycle={(it as YouTubeCard).release()})
     private val commentRows=NativeAdapter<YouTubeComment>({it.id},{_,_->CommentRow(a)},
-        {v,value,_->(v as CommentRow).bind(value,::readComment)},type={102},recycle={(it as CommentRow).release()})
+        {v,value,_->(v as CommentRow).bind(value,::readComment,
+            replies=if(thread==null && value.repliesToken!=null)({openReplies(value)}) else null,
+            back=if(thread!=null)({backThread()}) else null)},type={102},recycle={(it as CommentRow).release()})
     init {
         view.add(a.row().apply {
             add(relatedButton,width=a.dp(84),height=a.dp(40));add(commentsButton,width=a.dp(108),height=a.dp(40))
@@ -80,7 +88,7 @@ internal class YouTubeWatchPanel(
             add(actionsButton,width=a.dp(40),height=a.dp(40))
             add(closeButton,width=a.dp(40),height=a.dp(40))
         },height=a.dp(44))
-        view.add(progress,height=a.dp(2));view.add(feedback)
+        view.add(progress,height=a.dp(2));view.add(commentHeading,height=a.dp(26));view.add(feedback)
         view.addView(list,LinearLayout.LayoutParams(-1,0,1f));view.add(more,width=a.dp(164),height=a.dp(36))
         relatedButton.nextFocusLeftId=relatedButton.id;closeButton.nextFocusRightId=closeButton.id
         relatedButton.nextFocusRightId=commentsButton.id;commentsButton.nextFocusLeftId=relatedButton.id
@@ -143,6 +151,7 @@ internal class YouTubeWatchPanel(
             else FrameLayout.LayoutParams(-1,minOf(a.dp(320),(height*.6f).toInt()),Gravity.BOTTOM)
         view.setPadding(a.dp(if(comments)14 else 28),a.dp(10),a.dp(if(comments)14 else 28),a.dp(16))
         heading.visibility=if(comments)View.GONE else View.VISIBLE
+        commentHeading.visibility=if(comments)View.VISIBLE else View.GONE
         resized(if(comments)sideWidth else 0)
         val adapter=if(comments)commentRows else related
         val layout=if(comments)commentsLayout else relatedLayout
@@ -156,6 +165,8 @@ internal class YouTubeWatchPanel(
         relatedButton.isSelected=!comments;commentsButton.isSelected=comments
         backButton.visibility=if(thread!=null)View.VISIBLE else View.GONE
         heading.textIfChanged(thread?.let { "Replies to ${it.author}" }?:watch.title.name)
+        commentHeading.textIfChanged(thread?.let { "Replies to ${it.author}" }?:watch.title.name)
+        commentsButton.textIfChanged(details?.commentsLabel?.takeIf(String::isNotBlank)?:"Comments")
         progress.visibility=if(busy || opening)View.VISIBLE else View.INVISIBLE
         val page=currentPage()
         val text=error?:if(busy)"" else if(comments)page?.message.orEmpty() else if(details!=null && details!!.related.videos.isEmpty())"No related videos available." else ""
@@ -196,10 +207,13 @@ internal class YouTubeWatchPanel(
     private fun readComment(comment:YouTubeComment) {
         rememberPosition()
         val builder=AlertDialog.Builder(a).setTitle(comment.author).setMessage(comment.body).setNegativeButton("Close",null)
-        if(comment.repliesToken!=null)builder.setPositiveButton(comment.repliesLabel.ifBlank{"View replies"}){_,_->
-            cancelRequest();thread=comment;repliesPage=null;planFocus(Position());bindList();render();load();backButton.requestFocus()
-        }
+        if(comment.repliesToken!=null)builder.setPositiveButton(comment.repliesLabel.ifBlank{"View replies"}){_,_->openReplies(comment)}
         commentDialog=builder.create().also { dialog->dialog.setOnDismissListener { commentDialog=null };dialog.setOnShowListener { a.styleDialog(dialog) };dialog.show() }
+    }
+    private fun openReplies(comment:YouTubeComment) {
+        if(closed || !visible || comment.repliesToken==null)return
+        rememberPosition();cancelRequest();thread=comment;repliesPage=null;error=null
+        planFocus(Position());bindList();render();load();backButton.requestFocus()
     }
     private fun backThread() { cancelRequest();thread=null;repliesPage=null;error=null;planFocus(commentsPosition);bindList();render();commentsButton.requestFocus() }
     private fun cancelRequest(){request?.cancel();request=null;generation++;busy=false;restore.cancel();pendingFocus=null}
@@ -230,11 +244,20 @@ private class CommentRow(private val a:MainActivity):LinearLayout(a) {
         layoutParams=RecyclerView.LayoutParams(-1,ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin=a.dp(8) }
         add(author);gap(5);add(body);gap(5);add(meta)
     }
-    fun bind(comment:YouTubeComment,open:(YouTubeComment)->Unit) {
+    fun bind(comment:YouTubeComment,open:(YouTubeComment)->Unit,replies:(()->Unit)?=null,back:(()->Unit)?=null) {
         if(id==View.NO_ID)id=View.generateViewId()
         tag="youtube-comment:${comment.id}";author.textIfChanged(comment.author);body.textIfChanged(comment.body)
         meta.textIfChanged(listOf(comment.metadata,comment.repliesLabel).filter(String::isNotBlank).joinToString(" · "))
         contentDescription="${comment.author}. ${comment.body}. ${meta.text}";setOnClickListener{open(comment)}
+        // Remote shortcuts keep reading a thread to one press without allocating
+        // hidden reply views or loading any reply text until it is selected.
+        setOnKeyListener { _,code,event ->
+            val action=when(code){KeyEvent.KEYCODE_DPAD_RIGHT->replies;KeyEvent.KEYCODE_DPAD_LEFT->back;else->null}
+            if(action==null)false else {
+                if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0)action()
+                true
+            }
+        }
     }
-    fun release(){setOnClickListener(null);contentDescription=null;author.textIfChanged("");body.textIfChanged("");meta.textIfChanged("")}
+    fun release(){setOnClickListener(null);setOnKeyListener(null);contentDescription=null;author.textIfChanged("");body.textIfChanged("");meta.textIfChanged("")}
 }

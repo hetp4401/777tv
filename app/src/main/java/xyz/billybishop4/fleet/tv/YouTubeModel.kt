@@ -25,6 +25,7 @@ internal class YouTubeModel(
     var channelPage by state<YouTubeChannelPage?>(null);private set
     var channelId:String="";private set
     var recentQueries by state<List<String>>(emptyList());private set
+    var searchSuggestions by state<List<String>>(emptyList());private set
     var continuation by state<String?>(null);private set
     var message by state("");private set
     var busy by state(false);private set
@@ -34,7 +35,8 @@ internal class YouTubeModel(
     var signInCode by state<YouTubeDeviceCode?>(null);private set
     var signInBusy by state(false);private set
     var signInError by state<String?>(null);private set
-    private var pageJob:Job?=null;private var queryJob:Job?=null;private var resolveJob:Job?=null;private var signInJob:Job?=null
+    private var pageJob:Job?=null;private var queryJob:Job?=null;private var suggestionJob:Job?=null;private var resolveJob:Job?=null;private var signInJob:Job?=null
+    private var suggestionGeneration=0
     private var pageGeneration=0;private var resolveGeneration=0;private var loginGeneration=0
     private var remoteResolveGeneration:Int?=null
     private data class Cached(val page:YouTubePage,val at:Long,val channel:YouTubeChannelPage?=null,val playlists:List<YouTubePlaylist> = emptyList())
@@ -79,16 +81,17 @@ internal class YouTubeModel(
     }
     fun deactivate() {
         active=false;pageJob?.cancel();queryJob?.cancel();pageGeneration++;busy=false
+        clearSuggestions()
         cancelPlayback();cancelSignIn()
     }
     fun select(next:YouTubeFeed) {
         if(next==YouTubeFeed.SEARCH){showSearch();return}
         if(next==feed && query.isEmpty() && error==null) { if((if(feed==YouTubeFeed.PLAYLISTS)playlistCards.isEmpty() else videos.isEmpty()) && !busy)load(force=true);return }
-        queryJob?.cancel();query="";feed=next;channelPage=null;channelReturn=null;selectedPlaylist=null;load()
+        clearSuggestions();queryJob?.cancel();query="";feed=next;channelPage=null;channelReturn=null;selectedPlaylist=null;load()
     }
     fun openPlaylist(playlist:YouTubePlaylist) {
         if(!YouTubeSocialDecode.validPlaylistId(playlist.id))return
-        queryJob?.cancel();query="";selectedPlaylist=playlist;feed=YouTubeFeed.PLAYLIST;channelPage=null;channelReturn=null;load()
+        clearSuggestions();queryJob?.cancel();query="";selectedPlaylist=playlist;feed=YouTubeFeed.PLAYLIST;channelPage=null;channelReturn=null;load()
     }
     fun backPlaylist():Boolean {
         if(feed!=YouTubeFeed.PLAYLIST)return false
@@ -97,7 +100,7 @@ internal class YouTubeModel(
     fun openChannel(id:String) {
         if(!YouTubeSocialDecode.validChannelId(id))return
         if(feed!=YouTubeFeed.CHANNEL)channelReturn=feed to query
-        queryJob?.cancel();query="";feed=YouTubeFeed.CHANNEL;channelId=id;channelTab=null;channelPage=null;load()
+        clearSuggestions();queryJob?.cancel();query="";feed=YouTubeFeed.CHANNEL;channelId=id;channelTab=null;channelPage=null;load()
     }
     fun selectChannelTab(tabId:String) {
         val tab=channelPage?.tabs?.firstOrNull{it.id==tabId}?:return
@@ -114,6 +117,7 @@ internal class YouTubeModel(
         val fresh=client.account();val currentScope=client.accountScope()
         account=fresh
         if(displayedAccountScope!=currentScope) {
+            clearSuggestions()
             clearNext();localQueue.clear()
             displayedAccountScope=currentScope;pageJob?.cancel();pageGeneration++;busy=false;pages.clear();sources.clear()
             cancelShortPreload()
@@ -151,7 +155,7 @@ internal class YouTubeModel(
         catch(e:Exception){if(nextRequest===request){nextRequest=null;nextDetails=null};throw e}
     }
     fun prepareNext(watch:Watch,onReady:()->Unit={}) {
-        if(watch.short || watch.live || watch.title.type!="youtube" || !YouTubeDecode.validId(watch.title.id) || localQueue.phoneOwned){onReady();return}
+        if(watch.short || watch.live || watch.title.type!="youtube" || !YouTubeDecode.validId(watch.title.id)){onReady();return}
         // Account changes discard account-bound choices, but the current
         // decoder keeps playing. A direct/restored player also bypasses resolve.
         // Adopt only an empty current slot; never overwrite a newer local item.
@@ -164,6 +168,8 @@ internal class YouTubeModel(
         }
     }
     fun enqueue(video:YouTubeVideo):Boolean=localQueue.enqueue(video).also{if(it)changed()}
+    internal fun chapters(videoId:String):List<YouTubeChapter> =
+        nextDetails?.takeIf{nextId==videoId && nextScope?.epoch==client.historyAccountEpoch()}?.chapters.orEmpty()
     fun queueStatus(video:YouTubeVideo):YouTubeQueueStatus=localQueue.status(video)
     fun canStepRegular(watch:Watch,direction:Int):Boolean = watch.title.type=="youtube" && !watch.short && !resolving && localQueue.peek(watch.title.id,direction)!=null
     fun stepRegular(watch:Watch,direction:Int):Boolean {
@@ -191,12 +197,14 @@ internal class YouTubeModel(
     }
     fun showSearch() {
         if(feed==YouTubeFeed.SEARCH)return
+        clearSuggestions()
         queryJob?.cancel();pageJob?.cancel();pageGeneration++;cancelPlayback()
         query="";feed=YouTubeFeed.SEARCH;channelPage=null;channelReturn=null;videos=emptyList();homeShelves=emptyList();searchShelves=emptyList();playlistCards=emptyList();continuation=null;message="";error=null;busy=false
     }
     fun editQuery(value:String) {
         if(query==value)return
         query=value.take(200);queryJob?.cancel();pageJob?.cancel();pageGeneration++;busy=false;cancelPlayback()
+        suggest(query)
         if(query.trim().length<2) {
             feed=YouTubeFeed.SEARCH;videos=emptyList();homeShelves=emptyList();searchShelves=emptyList();continuation=null;message="";error=null
             return
@@ -205,8 +213,33 @@ internal class YouTubeModel(
     }
     fun submitSearch() {
         if(query.trim().length<2)return
+        clearSuggestions()
         recentQueries=(listOf(query.trim())+recentQueries).distinct().take(5)
         queryJob?.cancel();feed=YouTubeFeed.SEARCH;load()
+    }
+    private fun clearSuggestions() {
+        suggestionGeneration++;suggestionJob?.cancel();suggestionJob=null;searchSuggestions=emptyList()
+    }
+    /** Optional text only: typing cancels the previous request. Suggestions
+     * never delay result loading or turn a network failure into a page error. */
+    private fun suggest(value:String) {
+        val text=value.trim()
+        // Keep only still-matching text while a further keystroke is in flight;
+        // the fixed suggestion rows need not flash empty between letters.
+        val matching=searchSuggestions.filter{it.startsWith(text,ignoreCase=true)}.takeIf{text.isNotEmpty()}.orEmpty()
+        suggestionGeneration++;suggestionJob?.cancel();suggestionJob=null;searchSuggestions=matching
+        if(text.isEmpty())return
+        val generation=suggestionGeneration
+        suggestionJob=scope.launch {
+            try {
+                delay(220)
+                val suggestions=client.searchSuggestions(text)
+                if(generation==suggestionGeneration && query.trim()==text && feed==YouTubeFeed.SEARCH)
+                    searchSuggestions=suggestions.take(6)
+            }catch(e:CancellationException){throw e}
+            catch(_:Exception){/* Recent searches and keyboard remain available. */}
+            finally{if(generation==suggestionGeneration)suggestionJob=null}
+        }
     }
     fun refresh(){load(force=true)}
     fun more() { if(!busy && continuation!=null && (if(feed==YouTubeFeed.PLAYLISTS)playlistCards.size<60 else videos.size<120))load(append=true) }
@@ -373,9 +406,10 @@ internal class YouTubeModel(
             }
         }
     }
-    suspend fun refreshWatch(watch:Watch):Watch {
+    suspend fun refreshWatch(watch:Watch,fallback:Boolean=false):Watch {
         sources.remove(watch.title.id)
-        return resolver.resolve(YouTubeVideo(watch.title.id,watch.title.name,watch.title.poster,isShort=watch.short,live=watch.live))
+        val video=YouTubeVideo(watch.title.id,watch.title.name,watch.title.poster,isShort=watch.short,live=watch.live)
+        return (if(fallback)resolver.resolveFallback(video) else resolver.resolve(video))
             .copy(title=watch.title).also(::rememberSource)
     }
     fun startSignIn() {
@@ -390,6 +424,7 @@ internal class YouTubeModel(
                         if(e.reason=="slow_down") { interval=(interval+5).coerceAtMost(60);continue };throw e
                     }
                     if(signedIn!=null && generation==loginGeneration) {
+                        clearSuggestions()
                         clearNext();localQueue.clear()
                         if(historyLazy.isInitialized())historyLazy.value.cancel()
                         queue=emptyList();queueContinuation=null;sources.clear();channelPage=null
@@ -405,6 +440,7 @@ internal class YouTubeModel(
     }
     fun cancelSignIn(){signInJob?.cancel();signInJob=null;loginGeneration++;signInCode=null;signInBusy=false;signInError=null}
     fun signOut() {
+        clearSuggestions()
         clearNext();localQueue.clear()
         if(historyLazy.isInitialized())historyLazy.value.cancel()
         queue=emptyList();queueContinuation=null
@@ -417,6 +453,7 @@ internal class YouTubeModel(
         }
     }
     fun trimMemory(keepPage:Boolean=false) {
+        clearSuggestions()
         pages.clear();sources.clear();cancelShortPreload()
         if(!keepPage){queue=emptyList();queueContinuation=null;clearNext();localQueue.clear()}
         if(!active && !keepPage){videos=emptyList();homeShelves=emptyList();searchShelves=emptyList();playlistCards=emptyList();selectedPlaylist=null;continuation=null;message=""}

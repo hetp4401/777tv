@@ -69,9 +69,12 @@ class TclDeviceExperienceProbe {
             error=e.errorCodeName+(http?.let{" HTTP "+it.responseCode}?:"")
         }}
         try {await(60000){
-            error?.let{throw IllegalStateException(it)}
-            ui{a.player?.let{p->if(observed!==p){observed?.removeListener(listener);observed=p;p.addListener(listener)};p.playerError?.let{throw IllegalStateException(it.errorCodeName)}}
-                if(tagged("button:Back to streams")?.isShown==true)error("Stream failed before first frame")
+            ui{a.player?.let{p->if(observed!==p){observed?.removeListener(listener);observed=p;p.addListener(listener)}}
+                // A rejected fast URL may be replaced automatically. Fail on
+                // the final Retry screen, rather than the retiring decoder.
+                if(tagged("button:Retry")?.isShown==true &&
+                    (tagged("button:Back to streams")?.isShown==true || tagged("button:Back to YouTube")?.isShown==true))
+                    throw IllegalStateException(error?:"Stream failed before first frame")
                 val w=(a.model.route as? Route.Player)?.watch;w!=null && (id==null || w.title.id==id) && a.playback?.watch===w && a.player?.isPlaying==true && a.playback?.snapshot?.firstFrameMs?.let{it>0}==true}
         }}finally{ui{observed?.removeListener(listener)}}
     }
@@ -180,6 +183,22 @@ class TclDeviceExperienceProbe {
                     r.put("attachedCards",ui{row.list.childCount}).put("memoryAfterNavigation",memory());shot("youtube-search")
                     r.put("warmInput",frameWork("warm search remote input"){repeat(moves){key(KeyEvent.KEYCODE_DPAD_RIGHT);SystemClock.sleep(70)};repeat(moves){key(KeyEvent.KEYCODE_DPAD_LEFT);SystemClock.sleep(70)}})
                     r.put("warmReturnedToFirst",ui{a.currentFocus?.tag==initialTag})
+                }
+                stage("parity suggestions and chapters"){r->
+                    ui{m.top(Section.YOUTUBE);m.youtube.showSearch();m.youtube.editQuery("")}
+                    await{tagged("youtube-keyboard")?.isShown==true}
+                    val keyboard=tagged("youtube-keyboard")!!;ui{keyboard.requestFocusFromTouch()}
+                    val begin=SystemClock.elapsedRealtime();ui{m.youtube.editQuery("Big Buck Bunny")}
+                    await(15000){ui{m.youtube.searchSuggestions.isNotEmpty()}}
+                    r.put("suggestionsReadyMs",SystemClock.elapsedRealtime()-begin)
+                        .put("suggestionCount",ui{m.youtube.searchSuggestions.size})
+                        .put("keyboardFocusPreserved",ui{keyboard.hasFocus()})
+                    assertTrue(ui{keyboard.hasFocus()});shot("youtube-suggestions")
+                    // Public metadata only: no video selection, account mutation
+                    // or synthetic watched-time report is made for this title.
+                    val details=runBlocking{ kotlinx.coroutines.withTimeout(15000){m.youtube.client.watchDetails("rfscVS0vtbw")} }
+                    r.put("publicChapterMetadataOnly",true).put("chapterCount",details.chapters.size)
+                        .put("chapterStartsMs",JSONArray(details.chapters.map{it.startMs}))
                 }
                 stage("regular YouTube playback"){r->
                     ui{m.youtube.play(YouTubeVideo("aqz-KE-bpKQ","Big Buck Bunny"))};playerReady("aqz-KE-bpKQ")

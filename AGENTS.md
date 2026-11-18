@@ -1,7 +1,25 @@
 # 777tv Android TV workflow (formerly Fleet)
 
+- 0.23.0/code 31 is installed on the TCL with its UID/data, two add-ons, zero
+  profiles and black/violet On-Demand Cinema preference preserved. Three agents
+  improved YouTube suggestions, watched-thumbnail progress, chapters, Previous,
+  replies, guest deadlines and rejected-source recovery. Keep the current-shelf
+  identity/adapter-position/video guard before restoring focus: old query rows
+  can remain attached for one frame with reused video IDs. Preserve display-only
+  watched percentages separately from exact resume positions, first-frame gating
+  of optional metadata/warmup, and retained recovered sources after backgrounding.
+  `releases/0.23.0/verification.json` records 236 JVM passes/3 opt-in skips, lint
+  zero errors, 135 unique native passes and five signed-release TCL stages. All
+  63 production hashes match. Phone cancellation tests must wait for dialog input
+  focus; chapter request counts exclude the completed Home recommendation seed.
+  Actual public suggestions were 670 ms, regular first frame 2.59 s and next Short
+  1.19 s; steady video windows had zero drops/rebuffers. Warm search had 1 actual
+  deadline overrun/93 frames, so do not claim zero UI jank. Private reports/screens
+  stay in `.tools/youtube023/`; probe/downloads removed, app open on On-Demand.
+  `docs/youtube-parity-0.23.md` explicitly retains Google/extension/owner-acceptance
+  limits; this is improved native coverage, not 1:1 TizenTube equivalence.
 - Latest user clarification makes the whole On-Demand area black with accents,
-  not just stream cards. 0.22.1/code 30 is installed on the TCL; Cinema is now
+  not just stream cards. 0.22.1/code 30 introduced this on the TCL; Cinema is
   selected only for On-Demand. Its backdrop is true black, cards/fields neutral
   charcoal, with retained violet selection/focus/action accents. App/YouTube/
   Live/background choices were preserved through the actual settings UI.

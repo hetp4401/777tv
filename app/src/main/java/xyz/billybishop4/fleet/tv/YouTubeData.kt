@@ -12,7 +12,7 @@ internal enum class YouTubeFeed {
 internal data class YouTubeVideo(
     val id: String, val name: String, val thumbnail: String = "", val channel: String = "",
     val metadata: String = "", val duration: String = "", val isShort: Boolean = false, val live: Boolean = false,
-    val channelId:String="",val resumePositionMs:Long?=null,
+    val channelId:String="",val resumePositionMs:Long?=null,val watchedPercent:Int?=null,
 ) {
     fun title() = Title(id, name, "youtube", poster = thumbnail, description = listOf(channel, metadata).filter(String::isNotBlank).joinToString(" · "))
 }
@@ -176,11 +176,16 @@ internal object YouTubeDecode {
         val duration=text(j.opt("lengthText")).ifBlank { badges.firstOrNull { Regex("[0-9]+(?::[0-9]{2}){1,2}").matches(it) }.orEmpty() }.ifBlank { text(time?.opt("text")) }
         val short=shortsContext || kind in setOf("shortsLockupViewModel", "reelItemRenderer") || type.contains("SHORT") ||
             find(j,setOf("reelWatchEndpoint"),1).isNotEmpty()
+        // The TV progress overlay is rounded display metadata, not an exact
+        // seek position. Keep it separate so a completed tile never starts at EOF.
+        val watched=(find(j.opt("thumbnailOverlays")?:header?.opt("thumbnailOverlays")?:j.opt("contentImage"),
+            setOf("thumbnailOverlayResumePlaybackRenderer"),1).firstOrNull() as? JSONObject)
+            ?.opt("percentDurationWatched")?.toString()?.toIntOrNull()?.takeIf{it in 0..100}
         return YouTubeVideo(id,name.take(500),image(j.opt("contentImage")?:j.opt("thumbnail")?:header?.opt("thumbnail")),channel.take(500),
             parts.drop(1).joinToString(" · ").ifBlank { text(j.opt("viewCountText")) }.ifBlank { tileLines.drop(1).joinToString(" · ") }.take(500),duration,short,
             badges.any { it.equals("LIVE",true) } || time?.optString("style")=="LIVE" || j.optBoolean("isLive"),
             find(j,setOf("browseEndpoint"),20).filterIsInstance<JSONObject>().map{it.optString("browseId")}.firstOrNull(YouTubeSocialDecode::validChannelId).orEmpty(),
-            endpoint?.optLong("startTimeSeconds",-1)?.takeIf{it in 0L..604_800L}?.times(1000))
+            endpoint?.optLong("startTimeSeconds",-1)?.takeIf{it in 0L..604_800L}?.times(1000),watched)
     }
     fun bootstrap(html:String,origin:String):YouTubeBootstrap {
         fun match(pattern:String)=Regex(pattern).find(html)?.groupValues?.get(1).orEmpty()

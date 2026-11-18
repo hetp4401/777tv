@@ -25,11 +25,16 @@ import org.schabi.newpipe.extractor.services.youtube.YoutubeParsingHelper
 import org.schabi.newpipe.extractor.services.youtube.YoutubeStreamHelper
 import com.grack.nanojson.JsonObject
 
-internal interface YouTubeStreamResolver { suspend fun resolve(video:YouTubeVideo):Watch }
+internal interface YouTubeStreamResolver {
+    suspend fun resolve(video:YouTubeVideo):Watch
+    suspend fun resolveFallback(video:YouTubeVideo):Watch=resolve(video)
+}
 
 /** Initialized only on explicit playback. One worker, interruptible sockets, no bundled browser/native runtime. */
 internal class YouTubeResolver(private val playbackOnly:Boolean=true,private val trace:((String,Long)->Unit)?=null):YouTubeStreamResolver {
-    override suspend fun resolve(video:YouTubeVideo):Watch=suspendCancellableCoroutine { continuation ->
+    override suspend fun resolve(video:YouTubeVideo):Watch=resolve(video,playbackOnly)
+    override suspend fun resolveFallback(video:YouTubeVideo):Watch=resolve(video,false)
+    private suspend fun resolve(video:YouTubeVideo,quickResponse:Boolean):Watch=suspendCancellableCoroutine { continuation ->
         val work=Work(trace);val future=AtomicReference<Future<*>?>()
         continuation.invokeOnCancellation { work.cancel();future.get()?.cancel(true) }
         future.set(worker.submit {
@@ -40,7 +45,7 @@ internal class YouTubeResolver(private val playbackOnly:Boolean=true,private val
                 require(YouTubeDecode.validId(video.id))
                 // The full extractor also fetches WEB thumbnails and watch-next. Neither is
                 // required for a first frame; keep that path for unsupported player responses.
-                val quick=if(playbackOnly)try {
+                val quick=if(quickResponse)try {
                     playerWatch(video,YoutubeStreamHelper.getVisionOsPlayerResponse(ContentCountry.DEFAULT,
                         Localization.DEFAULT,video.id,YoutubeParsingHelper.generateContentPlaybackNonce()))
                 }catch(e:Exception){if(work.cancelled.get() || Thread.currentThread().isInterrupted)throw e;null} else null

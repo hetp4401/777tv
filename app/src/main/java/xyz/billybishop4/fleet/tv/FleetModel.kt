@@ -47,8 +47,11 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
         val base=baseUrl(value);require(java.net.URI(base).host in setOf("10.0.2.2","127.0.0.1","localhost"))
         youtubeValue?.deactivate()
         youtubeValue=createYouTube("$base/youtube",object:YouTubeStreamResolver {
-            override suspend fun resolve(video:YouTubeVideo):Watch {
-                val result=org.json.JSONObject(Http().text("$base/youtube/resolve/${video.id}"))
+            override suspend fun resolve(video:YouTubeVideo):Watch=source(video,false)
+            override suspend fun resolveFallback(video:YouTubeVideo):Watch=source(video,true)
+            private suspend fun source(video:YouTubeVideo,fallback:Boolean):Watch {
+                val suffix=if(fallback)"?fallback=1" else ""
+                val result=org.json.JSONObject(Http().text("$base/youtube/resolve/${video.id}$suffix"))
                 return Watch(video.title(),Stream("YouTube fixture",result.getString("url")),short=video.isShort,live=video.live,resolvedAtMs=System.currentTimeMillis(),
                     audioUrl=result.optString("audioUrl"),videoMimeType=result.optString("videoMimeType"),audioMimeType=result.optString("audioMimeType"))
             }

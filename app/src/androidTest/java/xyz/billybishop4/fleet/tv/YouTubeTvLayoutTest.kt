@@ -2,6 +2,8 @@
 package xyz.billybishop4.fleet.tv
 
 import android.graphics.Color
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
 import android.view.KeyEvent
@@ -136,6 +138,59 @@ class YouTubeTvLayoutTest:NativeTestBase() {
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP);await{ui{keyboard.isShown && keyboard.hasFocus()}}
         assertTrue(bounds(keyboard).bottom<=bounds(tagged("youtube-search-results")!!).top);screenshot("youtube-tv-search-keyboard")
     }
+    @Test fun querySuggestionsAreRemoteSelectableAndDoNotStealKeyboardFocus() {
+        click("YouTube search");field("Search YouTube","fixture")
+        val keyboard=tagged("youtube-keyboard")!!;ui{keyboard.requestFocus()}
+        await{ui{a.model.youtube.searchSuggestions.isNotEmpty()}}
+        val suggestion=ui{a.model.youtube.searchSuggestions.first()}
+        await{tagged("youtube-search-suggestion:0")?.contentDescription=="Search YouTube for $suggestion"}
+        // Start the next query with the current results already attached, so the old and
+        // new response's shared V1 ID exercise the asynchronous outer-shelf replacement.
+        await{ui{!a.model.youtube.busy && a.model.youtube.query=="fixture" && a.model.youtube.videos.isNotEmpty() &&
+            tagged("youtube-video:V0000000001")?.takeIf{it.isShown}?.let { card->
+                generateSequence(card){it.parent as? View}.filterIsInstance<YouTubeShelfView>().firstOrNull()?.stateKey==
+                    "SEARCH/fixture/${a.model.youtube.searchShelves.firstOrNull()?.key}"
+            }==true}}
+        assertTrue(ui{keyboard.hasFocus()})
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)
+        await{ui{a.currentFocus?.tag=="youtube-search-suggestion:0"}}
+        screenshot("youtube-tv-live-suggestions")
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT);assertTrue(ui{keyboard.hasFocus()})
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT);sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
+        await{ui{!a.model.youtube.busy && a.model.youtube.query==suggestion && a.currentFocus?.tag=="youtube-video:V0000000001"}}
+        assertEquals(suggestion,ui{a.model.youtube.recentQueries.first()})
+        assertFalse(ui{tagged("youtube-search-tools")!!.isShown})
+        assertNull(player());screenshot("youtube-tv-search-suggestions")
+        // Pending completion starts with a matching recent search. Keep that exact choice
+        // when it survives, and leave the row if the server replaces it with different text.
+        control("slow_suggestions=1")
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP);await{ui{keyboard.hasFocus()}}
+        field("Search YouTube","fixture")
+        await{tagged("youtube-search-suggestion:0")?.contentDescription=="Search YouTube for $suggestion"}
+        ui{tagged("youtube-search-suggestion:0")!!.requestFocus()}
+        await{ui{a.model.youtube.searchSuggestions.firstOrNull()==suggestion}}
+        assertEquals("Search YouTube for $suggestion",ui{a.currentFocus?.contentDescription})
+        field("Search YouTube","fi")
+        await{tagged("youtube-search-suggestion:0")?.contentDescription=="Search YouTube for $suggestion"}
+        ui{tagged("youtube-search-suggestion:0")!!.requestFocus()}
+        await{ui{a.model.youtube.searchSuggestions.firstOrNull()=="fi videos" && keyboard.hasFocus()}}
+        assertEquals("fi",ui{a.model.youtube.query});assertEquals(suggestion,ui{a.model.youtube.recentQueries.first()})
+    }
+    @Test fun shelfAndGridEndKeysKeepTheSelectedVideoInsteadOfJumpingAway() {
+        home();ui{tagged("youtube-video:V0000000001")!!.requestFocus()}
+        repeat(11){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000012"}}
+        repeat(3){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
+        assertEquals("youtube-video:V0000000012",ui{a.currentFocus?.tag})
+        val clips=(1..17).map{YouTubeVideo("S"+it.toString().padStart(10,'0'),"Generated short $it",isShort=true)}
+        ui{a.model.youtube.installFixturePage(YouTubeFeed.SHORTS,YouTubePage(clips))}
+        await{ui{!a.model.youtube.busy && a.model.youtube.videos==clips}}
+        val last=clips.last().id
+        ui{(tagged("youtube-results") as RecyclerView).scrollToPosition(clips.lastIndex)}
+        await{tagged("youtube-video:$last")?.isShown==true};ui{tagged("youtube-video:$last")!!.requestFocus()}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN);sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
+        assertEquals("youtube-video:$last",ui{a.currentFocus?.tag});assertNull(player())
+    }
     @Test fun clearingAndDeletingUnicodeKeepSearchOpenWithoutLoadingHome() {
         click("YouTube search");field("Search YouTube","café😀")
         ui{(tagged("field:Search YouTube") as EditText).let{it.setSelection(it.text.length)}}
@@ -204,6 +259,33 @@ class YouTubeTvLayoutTest:NativeTestBase() {
             image.layoutParams=FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,110);layout();requests=0
             image.setImageDrawable(object:ColorDrawable(Color.BLUE){override fun getIntrinsicWidth()=64;override fun getIntrinsicHeight()=36})
             assertTrue("Dynamic artwork must retain normal measurement",requests>0)
+        }
+    }
+    @Test fun watchedThumbnailProgressIsProportionalAndNeverSurvivesAnUnwatchedRebind() {
+        ui {
+            val card=YouTubeCard(a,a.artwork,false)
+            val watched=YouTubeVideo("V0000000001","Watched video",duration="2:00",resumePositionMs=30000)
+            card.bind(watched){}
+            val progress=card.findTag("youtube-resume-progress")!!
+            assertEquals(View.VISIBLE,progress.visibility)
+            progress.layout(0,0,100,4)
+            val bitmap=Bitmap.createBitmap(100,4,Bitmap.Config.ARGB_8888)
+            progress.draw(Canvas(bitmap))
+            assertEquals(ACCENT,bitmap.getPixel(10,2));assertNotEquals(ACCENT,bitmap.getPixel(75,2));bitmap.recycle()
+            card.bind(watched.copy(resumePositionMs=null)){};assertEquals(View.GONE,progress.visibility)
+            card.bind(watched.copy(duration="LIVE",live=true)){};assertEquals(View.GONE,progress.visibility)
+            card.bind(watched.copy(duration="2:99")){};assertEquals(View.GONE,progress.visibility)
+            card.bind(watched.copy(isShort=true)){};assertEquals(View.GONE,progress.visibility)
+            val percentOnly=watched.copy(duration="",resumePositionMs=null,watchedPercent=50)
+            card.bind(percentOnly){};assertEquals(View.VISIBLE,progress.visibility)
+            val partial=Bitmap.createBitmap(100,4,Bitmap.Config.ARGB_8888);progress.draw(Canvas(partial))
+            assertEquals(ACCENT,partial.getPixel(25,2));assertNotEquals(ACCENT,partial.getPixel(75,2));partial.recycle()
+            assertNull("A rounded percentage never creates a playback resume timestamp",percentOnly.resumePositionMs)
+            card.bind(percentOnly.copy(live=true)){};assertEquals(View.GONE,progress.visibility)
+            card.bind(percentOnly.copy(isShort=true)){};assertEquals(View.GONE,progress.visibility)
+            card.bind(percentOnly.copy(watchedPercent=101)){};assertEquals(View.GONE,progress.visibility)
+            card.bind(watched){};assertEquals(View.VISIBLE,progress.visibility)
+            card.release();assertEquals(View.GONE,progress.visibility)
         }
     }
 }

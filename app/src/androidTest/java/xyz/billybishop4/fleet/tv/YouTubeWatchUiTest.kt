@@ -18,6 +18,7 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.regex.Pattern
 
 /** Worker emulator + generated media/JSON only. Never targets a physical user TV. */
 class YouTubeWatchUiTest:NativeTestBase() {
@@ -54,10 +55,33 @@ class YouTubeWatchUiTest:NativeTestBase() {
         await(9000){tagged("vod-controls")?.visibility==View.GONE}
         assertTrue(ui{a.player!!.isPlaying});assertFalse(graph.isShown)
     }
-    @Test fun videosWithoutReplayDataKeepTheNormalControlsAndStillPlay() {
-        control("no_heatmap=1");play()
+    @Test fun videosWithoutReplayDataOrChaptersKeepTheNormalControlsAndStillPlay() {
+        control("no_heatmap=1&no_chapters=1");play()
         await { val rows=audit().getJSONArray("requests");(0 until rows.length()).any{rows.getJSONObject(it).optString("client")=="WEB"} }
         assertFalse(ui{tagged("youtube-replay-heatmap")?.isShown==true});assertTrue(ui{a.player!!.isPlaying});assertNull(panel()?.takeIf{it.isShown})
+        assertFalse(ui{tagged("youtube-chapters")?.isShown==true})
+    }
+    @Test fun chaptersUseSharedMetadataAndSeekWithoutResumingOrReplacingThePlayer() {
+        fun detailsRequests()=audit().getJSONArray("requests").objects().count {
+            it.optString("path").endsWith("/next") && it.optString("client")!="WEB" && it.optString("videoId")=="V0000000001"
+        }
+        // Guest Home can legitimately request watch-next for an earlier local
+        // history seed. Measure the player request after Home has completed.
+        val beforePlay=detailsRequests()
+        play();val original=player()!!
+        await{tagged("youtube-chapters")?.isShown==true}
+        ui{original.pause();original.seekTo(15000)}
+        await{ui{original.currentPosition in 14500L..15500L && !original.playWhenReady}}
+        assertEquals(beforePlay+1,detailsRequests())
+        ui{tagged("youtube-chapters")!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
+        val current=By.text(Pattern.compile("✓\\s+0:10\\s+Main section"))
+        assertTrue(device.wait(Until.hasObject(current),5000));screenshot("youtube-native-chapters")
+        // Selecting the current chapter should also return to its beginning.
+        device.findObject(current).click()
+        await{ui{original.currentPosition in 9500L..10500L && !original.playWhenReady}}
+        assertSame(original,player());assertEquals(beforePlay+1,detailsRequests())
+        assertTrue(ui{(tagged("vod-panel")?.height?:Int.MAX_VALUE)<=a.dp(50)})
+        assertNull(tagged("vod-options"))
     }
     @Test fun downOpensRelatedAndBackReturnsDirectlyToVideo() {
         play();val player=player();ui{tagged("vod-play-pause")!!.requestFocus()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
@@ -66,6 +90,17 @@ class YouTubeWatchUiTest:NativeTestBase() {
         ui{a.onBackPressedDispatcher.onBackPressed()};await{panel()?.visibility==View.GONE}
         assertEquals(View.GONE,ui{tagged("vod-controls")!!.visibility});assertSame(player,player())
         ui{a.onBackPressedDispatcher.onBackPressed()};await{ui{a.model.route==Route.Browse(Section.YOUTUBE)}}
+    }
+    @Test fun downFromNextAndQualityReachesRelatedWithoutChangingPlayback() {
+        play();val original=player()
+        await{tagged("youtube-next")?.isEnabled==true}
+        for(tag in listOf("youtube-next","youtube-quality")) {
+            ui{tagged("native-player")!!.performClick()};await{tagged("vod-controls")?.isShown==true}
+            ui{tagged(tag)!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
+            await{panel()?.isShown==true && tagged("youtube-video:V0000000040")?.isShown==true}
+            assertSame(original,player());assertTrue(ui{a.player!!.playWhenReady})
+            ui{a.onBackPressedDispatcher.onBackPressed()};await{panel()?.visibility==View.GONE}
+        }
     }
     @Test fun commentsLoadOnOpenAndPagingDoesNotFollowAReplyCursor() {
         play();assertEquals(0,topCommentRequests());openComments();val player=player()
@@ -164,6 +199,16 @@ class YouTubeWatchUiTest:NativeTestBase() {
         click("3 replies");await{ui{a.currentFocus?.tag=="youtube-comment:reply-1"}}
         ui{a.onBackPressedDispatcher.onBackPressed()};await{ui{a.currentFocus?.tag=="youtube-comment:comment-13"}}
         assertEquals(20,ui{list().adapter!!.itemCount});assertSame(player,player());assertTrue(ui{a.player!!.isPlaying})
+    }
+    @Test fun remoteRightOpensRepliesAndLeftRestoresTheThreadWithoutAnExtraDialog() {
+        play();openComments();val original=player();ui{list().scrollToPosition(12)}
+        await{tagged("youtube-comment:comment-13")?.isShown==true}
+        ui{tagged("youtube-comment:comment-13")!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
+        await{ui{a.currentFocus?.tag=="youtube-comment:reply-1"}}
+        assertEquals("Replies to Fixture viewer 13",ui{(tagged("youtube-comments-context") as android.widget.TextView).text.toString()})
+        assertFalse(device.hasObject(By.text("Generated comment 13")))
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT);await{ui{a.currentFocus?.tag=="youtube-comment:comment-13"}}
+        assertEquals(20,ui{list().adapter!!.itemCount});assertSame(original,player());assertTrue(ui{a.player!!.playWhenReady})
     }
     @Test fun appendingCommentsFocusesTheNewPageWhenTheMoreButtonDisappears() {
         play();openComments();click("Load more comments")

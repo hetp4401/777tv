@@ -6,19 +6,19 @@ and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
 ## Development candidate
 
-**0.22.1 · version code 30 · Android 7.0 / API 24 or later**
+**0.23.0 · version code 31 · Android 7.0 / API 24 or later**
 
 This branch contains the native YouTube integration and continuing TizenTube
-functional review, with independent app and section themes. Version 0.22.1 is
+functional review, with independent app and section themes. Version 0.23.0 is
 installed on the TCL, with black Cinema selected for On-Demand and other settings/data preserved. The release
 record separates final-source native scenarios from signed-release device checks.
 Development also uses local checks and worker emulators.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Candidate verification](releases/0.22.1/verification.json) records the APK checksum,
+[Candidate verification](releases/0.23.0/verification.json) records the APK checksum,
 source/build checksums and validation scope.
-[SHA256SUMS](releases/0.22.1/SHA256SUMS) identifies the installed APK. The original
+[SHA256SUMS](releases/0.23.0/SHA256SUMS) identifies the installed APK. The original
 production import remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
@@ -34,11 +34,13 @@ are excluded from Git.
   [reviewed native screenshots](releases/0.22.1/README.md).
 
 - A **YouTube** section beside On-Demand: a collapsible left rail, native TV
-  keyboard and platform voice search. Home preserves real TV recommendation
+  keyboard, live query suggestions and platform voice search. Home preserves real TV recommendation
   shelves. Guest Home tries the public Home feed first, with bounded Music,
-  Gaming and News fallback shelves when YouTube requires sign-in. Search puts
+  Gaming and News fallback shelves when YouTube requires sign-in. Slow guest requests
+  have bounded deadlines and retain completed topic shelves. Search puts
   regular video shelves first, followed by one horizontal portrait Shorts row.
-  Channel pages provide the real available video tabs and subscriptions.
+  Channel pages provide the real available video tabs and subscriptions. Watched
+  thumbnail markers use supplied resume data or server percentages without inventing seek positions.
 - Google TV code/QR sign-in, account Subscriptions, History, Watch Later, Liked
   videos and browseable playlists. Explicit Like, Dislike, Subscribe, Save,
   remove and private-playlist creation wait for server confirmation and refresh
@@ -51,15 +53,16 @@ are excluded from Git.
   pause, seek, volume, captions and speed. Disconnect retires pending handoffs;
   a new local selection retires the old phone queue. This is a TV-code receiver,
   not certified Chromecast or outbound casting to another TV.
-- Regular YouTube supports Next, Previous, a bounded explicit queue and saved
+- Regular YouTube supports Next, a conditional Previous control, chapter navigation,
+  a bounded explicit queue and saved
   Autoplay preference. Actual watch-next metadata loads after a rendered frame
   and is shared with Related; the next media URL/player loads only when chosen
   or when enabled autoplay reaches the end. Google account actions and a real
   phone pairing still require an account-owner-led acceptance check. See the
-  [functional review](docs/youtube-parity-0.21.md) and
+  [current parity review](docs/youtube-parity-0.23.md) and
   [implementation investigation](docs/tizentube-investigation.md).
 - Read-only YouTube comments, replies and horizontal related videos during
-  playback. A faint **Most replayed** graph appears above the thin seek line
+  playback, with direct remote reply navigation. A faint **Most replayed** graph appears above the thin seek line
   when YouTube provides replay data. Comments load on opening; the player keeps
   playing while browsing related videos below it or comments beside it.
 - Compact YouTube Home Search, remembered rail/grid focus, row-edge TV navigation
@@ -103,6 +106,8 @@ are excluded from Git.
   buffers are 250 ms for Shorts, 350 ms for Live TV and 500 ms otherwise; ongoing buffering budgets
   and rebuffer protection are retained. Stalker reuses a briefly authenticated
   session and renews it after expiry, rejection, identity changes or explicit refresh.
+  Rejected YouTube media URLs receive one full-extractor recovery attempt;
+  the recovered source survives background/foreground transitions.
 
 New installations include these public add-ons:
 
@@ -153,11 +158,12 @@ adb -s emulator-5554 shell am start -n xyz.billybishop4.fleet.tv/.MainActivity
 
 ## Tests and verification
 
-0.22.1 passes 218 ordinary JVM tests and Android lint. Its updated native
-three-area journey verifies the rendered On-Demand backdrop is black, independent
-section choices persist, and Live preview still plays. All 63 production hashes
-match the signed patch source. The preceding 0.22.0 release records its separate
-31-scenario native regression suite. Three opt-in JVM probes are skipped.
+0.23.0 passes 236 ordinary JVM tests, Android lint and 135 unique native scenarios
+against the same 63 production source files as the signed release. Three opt-in
+JVM probes are skipped. Five signed-release TCL stages cover real suggestions,
+Home/search, regular video, Shorts and repeated playback/memory cycles.
+The [release report](releases/0.23.0/README.md) records timings, source hashes,
+resolved test assumptions and remaining parity limits.
 
 [Theme patch results](releases/0.22.1/README.md) record screenshots, source hashes
 and contrast review. [0.22.0](releases/0.22.0/README.md) retains physical theme-switch
@@ -250,5 +256,6 @@ historical artifact paths in that file refer to untracked local evidence.
 | `releases/0.21.1/` | Previous physical playback measurements and checksum |
 | `releases/0.22.0/` | Original themed release and full native regression record |
 | `releases/0.22.1/` | Black On-Demand patch and exact verification |
+| `releases/0.23.0/` | YouTube parity improvements, exact native coverage and TCL measurements |
 
 See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for dependency notices.

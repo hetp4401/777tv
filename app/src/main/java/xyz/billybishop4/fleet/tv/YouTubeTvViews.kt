@@ -128,6 +128,7 @@ internal class YouTubeCard(
     private val title=context.text("",14f).apply { maxLines=2;ellipsize=TextUtils.TruncateAt.END }
     private val channel=context.text("",11f,MUTED).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END }
     private val duration=context.text("",10f).apply { background=context.round(0xCC000000.toInt(),radius=5);pad(3) }
+    private val resume=YouTubeResumeProgress(context)
     private var video:YouTubeVideo?=null;private var click:((YouTubeVideo)->Unit)?=null
     private val frameHeight=if(portrait)frameWidth*16/9 else frameWidth*9/16
     init {
@@ -140,6 +141,7 @@ internal class YouTubeCard(
         add(FrameLayout(context).apply {
             clipToOutline=true;background=context.round(PANEL);setDuplicateParentStateEnabled(true)
             addView(image,FrameLayout.LayoutParams(-1,-1))
+            addView(resume,FrameLayout.LayoutParams(-1,context.dp(3),Gravity.BOTTOM))
             addView(duration,FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.END).apply { setMargins(context.dp(6),context.dp(6),context.dp(6),context.dp(6)) })
         },height=frameHeight)
         gap(6);add(title,height=context.dp(34));gap(3);add(channel,height=context.dp(16))
@@ -160,9 +162,42 @@ internal class YouTubeCard(
         title.textIfChanged(value.name);channel.textIfChanged(listOf(value.channel,value.metadata).filter(String::isNotBlank).joinToString(" · "))
         duration.textIfChanged(if(value.live)"LIVE" else value.duration.ifBlank { if(value.isShort)"Shorts" else "" })
         duration.visibility=if(duration.text.isNotEmpty())View.VISIBLE else View.GONE;image.refreshDrawableState()
+        resume.bind(value)
         loader.show(image,value.thumbnail,frameWidth,frameHeight)
     }
-    fun release(){image.dispose();image.setImageDrawable(null);image.tag=null;video=null;click=null}
+    fun release(){image.dispose();image.setImageDrawable(null);image.tag=null;resume.visibility=View.GONE;video=null;click=null}
+}
+
+/** A static watched-progress line; no animator, handler, bitmap or playback preparation. */
+internal class YouTubeResumeProgress(context:Context):View(context) {
+    private val paint=Paint()
+    private val palette=AppTheme.palette
+    private var fraction=0f
+    init { tag="youtube-resume-progress";visibility=GONE;importantForAccessibility=IMPORTANT_FOR_ACCESSIBILITY_NO }
+    fun bind(video:YouTubeVideo) {
+        val position=video.resumePositionMs?:0
+        val percent=video.watchedPercent?.takeIf{it in 0..100}
+        if(video.live || video.isShort || position<=0 && (percent==null || percent==0)) {
+            fraction=0f;visibility=GONE;return
+        }
+        // Ordinary unwatched cards bypass duration parsing entirely.
+        val totalMs=if(position>0)durationMs(video.duration) else 0L
+        fraction=if(position>0 && totalMs>0)(position.toDouble()/totalMs).coerceIn(0.0,1.0).toFloat()
+            else percent?.div(100f)?:0f
+        visibility=if(fraction>0f)VISIBLE else GONE
+        if(fraction>0f)invalidate()
+    }
+    private fun durationMs(duration:String):Long {
+        val parts=duration.trim().split(':')
+        val times=parts.map{it.toLongOrNull()}
+        val valid=parts.size in 2..3 && times.all{it!=null && it>=0} && times.drop(1).all{it!!<60} &&
+            parts.all{it.length in 1..3}
+        return if(valid)times.fold(0L){total,part->total*60+part!!}*1000 else 0L
+    }
+    override fun onDraw(canvas:Canvas) {
+        paint.color=0xAA000000.toInt();canvas.drawRect(0f,0f,width.toFloat(),height.toFloat(),paint)
+        paint.color=palette.accent;canvas.drawRect(0f,0f,width*fraction,height.toFloat(),paint)
+    }
 }
 
 internal class YouTubeShelfView(

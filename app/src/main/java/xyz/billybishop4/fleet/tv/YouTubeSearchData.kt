@@ -1,6 +1,30 @@
 package xyz.billybishop4.fleet.tv
 
+import org.json.JSONArray
 import org.json.JSONObject
+
+/** youtube-lr returns JSON behind an anti-XSSI prefix, never executable script. */
+internal object YouTubeSuggestions {
+    private val whitespace=Regex("\\s+")
+    private val controls=Regex("[\\p{Cc}]")
+    fun clean(value:String):String=value.take(1000).replace(controls," ")
+        .replace(whitespace," ").trim().take(200)
+    fun decode(body:String,query:String):List<String> {
+        if(body.length>64*1024)return emptyList()
+        val json=body.trimStart().let{if(it.startsWith(")]}'"))it.substring(4).trimStart() else it}
+        val root=JSONArray(json)
+        if(!clean(root.optString(0)).equals(query,ignoreCase=true))return emptyList()
+        val rows=root.optJSONArray(1)?:return emptyList()
+        val values=linkedMapOf<String,String>()
+        for(index in 0 until minOf(rows.length(),40)) {
+            val raw=(rows.optJSONArray(index)?.opt(0)?:rows.opt(index)) as? String?:continue
+            val text=clean(raw)
+            if(text.isNotBlank())values.putIfAbsent(text.lowercase(java.util.Locale.ROOT),text)
+            if(values.size==8)break
+        }
+        return values.values.toList()
+    }
+}
 
 /** Search keeps YouTube's real video sections, with canonical Shorts in one
  * final shelf. Response JSON, action commands and media URLs never enter it. */
