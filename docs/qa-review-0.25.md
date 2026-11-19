@@ -56,9 +56,11 @@ Worker dependency downloads and replacements caused separate infrastructure
 failures. Verified locally compiled APKs allowed the affected checks to continue;
 signing keys and application data were never uploaded.
 
-**No TCL installation, launch, probe or test occurred.** The user hold remains
-active; the last known installed version is 0.24.0/code 32. Physical TV frame
-pacing, audible output and remote/microphone hardware remain outside this QA.
+QA completed on Mac/worker emulators during the earlier deployment hold. The
+user then authorized installation of **0.25.0/code 33 on the TCL**. Its installed
+APK was checksum-matched, with UID, foreground state and standby preserved.
+No app launch or interactive physical-TV probe occurred. Physical frame pacing,
+audible output and remote/microphone hardware remain outside this QA.
 Real Google-owner approval, account mutations/history acceptance, actual phone
 pairing and private provider playback also remain outside fixture checks.
 The real-service probe covers anonymous Home/library only.

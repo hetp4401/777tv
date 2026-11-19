@@ -16,9 +16,10 @@ retain their existing controls. Independent [whole-app QA](docs/qa-review-0.25.m
 passes 275 fixture scenarios and a real anonymous YouTube Home/library check,
 with fixes for panel media keys and refreshed-stream focus. See the
 [navigation review](docs/navigation-performance-0.25.md).
-This candidate is **not deployed to the TCL**. The user has requested a hold;
-development and validation use the Mac and worker emulators. The TV's last
-installed version remains 0.24.0; its foreground session and data are preserved.
+This build is **installed on the TCL** following the user's deployment request.
+The installed APK was pulled and checksum-matched; UID, foreground state and
+standby were preserved. QA used the Mac and worker emulators. No interactive
+physical-TV playback or performance test ran for this version.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 

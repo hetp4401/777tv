@@ -1,11 +1,19 @@
 # 777tv Android TV workflow (formerly Fleet)
 
-- Current user hold during 0.25 navigation work: do not deploy/push any changes
-  to the TCL until Het explicitly asks. Continue on the Mac and worker emulators;
-  preserve the TV's foreground session and installed 0.24 data.
+- Het subsequently requested "Now push to tcl" after whole-app QA. The verified
+  0.25.0/code 33 APK is installed in place on the TCL; the pulled installed APK
+  matches SHA-256 `83f3effac99f942acf0632ce144138d122c0888da2cb40ecb96fdd3b39f769c6`.
+  Package UID, foreground state and standby were preserved. The TV was asleep;
+  no launch/wake, preference/profile edits, data clear, test installation or
+  interactive playback/performance probe occurred. This supersedes the earlier
+  deployment hold for this update. Preserve the user's current TV session/data;
+  ordinary fixture/reset suites must never run on this configured device.
+  Deployment evidence is private in `.tools/navigation025/deployment/` and the
+  sanitized record is in `releases/0.25.0/verification.json`.
 - Independent whole-app QA of 0.25.0 is complete: 275 unique fixture scenarios,
   one real anonymous YouTube Home/library probe (51 recommendations/seven shelves),
-  245 JVM passes/3 opt-in skips, lint zero errors/107 warnings. No TCL actions.
+  245 JVM passes/3 opt-in skips, lint zero errors/107 warnings. QA used no TCL;
+  the later authorized installation is recorded above.
   QA fixed two runtime-confirmed bugs: Playback now lets nine global media keys
   continue through existing dispatch while YouTube panels retain native D-pad;
   StreamChoices caches semantic labels from the canonical committed Stream,
@@ -25,7 +33,7 @@
   signed test-build chunk runner and independent verdict stay in
   `.tools/navigation025/qa/`; no signing keys/data were uploaded. Real Google-owner,
   phone pairing/provider playback and physical-TV acceptance remain untested.
-- 0.25.0/code 33 is a signed local candidate, not installed on the TCL. Native
+- 0.25.0/code 33 is the verified build now installed on the TCL. Native
   lists use 70–140 ms scrolling; nearby cards and pixel-accounted artwork stay
   within bounded caches (8 MiB low-RAM / 16 MiB normal). Keep stream identity
   indexes tied to the committed adapter until its async diff completes. Current
@@ -45,8 +53,8 @@
   inputs. The historical isolated navigation sample grew about 4.4 MiB in PSS;
   the final broader QA process has different warmup/prior work. Software timings do not
   prove physical-TV smoothness. See `docs/navigation-performance-0.25.md`.
-  Private evidence stays in `.tools/navigation025/`; no TV actions were taken.
-- 0.24.0/code 32 is installed in place on the TCL. The installed APK was pulled
+  Private QA evidence stays in `.tools/navigation025/`; those tests used emulators.
+- Prior 0.24.0/code 32 was installed in place on the TCL. The installed APK was pulled
   and matched to the signed candidate; its UID and the user's foreground Stremio
   session were preserved. No app launch, interactive playback test, preference/
   profile edit, data clear or instrumentation installation was performed on the

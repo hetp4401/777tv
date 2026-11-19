@@ -2,9 +2,10 @@
 
 777tv keeps its native Kotlin views, existing themes and one ExoPlayer. This
 candidate changes scrolling and presentation work across YouTube, On-Demand,
-Live TV and profile lists. It is not deployed to the TCL: the user has explicitly
-held installation and testing until asked. The last known installed version is
-0.24.0/code 32.
+Live TV and profile lists. The user subsequently authorized installation of
+0.25.0/code 33 on the TCL. Its installed APK matches the verified candidate;
+UID, foreground state and standby were preserved. The measurements here use
+worker emulators, with no interactive physical-TV test for this version.
 
 RecyclerView follows focus with a distance-based 70–140 ms decelerating scroll,
 instead of restarting its longer default pan. Remote input is not throttled.
@@ -28,7 +29,7 @@ The artwork LRU counts pixel bytes and is capped at 8 MiB on low-RAM devices and
 YouTube's unbound card pools cap regular/hero/portrait cards at 6/6/8; outer and
 inner caches each retain two holders. On-Demand poster/stream caches retain four,
 episode buttons six. Decoder concurrency, artwork disk-cache size, playback
-buffers, add-ons and saved preferences are unchanged. The APK adds 6,928 bytes
+buffers, add-ons and saved preferences are unchanged. The APK adds 6,836 bytes
 and no dependency, native library or additional player.
 
 The isolated comparison below was recorded at navigation commit `82e0421`, before
@@ -78,8 +79,7 @@ the 6,000-channel trial was 97 → 99 ms. These measurements do not establish
 better GPU frame pacing or 60 FPS on a physical TV. The verification records
 actual per-frame deadline overruns excluding first-draw frames, layout timings,
 CPU and memory alongside the input results. Raw artifacts also retain GC
-counters. A TCL comparison remains pending
-the user's instruction to deploy.
+counters. A physical-TV performance comparison has not been performed.
 
 Validation: 245 JVM passes, three opt-in skips,
 lint with zero errors/107 warnings, and

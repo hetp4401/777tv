@@ -16,8 +16,9 @@ All 68 production hashes and three root build configurations match selected
 snapshots and signed release inputs. The artwork cap increases from 8 to 16 MiB,
 and from 4 to 8 MiB on low-RAM devices. No dependency or player was added.
 
-This candidate is **not installed on the TCL**. The user has held deployment and
-testing until asked; the last known installed version remains 0.24.0/code 32.
+This build is **installed on the TCL** after the user's deployment request.
+The installed APK was pulled and checksum-matched; its UID, foreground state and
+standby were preserved. No app launch, configuration edit or interactive probe ran.
 Worker software-rendered timings do not establish physical-TV frame pacing.
 
 [Navigation review](../../docs/navigation-performance-0.25.md) explains the
