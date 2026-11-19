@@ -1,0 +1,10 @@
+gradle.beforeProject { p ->
+    p.plugins.withId('com.android.application') {
+        def android = p.extensions.getByName('android')
+        def probe = p.rootProject.file('scripts/device_probe')
+        android.testBuildType = 'release'
+        android.defaultConfig.testApplicationId = 'xyz.billybishop4.fleet.tv.deviceprobe'
+        android.sourceSets.getByName('androidTest').java.setSrcDirs([new File(probe, 'java')])
+        android.sourceSets.getByName('androidTest').manifest.srcFile(new File(probe, 'AndroidManifest.xml'))
+    }
+}

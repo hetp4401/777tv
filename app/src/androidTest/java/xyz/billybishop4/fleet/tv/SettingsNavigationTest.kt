@@ -2,6 +2,8 @@ package xyz.billybishop4.fleet.tv
 
 import android.widget.EditText
 import android.widget.TextView
+import android.view.KeyEvent
+import android.os.SystemClock
 import android.view.inputmethod.EditorInfo
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
@@ -70,6 +72,54 @@ class SettingsNavigationTest : NativeTestBase() {
         click("On demand"); click("Playback speed"); choose("1.25×")
         await { ui { a.model.preferences.speed == 1.25f && a.window.decorView.findTag("setting:Playback speed")?.hasFocus() == true } }
         assertEquals(1.25f, ui { Store(a).preferences().speed })
+    }
+
+    @Test fun settingsRailFollowsFocusAndOneRightEntersTheMatchingPage() {
+        openSettings()
+        androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().setInTouchMode(false)
+        ui{find("Playback")!!.requestFocus()}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
+        await{ui{find("On demand")?.hasFocus()==true && tagged("setting:Manage add-ons")?.isShown==true}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
+        await{ui{tagged("setting:Manage add-ons")?.hasFocus()==true}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)
+        await{ui{find("On demand")?.hasFocus()==true}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
+        await{ui{find("YouTube settings")?.hasFocus()==true && tagged("setting:Autoplay next video")?.isShown==true}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
+        await{ui{tagged("setting:Autoplay next video")?.hasFocus()==true}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)
+        await{ui{find("YouTube settings")?.hasFocus()==true}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
+        await{ui{find("Live TV settings")?.hasFocus()==true && find("Manage IPTV profiles")?.isShown==true}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
+        await{ui{find("Manage IPTV profiles")?.hasFocus()==true && a.model.route==Route.Settings}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)
+        await{ui{find("Live TV settings")?.hasFocus()==true}}
+        screenshot("settings-direct-navigation")
+    }
+
+    @Test fun addonRowRefreshDoesNotOverrideANewerRemoteFocusChoice() {
+        openAddons();install(extra)
+        var moved=false
+        val observer=androidx.lifecycle.Observer<Unit> {
+            if(!moved && a.model.addons.any{it.manifestUrl==extra && !it.enabled}) {
+                moved=true
+                val field=a.window.decorView.findTag("field:Manifest URL")!!
+                field.requestFocus()
+                val at=SystemClock.uptimeMillis()
+                a.window.decorView.dispatchKeyEvent(KeyEvent(at,at,KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_LEFT,0))
+                a.window.decorView.dispatchKeyEvent(KeyEvent(at,at+1,KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_LEFT,0))
+                field.requestFocus()
+            }
+        }
+        ui{a.model.changes.observe(a,observer)}
+        try {
+            ui{tagged(addonOptionTag(extra))!!.requestFocus();a.model.setAddonEnabled(extra,false)}
+            await{ui{moved}}
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().waitForIdleSync()
+            assertTrue("Finishing a row diff must preserve newer remote input",ui{tagged("field:Manifest URL")!!.hasFocus()})
+        }finally{ui{a.model.changes.removeObserver(observer)}}
     }
 
     @Test fun startupScreenDefaultsToOnDemandAndSavedChoiceControlsColdStart() {

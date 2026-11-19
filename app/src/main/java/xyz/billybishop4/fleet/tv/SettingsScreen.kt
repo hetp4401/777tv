@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.text.TextUtils
 import android.view.Gravity
+import android.view.KeyEvent
 import android.view.View
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.*
@@ -30,12 +31,19 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
     init {
         view.heading("Settings")
         val rail = a.column()
-        for ((name, label) in listOf("Playback" to "Playback", "On demand" to "On demand", "Live TV settings" to "Live TV", "Appearance" to "Appearance", "Data & storage" to "Storage")) {
-            val button = a.action(label, name) { selectPage(name) }.apply {
+        for ((name, label) in listOf("Playback" to "Playback", "On demand" to "On demand", "YouTube settings" to "YouTube", "Live TV settings" to "Live TV", "Appearance" to "Appearance", "Data & storage" to "Storage")) {
+            val button = a.action(label, name) { enterPage(name) }.apply {
                 id = View.generateViewId(); gravity = Gravity.START or Gravity.CENTER_VERTICAL
                 maxLines = 1; ellipsize = TextUtils.TruncateAt.END
+                setOnFocusChangeListener { _, focused -> if (focused) selectPage(name) }
+                setOnKeyListener { _, key, event ->
+                    if (key == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) enterPage(name)
+                        true
+                    } else false
+                }
                 background = android.graphics.drawable.StateListDrawable().apply {
-                    addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, WHITE))
+                    addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, FOCUS))
                     addState(intArrayOf(android.R.attr.state_selected), a.round(RAISED))
                     addState(intArrayOf(), a.round(android.graphics.Color.TRANSPARENT))
                 }
@@ -54,6 +62,10 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
         if (selected == name) return
         positions[selected] = scroll.scrollY; selected = name; localStatus = ""
         showPage()
+    }
+    private fun enterPage(name: String) {
+        selectPage(name)
+        firstControl(page)?.requestFocus()
     }
     private fun heading(text: String) {
         page.add(a.text(text, 13f, MUTED, true)); page.gap(8)
@@ -97,6 +109,15 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
                 choice("Playback speed", listOf(.75f, 1f, 1.25f, 1.5f, 2f), { m.preferences.speed }, { "${it}×" }) { m.updatePreferences(m.preferences.copy(speed = it)) }
                 choice("Seek interval", listOf(5, 10, 15, 30), { m.preferences.seekSeconds }, { "$it seconds" }) { m.updatePreferences(m.preferences.copy(seekSeconds = it)) }
             }
+            "YouTube settings" -> {
+                heading("Playback")
+                toggle("Autoplay next video", {m.preferences.youtubeAutoplay}) {m.updatePreferences(m.preferences.copy(youtubeAutoplay=!m.preferences.youtubeAutoplay))}
+                page.gap(12)
+                heading("Phone control")
+                setting("Link phone with TV code", { if(m.store.youTubePhoneEnabled())"Enabled" else "Off" }) { a.connectYouTubePhone() }
+                setting("Disconnect linked phones", { "Remove saved phone linking" }) { a.disconnectYouTubePhones();update() }
+                page.gap(12);page.add(a.text("Use YouTube on your phone to send videos and control playback while 777tv is open.",13f,MUTED).apply{maxLines=3})
+            }
             "Live TV settings" -> {
                 heading("IPTV")
                 page.add(a.action("Manage IPTV profiles") { m.manageProfiles() }); page.gap(16)
@@ -107,10 +128,21 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
                 page.gap(8); page.add(a.text("Hold OK on a channel to add or remove a favorite.", 13f, MUTED))
             }
             "Appearance" -> {
-                heading("Navigation")
-                choice("Startup screen", listOf("On-Demand", "Live TV"), { m.preferences.startSection }) { m.updatePreferences(m.preferences.copy(startSection = it)) }
+                heading("Theme")
+                setting("App theme", { ThemeCatalog.resolve(m.preferences.themeId).name }) { a.showThemePicker() }
+                for((section,name) in listOf(Section.SEARCH to "On-Demand theme",Section.YOUTUBE to "YouTube theme",Section.LIVE to "Live TV theme")) {
+                    setting(name, {
+                        val id=when(section){Section.SEARCH->m.preferences.onDemandThemeId;Section.YOUTUBE->m.preferences.youtubeThemeId;Section.LIVE->m.preferences.liveThemeId}
+                        if(id.isBlank())"Use app theme" else ThemeCatalog.resolve(id).name
+                    }) { a.showThemePicker(section) }
+                }
+                choice("Background",listOf(true,false),{ m.preferences.themeGradient },{ if(it)"Theme default" else "Solid" }) {
+                    m.updatePreferences(m.preferences.copy(themeGradient=it))
+                }
+                page.gap(12);heading("Navigation")
+                choice("Startup screen", listOf("On-Demand", "Live TV", "YouTube"), { m.preferences.startSection }) { m.updatePreferences(m.preferences.copy(startSection = it)) }
                 choice("Poster size", listOf(false, true), { m.preferences.largePosters }, { if (it) "Large" else "Standard" }) { m.updatePreferences(m.preferences.copy(largePosters = it)) }
-                page.gap(12); heading("Search home")
+                page.gap(12); heading("On-demand home")
                 toggle("Show continue watching", { m.preferences.showContinue }) { m.updatePreferences(m.preferences.copy(showContinue = !m.preferences.showContinue)) }
                 toggle("Show recently watched", { m.preferences.showRecent }) { m.updatePreferences(m.preferences.copy(showRecent = !m.preferences.showRecent)) }
                 toggle("Show My list", { m.preferences.showMyList }) { m.updatePreferences(m.preferences.copy(showMyList = !m.preferences.showMyList)) }
@@ -118,8 +150,8 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
             else -> {
                 m.store.readWarning?.let { page.add(a.text(it, 13f, MUTED)); page.gap(12) }
                 heading("Data on this TV")
-                page.add(a.action("Refresh content") { m.refreshContent(); localStatus = "Movies and shows will reload when you return to Search."; update() }); page.gap(8)
-                page.add(a.action("Clear watch history") { a.confirm("Clear watch history? Saved titles and profiles will remain.", "Confirm reset") { m.clearHistory(); localStatus = "Watch history cleared."; update() } }); page.gap(8)
+                page.add(a.action("Refresh content") { m.refreshContent(); localStatus = "Movies and shows will reload when you return to On-Demand."; update() }); page.gap(8)
+                page.add(a.action("Clear history on this TV") { a.confirm("Clear watch history saved on this TV? Your Google watch history, saved titles and profiles will remain.", "Confirm reset") { m.clearHistory(); localStatus = "History on this TV cleared."; update() } }); page.gap(8)
                 page.add(a.action("Reset playback and appearance") { a.confirm("Reset playback and appearance? Profiles and history will remain.", "Confirm reset") { m.updatePreferences(Preferences(defaultProfileId = m.preferences.defaultProfileId)); localStatus = "Playback and appearance reset."; update() } }); page.gap(8)
                 page.add(a.action("Reset provider storage") { a.confirm("Delete all profiles, credentials and channel favorites?", "Confirm reset") { m.resetProviders(); localStatus = if (m.error == null) "IPTV profiles removed." else ""; update() } }); page.gap(18)
                 heading("About")
@@ -128,6 +160,7 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
                 page.add(a.action("Open source licenses") { licenses() }.quiet(), width = -2)
             }
         }
+        linkPageToRail(page)
         val first = firstControl(page)
         if (first != null) {
             if (first.id == View.NO_ID) first.id = View.generateViewId()
@@ -136,6 +169,10 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
         val position = positions[selected] ?: 0
         scroll.post { if (!closed) scroll.scrollTo(0, position) }
         update()
+    }
+    private fun linkPageToRail(control:View) {
+        if(control.isFocusable)control.nextFocusLeftId=categories.getValue(selected).id
+        if(control is android.view.ViewGroup)for(index in 0 until control.childCount)linkPageToRail(control.getChildAt(index))
     }
     private fun firstControl(group: View): View? {
         if (group.isFocusable && group.isEnabled && group.visibility == View.VISIBLE) return group
@@ -146,7 +183,7 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
         bindings.forEach { it() }
         val text = m.error ?: localStatus
         status.text = text; status.visibility = if (text.isBlank()) View.GONE else View.VISIBLE
-        status.setTextColor(if (m.error != null) 0xFFFFC4C4.toInt() else MUTED)
+        status.setTextColor(if (m.error != null) ERROR_TEXT else MUTED)
     }
     override fun focusTarget(): View? = categories[selected]
     override fun saveState(): Parcelable = Bundle().apply {
@@ -168,10 +205,10 @@ internal class SettingsScreen(private val a: MainActivity) : NativeScreen {
                 if (closed) return@launch
                 val text = a.text(content, 13f).apply { pad(16); setTextIsSelectable(true) }
                 licenseDialog = android.app.AlertDialog.Builder(a).setTitle(names[index]).setView(ScrollView(a).apply { addView(text) }).setPositiveButton("Done", null).show().apply {
-                    window?.setBackgroundDrawable(a.round(PANEL))
+                    a.styleDialog(this)
                 }
             }
-        }.setNegativeButton("Done", null).show().apply { window?.setBackgroundDrawable(a.round(PANEL)) }
+        }.setNegativeButton("Done", null).show().apply { a.styleDialog(this) }
     }
 }
 
@@ -190,7 +227,7 @@ private class SettingRow(context: Context, name: String, private val checkable: 
     fun bind(text: String, selected: Boolean?) {
         if (value.text.toString() != text) value.text = text
         checked = selected == true
-        value.setTextColor(if (checked) WHITE else MUTED)
+        value.setTextColor(if (checked) ACCENT else MUTED)
     }
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
         super.onInitializeAccessibilityNodeInfo(info)

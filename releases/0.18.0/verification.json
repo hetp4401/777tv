@@ -1,0 +1,634 @@
+{
+  "application": "777tv",
+  "versionName": "0.18.0",
+  "versionCode": 23,
+  "verifiedAt": "2026-11-18T06:42:06.973891+00:00",
+  "apk": {
+    "file": "777tv-0.18.0-preview.apk",
+    "sha256": "b17b42fa387b64194d0ba6047b86931ddac197d9c5d588f5a63a57e638ffed3f",
+    "bytes": 8230724,
+    "signatureV2": true,
+    "certificateSha256": "c906793c72e69055a73004ea97bff7ce8059ac511c9a692e785db810d3f3ff02",
+    "alignment16KiB": true,
+    "nativeLibraries": 0
+  },
+  "productionSourceSha256": {
+    "app/build.gradle.kts": "92efe82c453136a42aac6f15761c68fdefbfd8661f69a680694f368525d98210",
+    "app/src/main/AndroidManifest.xml": "13798c242ca12100629d1aca39c25d3d1106a4a64f4d2e85a73017ca6d8fa838",
+    "app/src/main/assets/THIRD_PARTY_NOTICES.md": "38af7247d1b3b937b0eb1b4eceafbe79737c433f98383293fbedb0f16e229217",
+    "app/src/main/assets/licenses/NewPipeExtractor-LICENSE.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "app/src/main/assets/licenses/Rhino-LICENSE.txt": "ada0787f27b581e024972a18b51db92c8e8508d0f05017d104a1c70a61b59951",
+    "app/src/main/assets/licenses/jsoup-LICENSE.txt": "f5d724c5818010c61bff2e177f5b6452434bc054807522bf241940bca8b1d6b1",
+    "app/src/main/assets/licenses/nanojson-LICENSE.txt": "2794f8db476aea7b3da16caba160038f57bc8ee63750361c64e7d5ab501141ab",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/AddonSettingsScreen.kt": "b7d1094edc406c310bd43c7407c55927a70c969754c57ab9b83d0f56c5915f09",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Addons.kt": "8ce012ae17e02e39dc24adab4151893378e77156cdcce8895b803c9e171cf6bb",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ArtworkMemoryCache.kt": "e00692abfff8a6753866a5038c53084f08a6c9d012091d665108d486f6d0c7bc",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/FleetModel.kt": "3c0c8b080b955ca8b34d33eeccdeffa3e06f1b170fcf2f2b2821313ccdbd9ff3",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Guide.kt": "e4afb9f80a40f1aca03e12e75a2e8a1f8823d0ca7d899cb4842e7b7ad51c0d46",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Http.kt": "24b5e8a90d77c368c303e67329992a2614792f1cb79a26b81f510c828f34334b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveChannelRow.kt": "9d927affe9496cc7e7a1af22418ff5776ccbb3bbfe0ea731c31ffbe7d695439a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveInfoOverlay.kt": "e118144f9e60d61911374cc8d7c1fc4f036fc150e52d4896a9a4733e3ffa5e9a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveScreen.kt": "d2d2fd5333197dfd53e18b862b20578a032ab94f4a0a9b82d7652c31f56a0498",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/MainActivity.kt": "a2ab611d31776f758036300c725f809dd053c3ea159e4812679e673aa8a319a3",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Models.kt": "aa3b7243f59e13718487b22913e0259690b0459fc08979de3efc6440694c0a59",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeAdapters.kt": "4618a438de2f79b13affda650e5e21cfafd9f1b6bffa1434cf4a03f50a14185c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeBrowse.kt": "88bb1b225ce9a429987eb12539fe1cd58f02b6f8aa24760d0c546aedb73a9b5b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeUi.kt": "913cc40b1807883c1cf86db606cac2e44bfabf80a6ab85e01aa429474a0b6fb2",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/PictureControls.kt": "9ff4a7ac808c2b6694e7fc0e7155b1dc7570e33e8e3daef7ff9946c8230f5985",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Playback.kt": "fb5e08da2d6393976cd877f0e3b3c22cd7a2960b3e63e6bb4f82e1a119a8667c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Preferences.kt": "b2c42a762ae43f7fc74e3c02d1fbdc2a430bcec9ea54d589351da0b82ca1828f",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ProviderForm.kt": "c35c29d91bb9df5022e6fd0b795fb207c9575e8e088756771c7c968821541127",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Repository.kt": "3ca9e8ca1d0515f29619806c189e31ed9a43f23b58da63ec5fff51f7f381746c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SearchScreen.kt": "d2a4172adbb1dbf02eaa3bb078fe87ab585a23f98a470976482f02402b39201a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SettingsScreen.kt": "1151b336a65910735b08e94ac70326721ee889aa81d089d89b424cf506720d7f",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Stalker.kt": "8fe96960d30df73d5f4694cef6c777f927e05c4c7e859a43b4904b189499df42",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Store.kt": "c9db55c9d799c577d3bd8f979e9279e7d892cf0ff96b443bd4f8d25ddd4ec411",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VideoPicture.kt": "61e99faabd02f03e60f179bcb48c9ec62f77b64b797e79328ae8a44b0044e3e0",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VodControls.kt": "9f034df2900e5ccff615e1689e3a2704c20aa5ac39388ce542f548454962b5d7",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeClient.kt": "3074aded3cf114ffb43326d6464a4e74ef622dbaa481e71a3b2459ac523eac0a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeData.kt": "998109bce828b7fae73e6dab7e22ce4ca697c152305f9231aae20d36ef534505",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeHeatmapView.kt": "9007e41e5ea40eb9af56049c5d04f74fc232f2bfb55810370f6383f8154c9048",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeModel.kt": "a4f1815c4d3c70b2ecb458875d0587bde4511d87188efed999db6dcb6b2e6ae3",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeResolver.kt": "e1a66389804eb62bd68b6da028ec429b4ef812766fb9644e36cef2fe1fc34e5b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeScreen.kt": "888edc882d20bf08fb175e74790b3a2eab4160a65b2f5aabf9b175ae58e5f0a1",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTransport.kt": "37b8229f891e75bcff1fb7e418f122996cfb6723e454a1acac006be3763f3ecf",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTvViews.kt": "12a9820aa646c66c620a98fedc3232faa4a741bebe9912f139dac3e60d76136c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchData.kt": "13c4b058bf8cef4679d5ec0aa02cfaf8f35c55241ecef63b86d724a7e39983c4",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchPanel.kt": "b11b668daef17c23b75b6b9837c40413e84640a90aae3636c775ba2479065b24",
+    "app/src/main/res/drawable/fleet_icon.xml": "7ee412788f6f077cc84c61259207d56834047c53047395582ac0b81b571a05b3",
+    "app/src/main/res/drawable/ic_search.xml": "cbad918ba86c29515012c5b56976fdd423b9bf58e955b03de5f81610b1d3b19f",
+    "app/src/main/res/drawable/tv_banner.xml": "14983758b8949f645eee6dfb5796d35dc44ad0b3e8d1c56b38f181979da48116",
+    "app/src/main/res/layout/live_player.xml": "424758bc787f01863866ecae626f2775dedba88fbe97052bad908de60eb9ea39",
+    "app/src/main/res/layout/live_player_content.xml": "23c97249640061e9b6d66103b7895838e0ec6eed00d8e304b348fbb5b8203730",
+    "app/src/main/res/values/styles.xml": "eda8d33d4cd76ce9dd84e5b3f6ad57691f67f1c4f8933c77ae1c4e251043ef08",
+    "app/src/main/res/xml/data_extraction_rules.xml": "4c6f140d42cbf35e21ef83cd909993da77c8cdc67a7c0c5a31536ddcc438f7b0"
+  },
+  "validation": {
+    "unit": {
+      "tests": 110,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 2
+    },
+    "unitPassed": 108,
+    "lintErrors": 0,
+    "livePublicYouTube": {
+      "tests": 2,
+      "passed": true,
+      "scope": "Real unsigned Home suggestions/artwork without account creation, search, Shorts, comments, replay data, device-code issuance and accessible public media. Real owner approval is not claimed."
+    },
+    "uniqueEmulatorScenarios": 145,
+    "unresolvedFailures": 0,
+    "jobs": {
+      "browse": {
+        "id": "d97709322a144798b1b21e3b5c73c6e4",
+        "state": "passed",
+        "testsPassed": 60,
+        "sourceArchiveSha256": "c919a8658d402feebc32f1301f5f260b0e8a870391ebe6e822e96dc0f1a79757",
+        "instance": "0ae38f7b-4e0c-4bbf-a64f-4c7d433b01a5",
+        "scenarios": [
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#backRestoresOffscreenPosterWithinItsHorizontalShelf",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#browsedSeasonSurvivesRecreationAndSeasonPickerTargetsTheChosenSeason",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#continueWatchingRetainsStoredEpisodeAndPlaysWhenMetadataFails",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#disabledResumeUsesNormalFirstSeasonWithoutResumeLabel",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#emptyAddonLinksOfferRefreshAndRecoverWithoutAutoplay",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#episodeRowContinuesBothWaysAcrossSeasonsWithoutLoadingStreamsOnFocus",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#episodeRowMatchesStreamRowForRapidAndHeldInput",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#finishedOrMissingEpisodeProgressFallsBackToNormalSelection",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#homeHasOnlyCompactShelvesAndOneOkOpensMovieStreams",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#moviePosterShowsStreamsDirectlyAndPlayerBackRestoresTheChosenTileAndQuery",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#movieStreamFailureKeepsDetailsAndRetryRecoversInline",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#nativeSearchKeyboardSubmitsResultsAndControlsStayVisible",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#pendingMovieStreamsCannotReplaceSelectedEpisodeSources",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#posterFocusFramesOnlyImagesAcrossSearchNavigationAndShelfRecycling",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#profilesHaveOnePrimaryAndOneMenuAndDeleteCancelPreservesData",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#sameStreamUrlWithDifferentHeadersKeepsBothChoicesAndRestoresTheChosenOne",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#searchControlsRemainAvailableWhenHomeOnlyHasSavedContentAndServerFails",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#searchReselectPreservesResultsAndClearReturnsFocusInOneAction",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#searchTabFromSourcesAndDirectionalNavigationReachTheSearchField",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#searchWithoutCatalogCapabilityOpensManagementAndDefaultsRestoreBrowsing",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#seriesRefreshRenewsLinksPreservesSourceAndDoesNotStealEpisodeFocus",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#seriesResumesNewestUnfinishedEpisodeAndExplicitBackSelectionWins",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#singleSeasonHasNoDeadFocusStopAndStreamChoiceRemainsExplicit",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#sourcesWithoutStreamCapabilityOpensManagementAndBackLoadsDefaultLinks",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#streamRowsLeadWithKnownMetadataAndLongPressKeepsCompleteDetails",
+          "xyz.billybishop4.fleet.tv.BrowseNavigationTest#unreadableAddonStorageOffersManagementFromSearchAndSources",
+          "xyz.billybishop4.fleet.tv.CategoryVisibilityTest#hideSelectedAndAllCategoriesThenRestoreAndCleanUpProfileData",
+          "xyz.billybishop4.fleet.tv.CategoryVisibilityTest#hideUnhidePersistsAndDoesNotAffectAnotherProfile",
+          "xyz.billybishop4.fleet.tv.NavigationRobustnessTest#deletingAnEditedProfileClearsItsDraftAndBackHasAValidDestination",
+          "xyz.billybishop4.fleet.tv.NavigationRobustnessTest#editedProfileReturnsToChannelsWithUpdatedIdentity",
+          "xyz.billybishop4.fleet.tv.NavigationRobustnessTest#emptySearchResultsSurviveBackWithoutAnotherRequestAndClearInOneAction",
+          "xyz.billybishop4.fleet.tv.NavigationRobustnessTest#reselectingRootLiveTabKeepsThePlayerAndRootBackDoesNotOpenProfiles",
+          "xyz.billybishop4.fleet.tv.NavigationRobustnessTest#savingFirstProfileOpensItsChannelsWithoutASecondSelection",
+          "xyz.billybishop4.fleet.tv.SearchCatalogTest#catalogYearAndGenreChoicesUseTheirManifestAndCancelOlderResponses",
+          "xyz.billybishop4.fleet.tv.SearchCatalogTest#groupedSearchKeepsLocalShelvesAndRestoresQueryPosterFocusOnBack",
+          "xyz.billybishop4.fleet.tv.SearchCatalogTest#sameAddonConfigurationsHaveDistinctCatalogChoicesWithoutExposingTheirUrls",
+          "xyz.billybishop4.fleet.tv.SettingsNavigationTest#choiceCancelAndSingleSelectionRestoreTheSettingFocus",
+          "xyz.billybishop4.fleet.tv.SettingsNavigationTest#configuredAddonsEnableAndRemoveIndependentlyAndPersistWithoutExposingSecrets",
+          "xyz.billybishop4.fleet.tv.SettingsNavigationTest#playbackResetKeepsTheDefaultProfileAndProviderData",
+          "xyz.billybishop4.fleet.tv.SettingsNavigationTest#requiredValidationFocusesTheFieldAndAdvancedDraftSurvivesSettings",
+          "xyz.billybishop4.fleet.tv.SettingsNavigationTest#resetAddonsRestoresFixtureDefaultsOnlyAfterConfirmation",
+          "xyz.billybishop4.fleet.tv.SettingsNavigationTest#settingsCategoryAndManifestDraftSurviveProfilesBackAndActivityRecreation",
+          "xyz.billybishop4.fleet.tv.SettingsNavigationTest#startupScreenDefaultsToOnDemandAndSavedChoiceControlsColdStart",
+          "xyz.billybishop4.fleet.tv.YouTubeAccountFeedsTest#clearingLocalHistoryAlsoClearsItsRecommendationSeedsAndCachedCards",
+          "xyz.billybishop4.fleet.tv.YouTubeAccountFeedsTest#emptyLocalHistoryFocusesItsTabsAndAccountFeedsOfferDirectSignIn",
+          "xyz.billybishop4.fleet.tv.YouTubeAccountFeedsTest#freshHomeHasRealGuestCardsWithoutCreatingAnAccountOrPlayingOnFocus",
+          "xyz.billybishop4.fleet.tv.YouTubeAccountFeedsTest#guestNetworkFailureRetriesWithoutRequiringGoogleSignIn",
+          "xyz.billybishop4.fleet.tv.YouTubeAccountFeedsTest#localHistoryWorksSignedOutAndIsReachableWithOneLibraryAction",
+          "xyz.billybishop4.fleet.tv.YouTubeAccountFeedsTest#signOutRemovesPrivateFeedCardsAndRestoresUnsignedRecommendations",
+          "xyz.billybishop4.fleet.tv.YouTubeAccountFeedsTest#signedInLibrarySwitchesBetweenHistoryWatchLaterAndLikedVideos",
+          "xyz.billybishop4.fleet.tv.YouTubeAccountFeedsTest#signedInSubscriptionsPageAndPaginateWithoutResolvingAnyMedia",
+          "xyz.billybishop4.fleet.tv.YouTubeTvLayoutTest#clearingAndDeletingUnicodeKeepSearchOpenWithoutLoadingHome",
+          "xyz.billybishop4.fleet.tv.YouTubeTvLayoutTest#commentsAreBesideTheVideoAndTabSwitchingKeepsTheDecoder",
+          "xyz.billybishop4.fleet.tv.YouTubeTvLayoutTest#fixedArtworkDoesNotRemeasureParentsButStillResizesAndDraws",
+          "xyz.billybishop4.fleet.tv.YouTubeTvLayoutTest#homeCanScrollAcrossUnattachedCardsWithTheRemoteAndReturn",
+          "xyz.billybishop4.fleet.tv.YouTubeTvLayoutTest#homeReturnsToTheSameShelfAndVideoAfterPlayback",
+          "xyz.billybishop4.fleet.tv.YouTubeTvLayoutTest#homeUsesRealHorizontalShelvesWithPosterOnlyFocusAndBoundedViews",
+          "xyz.billybishop4.fleet.tv.YouTubeTvLayoutTest#railExpandsWithoutMovingOrResizingTheHomeContent",
+          "xyz.billybishop4.fleet.tv.YouTubeTvLayoutTest#searchHasATvKeyboardAndSubmittingMovesDirectlyToResults",
+          "xyz.billybishop4.fleet.tv.YouTubeTvLayoutTest#shortsKeepPortraitBrowseCardsAndDoNotResolveVideosOnFocus"
+        ]
+      },
+      "player": {
+        "id": "9b76681c94a34926aaa6415c5fb904b0",
+        "state": "failed",
+        "testsPassed": 42,
+        "sourceArchiveSha256": "c919a8658d402feebc32f1301f5f260b0e8a870391ebe6e822e96dc0f1a79757",
+        "instance": "20d42e80-740b-4545-a93e-32b5474dd702",
+        "scenarios": [
+          "xyz.billybishop4.fleet.tv.EngineLayoutTest#brokenLiveStopsAtRetryLimitThenManualRetryRecovers",
+          "xyz.billybishop4.fleet.tv.EngineLayoutTest#directSourceFailureReleasesPlayerAndCanRetry",
+          "xyz.billybishop4.fleet.tv.EngineLayoutTest#exoLiveAlsoBlocksSeekingAndHasNoController",
+          "xyz.billybishop4.fleet.tv.EngineLayoutTest#liveHasNoTimelineAndPreviewFullscreenKeepsPlayer",
+          "xyz.billybishop4.fleet.tv.EngineLayoutTest#onDemandSupportsPauseSeekResumeAndFreshBackgroundPlayer",
+          "xyz.billybishop4.fleet.tv.EngineLayoutTest#pictureEffectsRenderRealPausedPixelsAndResetReturnsToDirectSurface",
+          "xyz.billybishop4.fleet.tv.EngineLayoutTest#processorFailureReturnsOnceToDirectPlaybackAndReportsActualNeutralState",
+          "xyz.billybishop4.fleet.tv.EngineLayoutTest#rapidNavigationDoesNotTuneEveryFocusAndSixThousandRowsStayBounded",
+          "xyz.billybishop4.fleet.tv.EngineLayoutTest#transientAudioFocusLossResumesButManualPauseIsPreserved",
+          "xyz.billybishop4.fleet.tv.OptimizationRegressionTest#historyCacheSeesOtherWritersAndDoesNotRetainEpisodeCatalogs",
+          "xyz.billybishop4.fleet.tv.OptimizationRegressionTest#memoryPressureDropsInactiveCatalogAndLiveReloadsWithoutLosingPreferences",
+          "xyz.billybishop4.fleet.tv.OptimizationRegressionTest#recycledRowCancelsOldLogoAndPreservesLogoAspectRatio",
+          "xyz.billybishop4.fleet.tv.OptimizationRegressionTest#singleViewRowKeepsUnicodeLabelsFocusFavoriteAndClickSemanticsWhenRebound",
+          "xyz.billybishop4.fleet.tv.PlaybackModesTest#onDemandKeepsEpisodeIdentityAudioSubtitlesAndTheUnboxedTransport",
+          "xyz.billybishop4.fleet.tv.PlaybackModesTest#regularYouTubeHasQualityCommentsAndItsOwnThinSeekControls",
+          "xyz.billybishop4.fleet.tv.PlaybackModesTest#shortsRemoteDispatchRecordsOneActionPerPress",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#backgroundReleasesPlayerAndForegroundResumesDirectStream",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#brokenDirectStreamFocusesRetryAndRecovers",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#brokenLiveStopsAtConfiguredReconnectLimit",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#corruptDataDoesNotCrashOrOverwriteCredentials",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#defaultProfilePersistsAndDeletingDefaultSelectsRemaining",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#nativeTvKeyboardAcceptsMacAndReturnsToForm",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#partialCatalogFailureKeepsWorkingShelfAndRetryRestoresShows",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#profileEditTestCancelAndConfirmedDeletion",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#remoteSearchPlaybackHistoryAndResume",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#searchAndSeriesEpisodeNavigation",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#sharedSettingsPersistAndLiveIgnoresOnDemandSpeed",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#stalkerProfileAdvancedFieldsEncryptAndLiveChannelsPlay",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#thousandsOfChannelsUseRecycledViewsAndCachedReturn",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#twoSectionsAndCompletedHistoryAreVisible",
+          "xyz.billybishop4.fleet.tv.TvFlowTest#unavailableAddonsRecoverAfterTheirAddressIsCorrected",
+          "xyz.billybishop4.fleet.tv.VodControlsTest#alternateAudioAndEmbeddedSubtitleActuallyActivate",
+          "xyz.billybishop4.fleet.tv.VodControlsTest#directRequestHeadersKeepCommasAndTrailingBackslashes",
+          "xyz.billybishop4.fleet.tv.VodControlsTest#directionsAndPictureButtonOpenSlidersDirectlyAndRetainPlaybackSettings",
+          "xyz.billybishop4.fleet.tv.VodControlsTest#endedMovieShowsReplayAndRestartsActualPlayback",
+          "xyz.billybishop4.fleet.tv.VodControlsTest#failedPictureChangesRestoreTheActualPictureValues",
+          "xyz.billybishop4.fleet.tv.VodControlsTest#heldTimelineAcceleratesByDurationAndResetsOnReleaseReversalAndFocusLoss",
+          "xyz.billybishop4.fleet.tv.VodControlsTest#okRevealsWithoutPausingThenActivatesOnceAndBackDismissesBeforeLeaving",
+          "xyz.billybishop4.fleet.tv.VodControlsTest#pausedIntentAndPositionSurviveBackgroundThenExplicitPlayResumes",
+          "xyz.billybishop4.fleet.tv.VodControlsTest#pictureSlidersPreviewStepValuesResetAndReturnFocusWithoutResumingPausedVideo",
+          "xyz.billybishop4.fleet.tv.VodControlsTest#rapidPictureStepsDuringFirstActivationApplyTheLatestValueWithoutMovingPausedVideo",
+          "xyz.billybishop4.fleet.tv.VodControlsTest#timelineAndSkipButtonsSeekImmediatelyThenPlayingControlsAutoHide"
+        ],
+        "initialFailures": 2,
+        "resolvedBy": [
+          "97f34d5aa7c240db8237dca8e0ee1452",
+          "e51882ac2cd542889d99b4ab62132706"
+        ]
+      },
+      "youtube": {
+        "id": "4e37fc50819c497c853a4bc97fb69f36",
+        "state": "passed",
+        "testsPassed": 41,
+        "sourceArchiveSha256": "c919a8658d402feebc32f1301f5f260b0e8a870391ebe6e822e96dc0f1a79757",
+        "instance": "f2302bbf-f7df-456c-981e-a7ab010b1256",
+        "scenarios": [
+          "xyz.billybishop4.fleet.tv.ArtworkMemoryCacheTest#hardwareBuffersCannotEnterACacheSmallerThanTheirPixels",
+          "xyz.billybishop4.fleet.tv.ArtworkMemoryCacheTest#lruBudgetUsesPixelMemoryWithoutRecyclingImagesStillInUse",
+          "xyz.billybishop4.fleet.tv.ArtworkMemoryCacheTest#replacementRemovalAndTrimKeepAccountingAndMetadataConsistent",
+          "xyz.billybishop4.fleet.tv.FluidityBenchmarkTest#distinctArtworkScrollingInputAndRetainedMemory",
+          "xyz.billybishop4.fleet.tv.FluidityBenchmarkTest#pausedHighBitrateBufferAndYouTubeHiddenUi",
+          "xyz.billybishop4.fleet.tv.FluidityRegressionTest#hiddenVideoDetailsAreLazyAndCanBeFreedAndReopenedDuringPlayback",
+          "xyz.billybishop4.fleet.tv.FluidityRegressionTest#memoryPressurePreservesTheShortsQueueAndBackDestination",
+          "xyz.billybishop4.fleet.tv.FluidityRegressionTest#pausedPlaybackStopsRewritingHistoryAndSeekingAndResumeStillUpdateControls",
+          "xyz.billybishop4.fleet.tv.LiveNavigationTest#browsingNeverTunesAndOkPreviewsBeforeOpeningFullscreen",
+          "xyz.billybishop4.fleet.tv.LiveNavigationTest#cancellingOptionsPreservesFocusAndPlayer",
+          "xyz.billybishop4.fleet.tv.LiveNavigationTest#favoritesInHiddenCategoriesKeepTheirSavedStateAndOfferRecovery",
+          "xyz.billybishop4.fleet.tv.LiveNavigationTest#fullscreenBackFindsThePlayingChannelAfterItsViewWasRecycled",
+          "xyz.billybishop4.fleet.tv.LiveNavigationTest#pictureControlsRequireAnActivePreviewAndPreserveTheLiveStream",
+          "xyz.billybishop4.fleet.tv.LiveNavigationTest#searchHasOneClearActionAndHiddenCategoriesHaveDirectRecovery",
+          "xyz.billybishop4.fleet.tv.LiveNavigationTest#toolbarHasOneOptionsActionAndFavoritesBelongsToSidebar",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#cancelPairingStopsPollingAndNeverCreatesAnAccount",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#declinedPairingOffersANewCodeAndCanBeCanceled",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#emptyAndOfflineResultsHaveRetryAndPreserveTheInput",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#failedPlaybackDoesNotLoseSearchAndExplicitRetryRecovers",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#memoryPressureReleasesArtworkWithoutLosingThePlayerOrReturnPosition",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#olderSearchResponsesCannotReplaceTheLatestQuery",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#oneOkPlaysWithExoAndBackRestoresQueryAndSelectedVideo",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#paginationCannotCancelAnExplicitVideoSelection",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#pairingPersistsEncryptedAuthenticationAndLoadsRecommendations",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#searchUsesNativeInputAndFocusMovementNeverResolvesAStream",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#separateVideoAndAudioPlayTogetherAndSeekingKeepsBothTracks",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#shortsUsePortraitCardsAndOnePlayerAcrossUpDownNavigation",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#signOutKeepsOnDemandDataAndClearsPersonalRecommendations",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#switchingSectionsKeepsSeparateSearchesAndReleasesPlayerAndViews",
+          "xyz.billybishop4.fleet.tv.YouTubeNavigationTest#youtubeIsBesideOnDemandAndRecommendationsWorkWithoutAnAccount",
+          "xyz.billybishop4.fleet.tv.YouTubeWatchUiTest#bothHeaderActionsCanBeReachedWithTheRemote",
+          "xyz.billybishop4.fleet.tv.YouTubeWatchUiTest#closeFromRepliesClosesTheWholePanelInOneAction",
+          "xyz.billybishop4.fleet.tv.YouTubeWatchUiTest#closingALoadingPanelCancelsWorkAndReopeningIsUsable",
+          "xyz.billybishop4.fleet.tv.YouTubeWatchUiTest#commentsDisabledIsAnEmptyStateWithoutBreakingThePlayer",
+          "xyz.billybishop4.fleet.tv.YouTubeWatchUiTest#commentsLoadOnOpenAndPagingDoesNotFollowAReplyCursor",
+          "xyz.billybishop4.fleet.tv.YouTubeWatchUiTest#commentsOpenForReadingAndRepliesReturnToTheirOriginalComments",
+          "xyz.billybishop4.fleet.tv.YouTubeWatchUiTest#detailsFailureCanRetryWithoutStoppingPlayback",
+          "xyz.billybishop4.fleet.tv.YouTubeWatchUiTest#downOpensRelatedAndBackReturnsDirectlyToVideo",
+          "xyz.billybishop4.fleet.tv.YouTubeWatchUiTest#graphUsesTheSameThinStripWithoutAnExtraFocusTarget",
+          "xyz.billybishop4.fleet.tv.YouTubeWatchUiTest#relatedVideoReplacesThePlayerAndBackDoesNotStackOldPlayers",
+          "xyz.billybishop4.fleet.tv.YouTubeWatchUiTest#videosWithoutReplayDataKeepTheNormalControlsAndStillPlay"
+        ]
+      },
+      "shortsRerun": {
+        "id": "97f34d5aa7c240db8237dca8e0ee1452",
+        "state": "passed",
+        "testsPassed": 1,
+        "sourceArchiveSha256": "85d29cb8db2231fb131cb325349552dbc4e51dc45579d3e08ddcac2b72c3bd92",
+        "instance": "20d42e80-740b-4545-a93e-32b5474dd702",
+        "scenarios": [
+          "xyz.billybishop4.fleet.tv.PlaybackModesTest#shortsHavePortraitLoopingPlaybackAReadOnlyLineAndDirectRemoteClipChanges"
+        ]
+      },
+      "liveRerun": {
+        "id": "e51882ac2cd542889d99b4ab62132706",
+        "state": "passed",
+        "testsPassed": 1,
+        "sourceArchiveSha256": "751a07b9aff6b8cff6fe25109af07c77d5c990e1c826b5589c76636ff54cea31",
+        "instance": "0ae38f7b-4e0c-4bbf-a64f-4c7d433b01a5",
+        "scenarios": [
+          "xyz.billybishop4.fleet.tv.PlaybackModesTest#liveHasTransientChannelInformationNoTransportAndNoExtraBackPress"
+        ]
+      }
+    },
+    "developmentFailures": [
+      {
+        "id": "ba975f0665fa45c19a2918505be68761",
+        "state": "failed",
+        "initialFailures": [
+          "xyz.billybishop4.fleet.tv.YouTubeAccountFeedsTest#localHistoryWorksSignedOutAndIsReachableWithOneLibraryAction"
+        ],
+        "resolvedBy": "d97709322a144798b1b21e3b5c73c6e4"
+      },
+      {
+        "id": "e1827ee49db14071a37e44ed9982deeb",
+        "state": "failed",
+        "initialFailures": [
+          "xyz.billybishop4.fleet.tv.PlaybackModesTest#shortsHavePortraitLoopingPlaybackAReadOnlyLineAndDirectRemoteClipChanges"
+        ],
+        "resolvedBy": "97f34d5aa7c240db8237dca8e0ee1452"
+      }
+    ],
+    "note": "All three full worker suites and both targeted reruns match all 49 production files. A history test initially pressed Up before automatic card focus completed; it now waits for the actual target. Two player checks needed effective parent visibility and input-window/focus readiness guards; their targeted reruns pass. Shorts also verify one action on Down/Up and surface-click pause behavior. Earlier failed jobs are retained; 145 unique scenarios pass across the full suites and targeted reruns."
+  },
+  "performance": {
+    "previousControlledCheckpoint": "releases/0.16.1/verification.json",
+    "candidateSmoke": {
+      "playback": {
+        "media": "Generated 90 s H264/AAC HLS, 8 Mbps CBR, 640x360 at 24 fps",
+        "movie": {
+          "allocatorBytes": 26214400,
+          "bufferedMs": 25776,
+          "memory": {
+            "pssKiB": 207922,
+            "privateDirtyKiB": 181108,
+            "nativeAllocatedBytes": 96157600,
+            "managedUsedBytes": 33475296,
+            "artworkCacheBytes": 839808,
+            "artworkCacheMaxBytes": 8388608,
+            "artworkEntries": 1,
+            "artworkPixelBytes": 839808,
+            "bitmapSample": [
+              {
+                "width": 648,
+                "height": 324,
+                "config": "HARDWARE",
+                "platformAllocationBytes": 4096
+              }
+            ]
+          },
+          "playback": {
+            "engine": "ExoPlayer",
+            "playing": false,
+            "positionMs": 223,
+            "width": 640,
+            "height": 360,
+            "audio": true,
+            "dropped": 1,
+            "decoder": "c2.goldfish.h264.decoder",
+            "audioTrack": "",
+            "subtitleText": "",
+            "frameRateHint": 0,
+            "forwardCapMiB": 24,
+            "displayFps": 0
+          }
+        },
+        "youtube": {
+          "startMs": 978,
+          "descendantViews": 59,
+          "hiddenPanelCreated": false,
+          "memory": {
+            "pssKiB": 185030,
+            "privateDirtyKiB": 158172,
+            "nativeAllocatedBytes": 96289024,
+            "managedUsedBytes": 11664368,
+            "artworkCacheBytes": 839808,
+            "artworkCacheMaxBytes": 8388608,
+            "artworkEntries": 1,
+            "artworkPixelBytes": 839808,
+            "bitmapSample": [
+              {
+                "width": 648,
+                "height": 324,
+                "config": "HARDWARE",
+                "platformAllocationBytes": 4096
+              }
+            ]
+          },
+          "commentsOpenMemory": {
+            "pssKiB": 188412,
+            "privateDirtyKiB": 161536,
+            "nativeAllocatedBytes": 96668256,
+            "managedUsedBytes": 13761520,
+            "artworkCacheBytes": 839808,
+            "artworkCacheMaxBytes": 8388608,
+            "artworkEntries": 1,
+            "artworkPixelBytes": 839808,
+            "bitmapSample": [
+              {
+                "width": 648,
+                "height": 324,
+                "config": "HARDWARE",
+                "platformAllocationBytes": 4096
+              }
+            ]
+          },
+          "commentsRows": 6,
+          "commentsClosedMemory": {
+            "pssKiB": 188346,
+            "privateDirtyKiB": 161460,
+            "nativeAllocatedBytes": 96337536,
+            "managedUsedBytes": 13683696,
+            "artworkCacheBytes": 839808,
+            "artworkCacheMaxBytes": 8388608,
+            "artworkEntries": 1,
+            "artworkPixelBytes": 839808,
+            "bitmapSample": [
+              {
+                "width": 648,
+                "height": 324,
+                "config": "HARDWARE",
+                "platformAllocationBytes": 4096
+              }
+            ]
+          }
+        },
+        "stoppedMemory": {
+          "pssKiB": 179527,
+          "privateDirtyKiB": 152696,
+          "nativeAllocatedBytes": 89676128,
+          "managedUsedBytes": 5508976,
+          "artworkCacheBytes": 480200,
+          "artworkCacheMaxBytes": 8388608,
+          "artworkEntries": 1,
+          "artworkPixelBytes": 480200,
+          "bitmapSample": [
+            {
+              "width": 490,
+              "height": 245,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            }
+          ]
+        },
+        "device": "sdk_google_atv64_x86_64",
+        "api": 36,
+        "renderer": "remote-swiftshader",
+        "version": "0.18.0"
+      },
+      "artwork": {
+        "catalogSize": 120,
+        "artwork": "Distinct URL 480x270 JPEGs, eight deterministic generated patterns",
+        "initialMemory": {
+          "pssKiB": 181217,
+          "privateDirtyKiB": 154196,
+          "nativeAllocatedBytes": 90721472,
+          "managedUsedBytes": 5793808,
+          "artworkCacheBytes": 3612032,
+          "artworkCacheMaxBytes": 8388608,
+          "artworkEntries": 9,
+          "artworkPixelBytes": 3612032,
+          "bitmapSample": [
+            {
+              "width": 648,
+              "height": 324,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            },
+            {
+              "width": 392,
+              "height": 221,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            },
+            {
+              "width": 392,
+              "height": 221,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            }
+          ]
+        },
+        "afterScrollMemory": {
+          "pssKiB": 182048,
+          "privateDirtyKiB": 154756,
+          "nativeAllocatedBytes": 91415568,
+          "managedUsedBytes": 5892224,
+          "artworkCacheBytes": 8316672,
+          "artworkCacheMaxBytes": 8388608,
+          "artworkEntries": 24,
+          "artworkPixelBytes": 8316672,
+          "bitmapSample": [
+            {
+              "width": 392,
+              "height": 221,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            },
+            {
+              "width": 392,
+              "height": 221,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            },
+            {
+              "width": 392,
+              "height": 221,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            }
+          ]
+        },
+        "afterNavigationMemory": {
+          "pssKiB": 182085,
+          "privateDirtyKiB": 154696,
+          "nativeAllocatedBytes": 90816560,
+          "managedUsedBytes": 6013120,
+          "artworkCacheBytes": 8316672,
+          "artworkCacheMaxBytes": 8388608,
+          "artworkEntries": 24,
+          "artworkPixelBytes": 8316672,
+          "bitmapSample": [
+            {
+              "width": 392,
+              "height": 221,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            },
+            {
+              "width": 392,
+              "height": 221,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            },
+            {
+              "width": 392,
+              "height": 221,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            }
+          ]
+        },
+        "scrollTrials": [
+          {
+            "trial": 0,
+            "scrollSteps": 120,
+            "elapsedMs": 5748,
+            "processCpuMs": 1988,
+            "frames": 119,
+            "frameP50Ms": 133.93076,
+            "frameP95Ms": 183.46715,
+            "layoutP95Ms": 0.187666,
+            "drawP95Ms": 0.553601,
+            "gcBefore": {
+              "art.gc.blocking-gc-count": "16",
+              "art.gc.gc-time": "17396",
+              "art.gc.bytes-allocated": "599001504",
+              "art.gc.bytes-freed": "593142112",
+              "art.gc.gc-count-rate-histogram": "0:1,1:4,2:1,3:4,4:3,5:2,6:2,7:2,8:3",
+              "art.gc.total-time-waiting-for-gc": null,
+              "art.gc.blocking-gc-count-rate-histogram": "0:17,1:4,2:1",
+              "art.gc.pre-oome-gc-count": null,
+              "art.gc.objects-allocated": null,
+              "art.gc.gc-count": "101",
+              "art.gc.blocking-gc-time": "1893"
+            },
+            "gcAfter": {
+              "art.gc.blocking-gc-count": "16",
+              "art.gc.gc-time": "17396",
+              "art.gc.bytes-allocated": "603190048",
+              "art.gc.bytes-freed": "593142112",
+              "art.gc.gc-count-rate-histogram": "0:1,1:4,2:1,3:4,4:3,5:2,6:2,7:2,8:3",
+              "art.gc.total-time-waiting-for-gc": null,
+              "art.gc.blocking-gc-count-rate-histogram": "0:17,1:4,2:1",
+              "art.gc.pre-oome-gc-count": null,
+              "art.gc.objects-allocated": null,
+              "art.gc.gc-count": "101",
+              "art.gc.blocking-gc-time": "1893"
+            }
+          },
+          {
+            "trial": 1,
+            "scrollSteps": 120,
+            "elapsedMs": 5662,
+            "processCpuMs": 1725,
+            "frames": 119,
+            "frameP50Ms": 121.47437,
+            "frameP95Ms": 173.032651,
+            "layoutP95Ms": 0.143549,
+            "drawP95Ms": 0.46782,
+            "gcBefore": {
+              "art.gc.blocking-gc-count": "16",
+              "art.gc.gc-time": "17396",
+              "art.gc.bytes-allocated": "603190096",
+              "art.gc.bytes-freed": "593142112",
+              "art.gc.gc-count-rate-histogram": "0:1,1:4,2:1,3:4,4:3,5:2,6:2,7:2,8:3",
+              "art.gc.total-time-waiting-for-gc": null,
+              "art.gc.blocking-gc-count-rate-histogram": "0:17,1:4,2:1",
+              "art.gc.pre-oome-gc-count": null,
+              "art.gc.objects-allocated": null,
+              "art.gc.gc-count": "101",
+              "art.gc.blocking-gc-time": "1893"
+            },
+            "gcAfter": {
+              "art.gc.blocking-gc-count": "17",
+              "art.gc.gc-time": "17676",
+              "art.gc.bytes-allocated": "605399616",
+              "art.gc.bytes-freed": "598667712",
+              "art.gc.gc-count-rate-histogram": "0:1,1:4,2:1,3:4,4:3,5:2,6:2,7:2,8:3,11:1",
+              "art.gc.total-time-waiting-for-gc": null,
+              "art.gc.blocking-gc-count-rate-histogram": "0:17,1:4,2:1,10:1",
+              "art.gc.pre-oome-gc-count": null,
+              "art.gc.objects-allocated": null,
+              "art.gc.gc-count": "102",
+              "art.gc.blocking-gc-time": "2173"
+            }
+          }
+        ],
+        "input": [
+          {
+            "held": false,
+            "deliveredKeys": 18,
+            "focused": "youtube-video:P0000000019",
+            "elapsedMs": 2439
+          },
+          {
+            "held": true,
+            "deliveredKeys": 18,
+            "focused": "youtube-video:P0000000019",
+            "elapsedMs": 2229
+          }
+        ],
+        "fixture": {
+          "thumbnailRequests": 28,
+          "thumbnailBytes": 305196
+        },
+        "attachedCards": 12,
+        "device": "sdk_google_atv64_x86_64",
+        "api": 36,
+        "renderer": "remote-swiftshader",
+        "version": "0.18.0"
+      }
+    },
+    "limits": [
+      "Current software-renderer measurements are smoke checks, not a matched physical-TV frame-rate comparison.",
+      "Image cache bytes, encoded buffering and whole-process memory are separate budgets. Shorts warm at most one URL, never a second player or video buffer."
+    ]
+  },
+  "physicalTV": {
+    "candidateInstalled": false,
+    "candidateTested": false,
+    "testingHeld": true,
+    "status": "User latest instruction holds TCL testing and deployment; 0.18.0 has not been installed on the physical TV."
+  },
+  "limitations": [
+    "Account feeds require Google owner approval; signed-in feed/account transitions are covered with generated fixtures.",
+    "Public media resolution does not provide private/restricted YouTube playback or upload Google watch history.",
+    "Comments are read-only and optional replay data can be absent."
+  ]
+}

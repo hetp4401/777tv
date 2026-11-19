@@ -4,6 +4,11 @@ import org.json.JSONObject
 
 data class Preferences(
     val startSection: String = "On-Demand",
+    val themeId: String = "classic",
+    val themeGradient: Boolean = true,
+    val onDemandThemeId: String = "",
+    val youtubeThemeId: String = "",
+    val liveThemeId: String = "",
     val largePosters: Boolean = false,
     val showRecent: Boolean = true,
     val showContinue: Boolean = true,
@@ -20,21 +25,43 @@ data class Preferences(
     val liveRetries: Int = 2,
     val liveSort: String = "Provider",
     val defaultProfileId: String = "",
+    val youtubeAutoplay: Boolean = true,
+    val youtubeSpeed:Float=1f,
+    val youtubeCaptions:Boolean=false,
+    val youtubeSubtitleLanguage:String="en",
 ) {
     fun json() = JSONObject().apply {
         put("startupScreen", startSection); put("largePosters", largePosters)
+        put("themeId",themeId);put("themeGradient",themeGradient)
+        put("onDemandThemeId",onDemandThemeId);put("youtubeThemeId",youtubeThemeId);put("liveThemeId",liveThemeId)
         put("showRecent", showRecent); put("showContinue", showContinue); put("showMyList", showMyList)
         put("resume", resume); put("largestFirst", largestFirst)
         put("speed", speed); put("seekSeconds", seekSeconds)
         put("audioLanguage", audioLanguage); put("subtitleLanguage", subtitleLanguage); put("subtitles", subtitles)
         put("videoFit", videoFit); put("liveBufferSeconds", liveBufferSeconds); put("liveRetries", liveRetries); put("liveSort", liveSort)
         put("defaultProfileId", defaultProfileId)
+        put("youtubeAutoplay",youtubeAutoplay)
+        put("youtubeSpeed",youtubeSpeed);put("youtubeCaptions",youtubeCaptions);put("youtubeSubtitleLanguage",youtubeSubtitleLanguage)
+    }
+    fun themeFor(section:Section):String {
+        val selected=when(section) {
+            Section.SEARCH -> onDemandThemeId
+            Section.YOUTUBE -> youtubeThemeId
+            Section.LIVE -> liveThemeId
+        }
+        return if(ThemeCatalog.contains(selected))selected else ThemeCatalog.resolve(themeId).id
     }
     companion object {
+        private fun overrideId(value:String)=if(ThemeCatalog.contains(value))value else ""
         fun decode(j: JSONObject) = Preferences(
             // The new key separates a deliberate choice from the old saved
             // Live TV default, so upgrades also start on On-Demand once.
-            startSection = j.optString("startupScreen").takeIf { it in listOf("On-Demand", "Live TV") } ?: "On-Demand",
+            startSection = j.optString("startupScreen").takeIf { it in listOf("On-Demand", "Live TV", "YouTube") } ?: "On-Demand",
+            themeId = ThemeCatalog.resolve(j.optString("themeId","classic")).id,
+            themeGradient = j.optBoolean("themeGradient",true),
+            onDemandThemeId = overrideId(j.optString("onDemandThemeId")),
+            youtubeThemeId = overrideId(j.optString("youtubeThemeId")),
+            liveThemeId = overrideId(j.optString("liveThemeId")),
             largePosters = j.optBoolean("largePosters"), showRecent = j.optBoolean("showRecent", true),
             showContinue = j.optBoolean("showContinue", true), showMyList = j.optBoolean("showMyList", true),
             resume = j.optBoolean("resume", true),
@@ -46,6 +73,10 @@ data class Preferences(
             liveBufferSeconds = j.optInt("liveBufferSeconds", 3).takeIf { it in listOf(3, 6, 10) } ?: 3,
             liveRetries = j.optInt("liveRetries", 2).coerceIn(0, 3), liveSort = j.optString("liveSort").takeIf { it in listOf("Provider", "A–Z") } ?: "Provider",
             defaultProfileId = j.optString("defaultProfileId").take(256),
+            youtubeAutoplay = j.optBoolean("youtubeAutoplay",true),
+            youtubeSpeed=j.optDouble("youtubeSpeed",1.0).toFloat().takeIf{it in listOf(.25f,.5f,.75f,1f,1.25f,1.5f,1.75f,2f)}?:1f,
+            youtubeCaptions=j.optBoolean("youtubeCaptions",false),
+            youtubeSubtitleLanguage=j.optString("youtubeSubtitleLanguage","en").takeIf{it.length<=64 && (it.isEmpty() || Regex("[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8}){0,3}").matches(it))}?:"",
         )
         private fun language(value: String) = value.takeIf { it.isEmpty() || Regex("[a-zA-Z]{2,3}(?:-[a-zA-Z]{2,4})?").matches(it) } ?: ""
     }

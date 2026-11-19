@@ -5,8 +5,8 @@ replicas. Existing Shellboxes remain separate. Each development container has
 two CPUs, a 7 GiB memory limit and access to `/dev/kvm` for its Android TV
 emulator. The workflow below runs compilation, lint, unit tests, fixture
 generation and emulator tests remotely, with local APK signing. Local Mac
-development/builds/tests and direct TCL deployment are also authorized; the
-remote replicas remain useful for independent generated-media regression tests.
+development/builds/tests remain authorized. Physical TCL work follows the latest
+user steering in `AGENTS.md`; these workers only run generated-media emulator checks.
 
 Run from the project root using Node 18+ and Python 3.11+:
 
@@ -39,7 +39,9 @@ playback, ExoPlayer, preview/fullscreen layout, live controls,
 failure recovery, category visibility, memory-pressure recovery, history-cache
 consistency, Unicode rows and logo recycling, Search/IME focus, compact horizontal
 sources, add-on installation/configuration/recovery, series resume and native
-on-demand controls (current count is recorded in the versioned verification report). Separate performance workloads cover scrolling
+on-demand controls, YouTube Home/search/rail/library, comments/replies, all four
+player presentations and shared-dialog/artwork lifecycle. Exact classes, source
+scopes and counts are recorded in each versioned verification report. Separate performance workloads cover scrolling
 and repeated tuning with 6,000 generated channels. Performance samples on a remote
 software-rendered emulator measure that environment; they do not predict the
 TCL TV's frame rate.
@@ -82,7 +84,13 @@ rebuilt automatically. No persistent source backup depends on a worker.
 
 ## Recorded verification
 
-Current production is 777tv 0.14.1, using ExoPlayer only. The current source/APK
+The installed TCL release is now 0.24.0; its exact source, scoped native reruns and
+background device installation are in
+[`0.24.0 verification`](../releases/0.24.0/verification.json). No interactive TCL
+playback probe was run for that release, to preserve the foreground session.
+The previous device playback measurements remain in
+[`0.23.0 verification`](../releases/0.23.0/verification.json). The original
+production import was 777tv 0.14.1 using ExoPlayer only. That snapshot's source/APK
 checksums and focused regression results are in
 [`releases/0.14.1/production.json`](../releases/0.14.1/production.json).
 The following measurements describe earlier development builds; the artifact

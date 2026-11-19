@@ -48,14 +48,21 @@ internal fun portalAddress(value: String): PortalAddress {
 private class ExpiredPortal : java.io.IOException()
 private class WrongEndpoint : java.io.IOException()
 
-/** Each operation authenticates afresh; short-lived tokens never reach disk or a CDN. */
-class StalkerClient(private val http: Http) {
+/** Reuse one briefly authenticated session; tokens never reach disk or a media CDN. */
+class StalkerClient(private val http: Http,private val now:()->Long=System::currentTimeMillis) {
     private val operations = Mutex()
-    private suspend fun <T> session(provider: Provider, block: suspend Session.() -> T): T = operations.withLock {
+    private var cachedSession:Session?=null
+    private var authenticatedAt=0L
+    private suspend fun <T> session(provider: Provider, fresh:Boolean=false, block: suspend Session.() -> T): T = operations.withLock {
         val p = validatedPortal(provider)
+        if(fresh)cachedSession=null
         repeat(2) { attempt ->
-            try { return Session(p).let { it.authenticate(); it.block() } }
-            catch (e: ExpiredPortal) { if (attempt == 1) throw UserMessage("Portal authorization failed. Check the registered MAC and optional device credentials.") }
+            try {
+                val current=cachedSession?.takeIf{it.p==p && now()-authenticatedAt in 0..60_000L}
+                    ?:Session(p).also{it.authenticate();cachedSession=it;authenticatedAt=now()}
+                return current.block()
+            }
+            catch (e: ExpiredPortal) { cachedSession=null;if (attempt == 1) throw UserMessage("Portal authorization failed. Check the registered MAC and optional device credentials.") }
         }
         error("Unreachable")
     }
@@ -68,7 +75,7 @@ class StalkerClient(private val http: Http) {
         }
         parseGuide(result, channel.id, p.timezone)
     }
-    suspend fun watch(provider: Provider, channel: Channel, refresh: Boolean): Watch = session(provider) {
+    suspend fun watch(provider: Provider, channel: Channel, refresh: Boolean): Watch = session(provider,fresh=refresh) {
         val current = if (refresh) channels().find { it.id == channel.id }
             ?: throw UserMessage("This channel is no longer in the portal. Refresh the channels.") else channel
         val response = call("itv", "create_link", mapOf("cmd" to current.command, "series" to "0", "forced_storage" to "undefined", "disable_ad" to "0", "download" to "0") +

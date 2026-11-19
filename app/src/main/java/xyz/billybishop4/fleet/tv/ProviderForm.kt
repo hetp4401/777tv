@@ -120,7 +120,7 @@ internal class ProviderForm(private val a: MainActivity) : NativeScreen {
     override fun update() {
         val message = m.error ?: if (m.busy) "Testing connection…" else m.connectionStatus.orEmpty()
         status.text = message; status.visibility = if (message.isBlank()) View.GONE else View.VISIBLE
-        status.setTextColor(if (m.error != null) 0xFFFFC4C4.toInt() else MUTED)
+        status.setTextColor(if (m.error != null) ERROR_TEXT else MUTED)
         test.isEnabled = !m.busy; test.alpha = if (m.busy) .5f else 1f
     }
     override fun focusTarget(): View? = inputs["Portal URL"]

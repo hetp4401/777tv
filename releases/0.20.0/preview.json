@@ -1,0 +1,101 @@
+{
+  "version": "0.20.0",
+  "versionCode": 26,
+  "status": "User-requested physical-TV preview; superseded by ongoing development",
+  "apk": {
+    "file": "777tv-0.20.0-preview.apk",
+    "sha256": "90e55f18d105441704f407541780d10c9fa9dbbcf2b3f8d96953b593a3cd6429"
+  },
+  "installedAt": "2026-11-18T17:57:57.229546+00:00",
+  "installation": {
+    "target": "TCL Android TV",
+    "inPlace": true,
+    "appDataPreserved": true,
+    "profilesProvisioned": false,
+    "instrumentationRun": false
+  },
+  "sourceArchive": "e08fbdd822f45b630197fdcac8d0ba7d7a353e999fc8613e5f2de0fc26c90dde",
+  "productionFiles": {
+    "app/build.gradle.kts": "ed6b2a79a66ae2853e9f51274867ad3706e1c374781bb0e0b8c964bd1fa83581",
+    "app/src/main/AndroidManifest.xml": "1bbfdf5ae2fc10badeea46083d24ef1a992798bad7a633c86c8a1f64cf0c9347",
+    "app/src/main/assets/THIRD_PARTY_NOTICES.md": "38af7247d1b3b937b0eb1b4eceafbe79737c433f98383293fbedb0f16e229217",
+    "app/src/main/assets/licenses/Rhino-LICENSE.txt": "ada0787f27b581e024972a18b51db92c8e8508d0f05017d104a1c70a61b59951",
+    "app/src/main/assets/licenses/jsoup-LICENSE.txt": "f5d724c5818010c61bff2e177f5b6452434bc054807522bf241940bca8b1d6b1",
+    "app/src/main/assets/licenses/NewPipeExtractor-LICENSE.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "app/src/main/assets/licenses/nanojson-LICENSE.txt": "2794f8db476aea7b3da16caba160038f57bc8ee63750361c64e7d5ab501141ab",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/FleetModel.kt": "6c1ced683fa3563c58b0c0af3682a72e4fe406135a1ae8b71448617f9aab24b3",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Http.kt": "24b5e8a90d77c368c303e67329992a2614792f1cb79a26b81f510c828f34334b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchData.kt": "99c738626b5906e0a6933e886dd1cccb922e4a6a259360e9614d529b57bb6868",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/PictureControls.kt": "9ff4a7ac808c2b6694e7fc0e7155b1dc7570e33e8e3daef7ff9946c8230f5985",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveScreen.kt": "db319b9e047ed902fb57565ce06519fbed992c2e31769cd4265b8f31d19ce6cc",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ArtworkMemoryCache.kt": "e00692abfff8a6753866a5038c53084f08a6c9d012091d665108d486f6d0c7bc",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/MainActivity.kt": "f089a8099379de5eedf1751dc4e14a5537b1990d577f8fd7b155a8fb0d2dad9b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeAdapters.kt": "976a4fef51dd779656186890a7dc1405f240050f097d32a2dcd89819a7dd1057",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VodControls.kt": "ae540b489823257b21eb3888e705f40c85acf7bf2f4fc03bf21cc1e8a903d0a1",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeHeatmapView.kt": "9007e41e5ea40eb9af56049c5d04f74fc232f2bfb55810370f6383f8154c9048",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSocialData.kt": "60d04287e192728db569d16d08109237cf4c98f1b7aee5e756b1d01bb6754318",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeData.kt": "64efc5096dc997ace3e8afa80554913d218df805ceced740e2556d75b5f87e4f",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveChannelRow.kt": "9d927affe9496cc7e7a1af22418ff5776ccbb3bbfe0ea731c31ffbe7d695439a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeUi.kt": "ab9139ab3314e7a026ac568fb3670b9c1e82bdf2cf7d7be2e0cf4031ad5b1f23",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveInfoOverlay.kt": "277f5a84dd5e004938565838ba4623f00772604433361abfbe7db0735605a32c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTransport.kt": "33b61f96975d5d90b908a309c1aedc936fe0d6a75c423403f11a10ce5d000e7f",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Stalker.kt": "0e245be28f87b071f5cb2867fb13fcfda1efd1b4a09d417a2188fb5ac07ff832",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Repository.kt": "3ca9e8ca1d0515f29619806c189e31ed9a43f23b58da63ec5fff51f7f381746c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeScreen.kt": "ed77328421f16c823e1a8ce5d191760bfc044b36e283ef9515f07f53db971496",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SettingsScreen.kt": "c6ee867f46e670e326ef2f29974bcefa19cfb0e552995dca49ece69a7fc98e8c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/AddonSettingsScreen.kt": "ed35474d2e856f18e44f6cb2894b16a190204c988e850cb892d0f4dce662be89",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeHistory.kt": "96912a83456be32f84162b4cc3a6e955dc102406d1b3af4301ffa37004995e90",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubePhoneLink.kt": "c35a91058a040d33f60229ddce2357d50b9a98d341a97bd3fe4b76b19673c5c9",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Models.kt": "ef80816cbf0b140518b98048feb5cefe6764735655115540d3524b2c08bc6f4a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTvViews.kt": "4fc06b139decc4b9f19b7c918a6863277974aa922ca0e6896be2600b620ea2eb",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Store.kt": "93a302e07375682737ee29bb33f7b2d2c3aad4857ba47993729c298f32234e9c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Guide.kt": "e4afb9f80a40f1aca03e12e75a2e8a1f8823d0ca7d899cb4842e7b7ad51c0d46",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLounge.kt": "7151b3985be7f6aac8d4f5ec973c35ac21224cb45949c39a43081a0b031aba76",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Playback.kt": "abcd3732310d72d94d1d38e91da19ee0745a4695e3d8d712d7c7344bc7ca0499",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SearchScreen.kt": "761151c5ba8eae9cf25c28a67284f079155485e15f93360a4c8d05d7a3347a33",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSignIn.kt": "50dfec0728803d841f0072fdfcaf4bf6f66ca2850584136f44511cee5a2a23fa",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeResolver.kt": "e733757df8f317dd22f97232c8d58d2cf4be738bfdde858c65f0745ec0718df9",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeVoice.kt": "afbce73f2346a050d1cb67d130a469f6f6f01a1c6517f5f6566e0aa85786e10e",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ProviderForm.kt": "c35c29d91bb9df5022e6fd0b795fb207c9575e8e088756771c7c968821541127",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Preferences.kt": "b2c42a762ae43f7fc74e3c02d1fbdc2a430bcec9ea54d589351da0b82ca1828f",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeModel.kt": "0f71def8ee323fbcd4fef3ab6be200122ef8854a2dfd7c0a72e70d35d7e93c96",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchPanel.kt": "a6ecff51b197bc27e71989ad338ac5535fc90b15d214ee2e7d0c005b7813900f",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeClient.kt": "0704c071429e05f1a1a75709ac0208aa7258eb92de903ea94a7d5338ca28d417",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Addons.kt": "8ce012ae17e02e39dc24adab4151893378e77156cdcce8895b803c9e171cf6bb",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeBrowse.kt": "88bb1b225ce9a429987eb12539fe1cd58f02b6f8aa24760d0c546aedb73a9b5b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VideoPicture.kt": "61e99faabd02f03e60f179bcb48c9ec62f77b64b797e79328ae8a44b0044e3e0",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeVideoActions.kt": "eb8335d57e9f7b814958cc42f691f599b120d1ef8ea07e856d75af8fde6eb699",
+    "app/src/main/res/drawable/fleet_icon.xml": "7ee412788f6f077cc84c61259207d56834047c53047395582ac0b81b571a05b3",
+    "app/src/main/res/drawable/ic_search.xml": "cbad918ba86c29515012c5b56976fdd423b9bf58e955b03de5f81610b1d3b19f",
+    "app/src/main/res/drawable/tv_banner.xml": "14983758b8949f645eee6dfb5796d35dc44ad0b3e8d1c56b38f181979da48116",
+    "app/src/main/res/layout/live_player.xml": "424758bc787f01863866ecae626f2775dedba88fbe97052bad908de60eb9ea39",
+    "app/src/main/res/layout/live_player_content.xml": "23c97249640061e9b6d66103b7895838e0ec6eed00d8e304b348fbb5b8203730",
+    "app/src/main/res/values/styles.xml": "eda8d33d4cd76ce9dd84e5b3f6ad57691f67f1c4f8933c77ae1c4e251043ef08",
+    "app/src/main/res/xml/data_extraction_rules.xml": "4c6f140d42cbf35e21ef83cd909993da77c8cdc67a7c0c5a31536ddcc438f7b0"
+  },
+  "localChecks": {
+    "ordinaryJvmPassed": 181,
+    "optInLiveJvmSkipped": 3,
+    "lintErrors": 0
+  },
+  "emulatorScope": {
+    "priorSnapshot": "e3d9a142848a3d3ed979e44c99c7b1edbe16febf8d803d6171f5d8ebd8cb815d",
+    "playbackSuite": {
+      "run": 98,
+      "passed": 89,
+      "failed": 9,
+      "job": "bde895a6a4364e8da01be33138eba6a2"
+    },
+    "uiSuite": {
+      "job": "ea1f0ffbad224028bbd7c9ddc464ee3a",
+      "executed": 0,
+      "result": "Emulator input-service startup failed before APK install."
+    },
+    "note": "Prior snapshot precedes the last history tracking canonicalization/policy fixes. This is not a passing full-app verification record. See 0.21 for fixes and final-source reruns."
+  },
+  "physicalTVHold": {
+    "active": true,
+    "reason": "User requested stopping further TCL access after preview feedback."
+  },
+  "accountAcceptance": "Generated account/phone tests and anonymous protocol issuance only; personal account mutations/history and real phone pairing not validated."
+}

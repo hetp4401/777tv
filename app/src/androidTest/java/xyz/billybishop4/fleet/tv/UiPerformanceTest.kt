@@ -29,7 +29,8 @@ class UiPerformanceTest : NativeTestBase() {
         val thread=HandlerThread("frame-metrics").apply { start() }
         val frames=java.util.Collections.synchronizedList(ArrayList<LongArray>())
         val listener=Window.OnFrameMetricsAvailableListener { _,f,_ -> frames.add(longArrayOf(
-            f.getMetric(FrameMetrics.TOTAL_DURATION),f.getMetric(FrameMetrics.LAYOUT_MEASURE_DURATION),f.getMetric(FrameMetrics.DRAW_DURATION))) }
+            f.getMetric(FrameMetrics.TOTAL_DURATION),f.getMetric(FrameMetrics.LAYOUT_MEASURE_DURATION),f.getMetric(FrameMetrics.DRAW_DURATION),
+            if(Build.VERSION.SDK_INT>=31)f.getMetric(FrameMetrics.DEADLINE) else -1L,f.getMetric(FrameMetrics.FIRST_DRAW_FRAME))) }
         fun scroll(count:Int) {
             val done=CountDownLatch(1)
             ui { Choreographer.getInstance().postFrameCallback(object:Choreographer.FrameCallback {
@@ -63,6 +64,7 @@ class UiPerformanceTest : NativeTestBase() {
         val report=JSONObject().put("device",Build.MODEL).put("renderer",InstrumentationRegistryCompat.renderer())
             .put("channels",6000).put("scrollSteps",180).put("elapsedMs",elapsed).put("processCpuMs",cpuMs)
             .put("frames",samples.size).put("frameP50Ms",percentile(0,.5)).put("frameP95Ms",percentile(0,.95))
+            .put("nonFirstDrawFrames",samples.count{it[4]==0L}).put("framesOverActualDeadline",samples.count{it[4]==0L && it[3]>0 && it[0]>it[3]})
             .put("layoutP95Ms",percentile(1,.95)).put("drawP95Ms",percentile(2,.95))
             .put("attachedRows",rows).put("viewsInAttachedRows",rowViews)
             .put("gcBefore",JSONObject(gcBefore)).put("gcAfter",JSONObject(gcAfter))

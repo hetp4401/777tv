@@ -18,6 +18,7 @@ internal interface NativeScreen {
     fun restoreState(state: Parcelable?) {}
     fun focusTarget():View?=null
     fun restoreFocus(tag:String,parentTag:String?):Boolean=false
+    fun back():Boolean=false
     fun background() {}
     fun foreground() {}
     fun close() {}
@@ -25,11 +26,23 @@ internal interface NativeScreen {
 
 class MainActivity : ComponentActivity() {
     val model: FleetModel by viewModels()
+    private lateinit var youtubeVoice:YouTubeVoice
+    private var youtubePhone:YouTubePhoneLink?=null
+    internal fun voiceSearchYouTube(){youtubeVoice.start()}
+    private fun phoneLink()=youtubePhone?:YouTubePhoneLink(this).also{youtubePhone=it;it.foreground()}
+    internal fun connectYouTubePhone(){phoneLink().show()}
+    internal fun disconnectYouTubePhones(){phoneLink().disconnect()}
+    internal fun youTubePhonePlaybackChanged(){youtubePhone?.playbackChanged()}
+    internal fun canStepYouTube(watch:Watch,direction:Int)=youtubePhone?.canStep(watch,direction)==true || model.youtube.canStepRegular(watch,direction)
+    internal fun stepYouTube(watch:Watch,direction:Int):Boolean = youtubePhone?.step(watch,direction)==true || model.youtube.stepRegular(watch,direction)
     private val artworkDelegate = lazy { ArtworkLoader.get(this) }
     internal val artwork get() = artworkDelegate.value
     private var lastLarge: Boolean? = null
+    private var appearanceId="classic"
+    private var appearanceGradient=true
     internal val posterPool = androidx.recyclerview.widget.RecyclerView.RecycledViewPool()
     private lateinit var root: FrameLayout
+    private val shortsTransition by lazy { ShortsTransition(root) }
     private lateinit var chrome: LinearLayout
     private lateinit var host: FrameLayout
     private lateinit var error: TextView
@@ -38,8 +51,13 @@ class MainActivity : ComponentActivity() {
     private lateinit var errorRow:LinearLayout
     private lateinit var live: Button
     private lateinit var search: Button
+    private lateinit var youtube:Button
     private lateinit var settings: Button
     private var screen: NativeScreen? = null
+    private val ownedDialogs=linkedSetOf<android.app.Dialog>()
+    internal fun ownDialog(dialog:android.app.Dialog){ownedDialogs.add(dialog)}
+    internal fun releaseDialog(dialog:android.app.Dialog){ownedDialogs.remove(dialog)}
+    private fun dismissOwnedDialogs(){val old=ownedDialogs.toList();ownedDialogs.clear();old.forEach{it.dismiss()}}
     private var screenKey = ""
     private var screenRoute:Route?=null
     private var queued = false
@@ -73,6 +91,9 @@ class MainActivity : ComponentActivity() {
     @Suppress("DEPRECATION")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppTheme.apply(model.preferences.appearanceFor(model.route).id,model.preferences.themeGradient)
+        appearanceId=AppTheme.palette.id;appearanceGradient=model.preferences.themeGradient
+        youtubeVoice=YouTubeVoice(this)
         savedInstanceState?.getBundle("screen-states")?.let { saved -> saved.keySet().forEach { key -> saved.getParcelable<Parcelable>(key)?.let { states[key]=it } } }
         savedInstanceState?.getBundle("screen-focus")?.let { saved -> saved.keySet().forEach { key -> saved.getBundle(key)?.let { b ->
             b.getString("tag")?.let { focusStates[key]=FocusToken(it,b.getString("parent")) }
@@ -84,21 +105,10 @@ class MainActivity : ComponentActivity() {
                 if (playback?.dispatchKey(event) == true) return true
                 return super.dispatchKeyEvent(event)
             }
-        }.apply { setBackgroundColor(INK) }
-        chrome = column(); chrome.add(topBar(), height = dp(66))
-        val content = column().apply { setPadding(dp(24), 0, dp(24), dp(18)) }
-        error = text("", 13f, 0xFFFFC4C4.toInt()).apply { tag = "error";maxLines=3 }
-        retry = action("Retry","Try again") { model.retry() }.quiet()
-        errorRow=row().apply {
-            background=round(PANEL);pad(10);visibility=View.GONE
-            addView(error,LinearLayout.LayoutParams(0,-2,1f));button(retry)
-        }
-        content.add(errorRow)
-        host = FrameLayout(this)
-        content.addView(host, LinearLayout.LayoutParams(-1, 0, 1f))
-        chrome.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
-        root.addView(chrome, FrameLayout.LayoutParams(-1, -1)); setContentView(root)
-        loading=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).apply {
+        }.apply { tag="app-background";background=themeBackground() }
+        buildChrome()
+        setContentView(root)
+        loading=ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal).themeTint().apply {
             isIndeterminate=true;visibility=View.GONE;tag="loading";importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
         }
         root.addView(loading,FrameLayout.LayoutParams(-1,dp(2)).apply { topMargin=dp(64);leftMargin=dp(24);rightMargin=dp(24) })
@@ -113,9 +123,36 @@ class MainActivity : ComponentActivity() {
         else @Suppress("DEPRECATION") run { window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY }
         model.changes.observe(this) { scheduleRender() }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() { if (playback?.dismissControls()!=true && !collapsePreview() && !model.back()) finish() }
+            override fun handleOnBackPressed() { if (playback?.dismissControls()!=true && !collapsePreview() && screen?.back()!=true && !model.back()) finish() }
         })
         render()
+    }
+    private fun buildChrome() {
+        chrome=column();chrome.add(topBar(),height=dp(66))
+        val content=column().apply { setPadding(dp(24),0,dp(24),dp(18)) }
+        error=text("",13f,ERROR_TEXT).apply { tag="error";maxLines=3 }
+        retry=action("Retry","Try again") { model.retry() }.quiet()
+        errorRow=row().apply {
+            background=round(PANEL);pad(10);visibility=View.GONE
+            addView(error,LinearLayout.LayoutParams(0,-2,1f));button(retry)
+        }
+        content.add(errorRow)
+        host=FrameLayout(this)
+        content.addView(host,LinearLayout.LayoutParams(-1,0,1f))
+        chrome.addView(content,LinearLayout.LayoutParams(-1,0,1f))
+        root.addView(chrome,0,FrameLayout.LayoutParams(-1,-1))
+    }
+    private fun applyAppearance() {
+        val id=model.preferences.appearanceFor(model.route).id
+        if(appearanceId==id && appearanceGradient==model.preferences.themeGradient)return
+        AppTheme.apply(id,model.preferences.themeGradient)
+        appearanceId=id;appearanceGradient=model.preferences.themeGradient
+        // Retire old color snapshots once. Model/history/artwork and any decoder survive.
+        retireScreen();posterPool.clear()
+        root.removeView(chrome)
+        root.background=themeBackground()
+        loading.themeTint()
+        buildChrome()
     }
     override fun dispatchTouchEvent(event:android.view.MotionEvent):Boolean {
         if(event.actionMasked==android.view.MotionEvent.ACTION_DOWN){pendingFocus=null;focusInputGeneration++}
@@ -135,14 +172,20 @@ class MainActivity : ComponentActivity() {
             id=View.generateViewId()
             tag = "navigation:$label"
             background = android.graphics.drawable.StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_focused), round(RAISED, WHITE))
+                addState(intArrayOf(android.R.attr.state_focused), round(RAISED, FOCUS))
                 addState(intArrayOf(android.R.attr.state_selected), round(RAISED))
                 addState(intArrayOf(), round(android.graphics.Color.TRANSPARENT))
             }
         }
-        live = tab("Live TV", Section.LIVE); search = tab("On-Demand", Section.SEARCH)
+        live = tab("Live TV", Section.LIVE); search = tab("On-Demand", Section.SEARCH);youtube=tab("YouTube",Section.YOUTUBE)
+        youtube.setOnKeyListener { _,code,event->
+            if(code==KeyEvent.KEYCODE_DPAD_DOWN && event.action==KeyEvent.ACTION_DOWN && model.route==Route.Browse(Section.YOUTUBE))
+                screen?.focusTarget()?.takeIf{it.isShown && it.isFocusable}?.requestFocus()==true
+            else false
+        }
         tabs.addView(live, LinearLayout.LayoutParams(dp(112), dp(42)).apply { marginEnd=dp(6) })
-        tabs.addView(search, LinearLayout.LayoutParams(dp(132), dp(42)))
+        tabs.addView(search, LinearLayout.LayoutParams(dp(132), dp(42)).apply { marginEnd=dp(6) })
+        tabs.addView(youtube,LinearLayout.LayoutParams(dp(112),dp(42)))
         bar.addView(tabs, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         settings = action("Settings") { model.open(Route.Settings) }.quiet()
         bar.addView(settings, FrameLayout.LayoutParams(-2, -2, Gravity.END or Gravity.CENTER_VERTICAL))
@@ -186,7 +229,7 @@ class MainActivity : ComponentActivity() {
             addView(text("LIVE",10f,bold=true).apply{background=round(0xFFD43242.toInt(),radius=4);pad(4)},FrameLayout.LayoutParams(-2,-2,Gravity.TOP or Gravity.END).apply{setMargins(dp(8),dp(8),dp(8),0)})
             addView(text("Full screen",11f).apply{tag="preview-fullscreen-hint";background=round(0xB0000000.toInt(),radius=6);pad(5);visibility=View.GONE},FrameLayout.LayoutParams(-2,-2,Gravity.BOTTOM or Gravity.END).apply{setMargins(0,0,dp(8),dp(8))})
             foreground=android.graphics.drawable.StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_selected),round(android.graphics.Color.TRANSPARENT,WHITE))
+                addState(intArrayOf(android.R.attr.state_selected),round(android.graphics.Color.TRANSPARENT,FOCUS))
                 addState(intArrayOf(),round(android.graphics.Color.TRANSPARENT))
             }
             setOnClickListener{expandPreview()};isFocusable=false;isFocusableInTouchMode=false
@@ -236,12 +279,14 @@ class MainActivity : ComponentActivity() {
         return true
     }
     private fun closePlayback() {
+        shortsTransition.cancel()
         previewHintHide?.let { root.removeCallbacks(it) };previewHintHide=null;previewHintUntil=0
         playback?.let{it.close();(it.view.parent as? ViewGroup)?.removeView(it.view)};playback=null
         previewDecoration?.let{root.removeView(it)};previewDecoration=null;previewBounds.setEmpty()
         previewHost=null;previewIdentity=null;inlineFullscreen=false
     }
     private fun retireScreen() {
+        dismissOwnedDialogs()
         (getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager)
             .hideSoftInputFromWindow(host.windowToken,0)
         currentFocus?.takeIf(::insideHost)?.let(::rememberFocus)
@@ -283,28 +328,43 @@ class MainActivity : ComponentActivity() {
         } finally { restoringFocus=false }
     }
     internal fun render() {
+        applyAppearance()
         val route = model.route; val next = key(route)
+        youtubeVoice.navigationChanged(route);youtubePhone?.navigationChanged()
         val changed=screenKey!=next || screenRoute!=route
         if (lastLarge != model.preferences.largePosters) { posterPool.clear(); lastLarge = model.preferences.largePosters }
         if (route is Route.Player) {
+            chrome.visibility=View.GONE
             if (changed) {
-                retireScreen(); closePlayback(); chrome.visibility = View.GONE
-                playback = NativePlayback(this, model, route.watch) { model.back() }.also { root.addView(it.view, FrameLayout.LayoutParams(-1, -1)); if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) it.start() }
+                retireScreen()
+                val direction=playback?.takeIf{it.canRetireShortFrame}?.watch?.let { model.youtube.shortTransitionDirection(it,route.watch) }?:0
+                val outgoing=if(direction!=0 && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                    shortsTransition.cancel()
+                    playback?.retireShortFrame().also { playback=null }
+                } else null
+                closePlayback(); chrome.visibility = View.GONE
+                playback = NativePlayback(this, model, route.watch) { model.back() }.also {
+                    root.addView(it.view, FrameLayout.LayoutParams(-1, -1))
+                    if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED))it.start()
+                    if(outgoing!=null)shortsTransition.start(outgoing,it.view,direction)
+                }
+                youTubePhonePlaybackChanged()
                 screenKey = next;screenRoute=route
             }
+            playback?.youTubeAccountChanged()
             return
         }
         if(changed)closePlayback()
         chrome.visibility = if(inlineFullscreen)View.GONE else View.VISIBLE
-        live.isSelected = model.section == Section.LIVE; search.isSelected = model.section == Section.SEARCH
+        live.isSelected = model.section == Section.LIVE; search.isSelected = model.section == Section.SEARCH;youtube.isSelected=model.section==Section.YOUTUBE
         settings.visibility = if (route == Route.Settings) View.INVISIBLE else View.VISIBLE
-        val localFeedback=route is Route.Channels || route==Route.Settings || route==Route.Addons || route==Route.AddProvider || route is Route.EditProvider
-        error.text = model.error.orEmpty();errorRow.visibility=if(!localFeedback && model.error!=null)View.VISIBLE else View.GONE
+        val localFeedback=route is Route.Channels || route==Route.Settings || route==Route.Addons || route==Route.AddProvider || route is Route.EditProvider || route==Route.Browse(Section.YOUTUBE)
+        error.textIfChanged(model.error.orEmpty());errorRow.visibility=if(!localFeedback && model.error!=null)View.VISIBLE else View.GONE
         loading.visibility = if (model.busy && !localFeedback) View.VISIBLE else View.GONE
         if (changed || screen == null) {
             retireScreen(); screenKey = next;screenRoute=route
             screen = when (route) {
-                is Route.Browse -> if (route.section == Section.SEARCH) SearchScreen(this) else ProfilesScreen(this)
+                is Route.Browse -> when(route.section) { Section.SEARCH->SearchScreen(this);Section.LIVE->ProfilesScreen(this);Section.YOUTUBE->YouTubeScreen(this) }
                 is Route.Channels -> ChannelsScreen(this, route.provider)
                 is Route.Detail -> DetailScreen(this, route.title)
                 is Route.Sources -> SourcesScreen(this, route)
@@ -317,11 +377,21 @@ class MainActivity : ComponentActivity() {
             pendingFocus=next
         }
         screen!!.update()
+        if(previewIdentity!=null && previewHost?.isAttachedToWindow!=true) {
+            previewHost=host.findTag("preview-video") as? FrameLayout
+        }
         if(route==Route.Browse(Section.SEARCH)) {
             screen!!.view.findTag("field:Search movies and shows")?.let { input ->
                 search.nextFocusDownId=input.id;input.nextFocusUpId=search.id
             }
         } else search.nextFocusDownId=View.NO_ID
+        if(route==Route.Browse(Section.YOUTUBE)) {
+            val target=screen?.focusTarget()?.takeIf{it.isShown && it.isFocusable}
+            if(target!=null) {
+                if(target.id==View.NO_ID)target.id=View.generateViewId()
+                youtube.nextFocusDownId=target.id
+            }else youtube.nextFocusDownId=View.NO_ID
+        } else youtube.nextFocusDownId=View.NO_ID
         if(pendingFocus!=null)root.postOnAnimation { restorePendingFocus() }
     }
     override fun onSaveInstanceState(outState:Bundle) {
@@ -333,17 +403,18 @@ class MainActivity : ComponentActivity() {
         }) } })
         super.onSaveInstanceState(outState)
     }
-    override fun onStart() { super.onStart(); playback?.start();screen?.foreground() }
+    override fun onStart() { super.onStart(); playback?.start();screen?.foreground();if(model.store.youTubePhoneEnabled())phoneLink().foreground() }
     override fun onWindowFocusChanged(hasFocus: Boolean) { super.onWindowFocusChanged(hasFocus); if(hasFocus)restorePendingFocus() }
-    override fun onStop() { screen?.background(); playback?.stop(); super.onStop() }
+    override fun onStop() { shortsTransition.cancel();youtubePhone?.background();screen?.background();model.youTubeBackground(); playback?.stop(); super.onStop() }
     override fun onDestroy() {
-        playback?.close(); playback = null; screen?.close(); posterPool.clear(); super.onDestroy()
+        youtubeVoice.close();youtubePhone?.close();youtubePhone=null
+        shortsTransition.cancel();dismissOwnedDialogs();playback?.close(); playback = null; screen?.close(); posterPool.clear(); super.onDestroy()
     }
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
         if (level >= TRIM_MEMORY_RUNNING_LOW) {
             if(artworkDelegate.isInitialized())artwork.loader.memoryCache?.clear()
-            posterPool.clear();model.trimMemory()
+            posterPool.clear();playback?.trimMemory();model.trimMemory()
         }
     }
 }

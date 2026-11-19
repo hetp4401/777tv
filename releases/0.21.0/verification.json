@@ -1,0 +1,2294 @@
+{
+  "application": "777tv",
+  "versionName": "0.21.0",
+  "versionCode": 27,
+  "verifiedAt": "2026-11-18T19:34:11.209137+00:00",
+  "apk": {
+    "file": "777tv-0.21.0-preview.apk",
+    "sha256": "c20d536bc22fbad315b0646705bb11df48c18d71427387ceec32635c62cd9741",
+    "bytes": 8369456,
+    "signatureV2": true,
+    "certificateSha256": "c906793c72e69055a73004ea97bff7ce8059ac511c9a692e785db810d3f3ff02",
+    "alignment16KiB": true,
+    "nativeLibraries": []
+  },
+  "build": {
+    "sourceArchiveSha256": "5aa400c14d8286810077092a75ee7662e621dd68ab2e18582d378f47ddc9bdc5",
+    "localLogSha256": "8a5444b4b2dffbdad8311c072a73c67e0a08c4275c085c28b833b2c38278107d",
+    "tasks": [
+      "testDebugUnitTest",
+      "lintDebug",
+      "assembleRelease",
+      "assembleDebugAndroidTest"
+    ],
+    "debugAndReleaseAreDifferentBinaries": true,
+    "scope": "Original emulator instrumentation exercises debug builds of these production files. The signed release was later installed and tested on the TCL, then superseded by the 0.21.1 reply-label patch; see its physical verification report."
+  },
+  "productionSourceSha256": {
+    "app/build.gradle.kts": "ad6d362aabd1a9a5fe3a20975064935e8414a1bfc86d09c70bfff32cb0599584",
+    "app/src/main/AndroidManifest.xml": "1bbfdf5ae2fc10badeea46083d24ef1a992798bad7a633c86c8a1f64cf0c9347",
+    "app/src/main/assets/THIRD_PARTY_NOTICES.md": "38af7247d1b3b937b0eb1b4eceafbe79737c433f98383293fbedb0f16e229217",
+    "app/src/main/assets/licenses/Rhino-LICENSE.txt": "ada0787f27b581e024972a18b51db92c8e8508d0f05017d104a1c70a61b59951",
+    "app/src/main/assets/licenses/jsoup-LICENSE.txt": "f5d724c5818010c61bff2e177f5b6452434bc054807522bf241940bca8b1d6b1",
+    "app/src/main/assets/licenses/NewPipeExtractor-LICENSE.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "app/src/main/assets/licenses/nanojson-LICENSE.txt": "2794f8db476aea7b3da16caba160038f57bc8ee63750361c64e7d5ab501141ab",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/FleetModel.kt": "6f74c46ea99631c618f6eadfc6869352b3e1ecea7d00f1b8bc6bec67add0fb67",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Http.kt": "24b5e8a90d77c368c303e67329992a2614792f1cb79a26b81f510c828f34334b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchData.kt": "99c738626b5906e0a6933e886dd1cccb922e4a6a259360e9614d529b57bb6868",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/PictureControls.kt": "9ff4a7ac808c2b6694e7fc0e7155b1dc7570e33e8e3daef7ff9946c8230f5985",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveScreen.kt": "db319b9e047ed902fb57565ce06519fbed992c2e31769cd4265b8f31d19ce6cc",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ArtworkMemoryCache.kt": "e00692abfff8a6753866a5038c53084f08a6c9d012091d665108d486f6d0c7bc",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/MainActivity.kt": "96032da5ed6b948d595e31ed008b1a910d0cbbd22dd873ead8eff50c0053baec",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLibraryData.kt": "597ff676032ca02a6f78372a4898aa4c56680ace8cc6fd3f9475f1cba8e48351",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeAdapters.kt": "976a4fef51dd779656186890a7dc1405f240050f097d32a2dcd89819a7dd1057",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VodControls.kt": "0f38f413a728e5052dc270a96995b78f7469b34972bdef59627b14854542fb19",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeHeatmapView.kt": "9007e41e5ea40eb9af56049c5d04f74fc232f2bfb55810370f6383f8154c9048",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSearchData.kt": "bbd63f1371c18926449d0efecd8170d801cb92e5da57d330eaf64487e8a73e34",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSocialData.kt": "16a6862a89729ca0e75fb0fb7d8db1612f31a96d467fc48126595c8768ef70f2",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeData.kt": "3442dddea7c327f84cfbf4bcebd7c75bca7ad2e5a21a451972c0b9f34a88dff3",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveChannelRow.kt": "9d927affe9496cc7e7a1af22418ff5776ccbb3bbfe0ea731c31ffbe7d695439a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeUi.kt": "ab9139ab3314e7a026ac568fb3670b9c1e82bdf2cf7d7be2e0cf4031ad5b1f23",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveInfoOverlay.kt": "277f5a84dd5e004938565838ba4623f00772604433361abfbe7db0735605a32c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTransport.kt": "33b61f96975d5d90b908a309c1aedc936fe0d6a75c423403f11a10ce5d000e7f",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Stalker.kt": "0e245be28f87b071f5cb2867fb13fcfda1efd1b4a09d417a2188fb5ac07ff832",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Repository.kt": "3ca9e8ca1d0515f29619806c189e31ed9a43f23b58da63ec5fff51f7f381746c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeScreen.kt": "ae8cf28c58e36bd60db34ff09c990f9567c708f1c88606578bd0e242dfbf17a3",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SettingsScreen.kt": "90bc65fbbef9620eb42ec46b65a5e5534c88ad1c81ec0c539a9e0b28f9896b7e",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/AddonSettingsScreen.kt": "ed35474d2e856f18e44f6cb2894b16a190204c988e850cb892d0f4dce662be89",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeHistory.kt": "96912a83456be32f84162b4cc3a6e955dc102406d1b3af4301ffa37004995e90",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLocalQueue.kt": "4fd85b0e47c7a55d42b14178ff24856b01d37ec389487476f5805da4cd2a1d99",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubePhoneLink.kt": "932eb3e0433105dfb1f4d84b3e03d21b62c3273098344de97592e1eee2e30717",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Models.kt": "ef80816cbf0b140518b98048feb5cefe6764735655115540d3524b2c08bc6f4a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTvViews.kt": "5015f40237498b19225e2d29fe8bb58938347dc1f47526f3d43797d703b603a1",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Store.kt": "93a302e07375682737ee29bb33f7b2d2c3aad4857ba47993729c298f32234e9c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Guide.kt": "e4afb9f80a40f1aca03e12e75a2e8a1f8823d0ca7d899cb4842e7b7ad51c0d46",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLounge.kt": "7151b3985be7f6aac8d4f5ec973c35ac21224cb45949c39a43081a0b031aba76",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Playback.kt": "853eed8cd1790adc684ddd36b78255ad08617dd262cd28bca9855b080f451ee4",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SearchScreen.kt": "761151c5ba8eae9cf25c28a67284f079155485e15f93360a4c8d05d7a3347a33",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSignIn.kt": "50dfec0728803d841f0072fdfcaf4bf6f66ca2850584136f44511cee5a2a23fa",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeResolver.kt": "e733757df8f317dd22f97232c8d58d2cf4be738bfdde858c65f0745ec0718df9",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeVoice.kt": "afbce73f2346a050d1cb67d130a469f6f6f01a1c6517f5f6566e0aa85786e10e",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ProviderForm.kt": "c35c29d91bb9df5022e6fd0b795fb207c9575e8e088756771c7c968821541127",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Preferences.kt": "ebcac08b4799f681ffb6f022d1d7f0316330b50e1f9959d03bde163e14c813fd",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeModel.kt": "a9ab7b3b75689f2d4ebba96f48bfc6acf3765f9bc8a8eb6360da2fa2727391c5",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchPanel.kt": "add0f9bc576b1a59d3bd57ed84437310e9afd497c728474429086c2ebba008dd",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeClient.kt": "8c002f2cd0e9bb13e0982463eee569c7960670696dd29b1b037956f752b83b09",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Addons.kt": "8ce012ae17e02e39dc24adab4151893378e77156cdcce8895b803c9e171cf6bb",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeBrowse.kt": "88bb1b225ce9a429987eb12539fe1cd58f02b6f8aa24760d0c546aedb73a9b5b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VideoPicture.kt": "61e99faabd02f03e60f179bcb48c9ec62f77b64b797e79328ae8a44b0044e3e0",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeVideoActions.kt": "c267d946ad7cff4f0cd925a0e1faad05743d8191762e286a2ae60298efcc5dfd",
+    "app/src/main/res/drawable/fleet_icon.xml": "7ee412788f6f077cc84c61259207d56834047c53047395582ac0b81b571a05b3",
+    "app/src/main/res/drawable/ic_search.xml": "cbad918ba86c29515012c5b56976fdd423b9bf58e955b03de5f81610b1d3b19f",
+    "app/src/main/res/drawable/tv_banner.xml": "14983758b8949f645eee6dfb5796d35dc44ad0b3e8d1c56b38f181979da48116",
+    "app/src/main/res/layout/live_player.xml": "424758bc787f01863866ecae626f2775dedba88fbe97052bad908de60eb9ea39",
+    "app/src/main/res/layout/live_player_content.xml": "23c97249640061e9b6d66103b7895838e0ec6eed00d8e304b348fbb5b8203730",
+    "app/src/main/res/values/styles.xml": "eda8d33d4cd76ce9dd84e5b3f6ad57691f67f1c4f8933c77ae1c4e251043ef08",
+    "app/src/main/res/xml/data_extraction_rules.xml": "4c6f140d42cbf35e21ef83cd909993da77c8cdc67a7c0c5a31536ddcc438f7b0"
+  },
+  "validation": {
+    "unit": {
+      "cases": 214,
+      "passed": 211,
+      "skipped": 3,
+      "failed": 0
+    },
+    "unitPassed": 211,
+    "lintErrors": 0,
+    "uniqueEmulatorScenarios": 218,
+    "unresolvedFailures": 0,
+    "jobs": [
+      {
+        "role": "youtube021FinalUi113",
+        "id": "3b0a979b78d447218ae8ceeca547b080",
+        "sourceArchiveSha256": "5aa400c14d8286810077092a75ee7662e621dd68ab2e18582d378f47ddc9bdc5",
+        "instance": "46fe66c9-9582-4a69-8d3a-453850563855",
+        "state": "failed",
+        "scenarios": 113,
+        "passed": 108,
+        "instrumentationSha256": "68472d3e807a0a5e7d8f168d8e12d8d085e18c1f9d5d1f693cf04362576857b6",
+        "sameProductionFiles": true
+      },
+      {
+        "role": "youtube021FinalPlayback105",
+        "id": "25ea866c201447f0aadf74bd61ee2e48",
+        "sourceArchiveSha256": "5aa400c14d8286810077092a75ee7662e621dd68ab2e18582d378f47ddc9bdc5",
+        "instance": "06449630-a161-4f22-9235-8124a25a01ef",
+        "state": "passed",
+        "scenarios": 105,
+        "passed": 105,
+        "instrumentationSha256": "3e1afd99192398e385dd5c7f22ec2b8e5e4650ead84d705077f56706d36630ac",
+        "sameProductionFiles": true
+      },
+      {
+        "role": "youtube021FinalPerformance",
+        "id": "62f50b80708b4869909615b2db719cc6",
+        "sourceArchiveSha256": "5aa400c14d8286810077092a75ee7662e621dd68ab2e18582d378f47ddc9bdc5",
+        "instance": "06449630-a161-4f22-9235-8124a25a01ef",
+        "state": "passed",
+        "scenarios": 2,
+        "passed": 2,
+        "instrumentationSha256": "906ed10662b06e2908992feb5d953d4533f3990b35cd7ec2352f95f4fc703ce9",
+        "sameProductionFiles": true
+      },
+      {
+        "role": "youtube021CorrectedUi19",
+        "id": "fb946b80c5c84fb792e83b465dd10c6b",
+        "sourceArchiveSha256": "8f4bc59b46b1cf3ff144c7df493a850be9825522c62f3a4923db3502612333e8",
+        "instance": "06449630-a161-4f22-9235-8124a25a01ef",
+        "state": "failed",
+        "scenarios": 19,
+        "passed": 18,
+        "instrumentationSha256": "2bc321dda71f8e1e2fb4225ad171b792a401901a8e1fd40f6833a802bafdea7b",
+        "sameProductionFiles": true
+      },
+      {
+        "role": "youtube021CorrectedActions18",
+        "id": "ff38372169384c7c985d0c41b0a1114b",
+        "sourceArchiveSha256": "709151afb7fb037732df807b35f997b53613b8babf098e95c7bc570144c0dc50",
+        "instance": "46fe66c9-9582-4a69-8d3a-453850563855",
+        "state": "failed",
+        "scenarios": 18,
+        "passed": 16,
+        "instrumentationSha256": "eda1a7daa12fbee602bfa0b08a23274eb2211cdaf49f488563e261b2369380cc",
+        "sameProductionFiles": true
+      },
+      {
+        "role": "youtube021PlaylistReady3",
+        "id": "7511836605d54af28182d57381ab3d79",
+        "sourceArchiveSha256": "63f8069d0d609be7159d79b555e3e9479e075aa4c3373fa473c6b69a86dd671b",
+        "instance": "06449630-a161-4f22-9235-8124a25a01ef",
+        "state": "passed",
+        "scenarios": 3,
+        "passed": 3,
+        "instrumentationSha256": "ad579770fddb4b28726a2bc8eb70649af169b917b7a914b7bcdcd996fd126d7f",
+        "sameProductionFiles": true
+      },
+      {
+        "role": "youtube021InteractionsReady2",
+        "id": "9cd5be65056145999d3dc16b782ae1f6",
+        "sourceArchiveSha256": "fba1b69108f5be123d492b72434c20b944bec52b5d3d1ebcb888a2f2404f5118",
+        "instance": "06449630-a161-4f22-9235-8124a25a01ef",
+        "state": "passed",
+        "scenarios": 2,
+        "passed": 2,
+        "instrumentationSha256": "5c0793290947fb19ec819d10f45752091de3a5173767c22b3bcf50a7a1a12701",
+        "sameProductionFiles": true
+      }
+    ],
+    "coverageProof": {
+      "ready": true,
+      "coverage": {
+        "cases": 218,
+        "passed": 218,
+        "unresolved": 0,
+        "superseded": 37,
+        "superseded_results": 42
+      },
+      "production": {
+        "files": 59,
+        "current_tree_matches": true,
+        "unique_archives": 5,
+        "validated_jobs": 7,
+        "required_jobs": 7,
+        "all_archives_match": true,
+        "tree_mismatches": []
+      },
+      "release_apk": {
+        "path": "artifacts/777tv-0.21.0-preview.apk",
+        "sha256": "c20d536bc22fbad315b0646705bb11df48c18d71427387ceec32635c62cd9741",
+        "pinned_hash_matches": true,
+        "release_output_matches": true
+      },
+      "unit": {
+        "cases": 214,
+        "passed": 211,
+        "skipped": 3,
+        "failed": 0
+      },
+      "jobs": {
+        "youtube021FinalUi113": {
+          "job": "3b0a979b78d447218ae8ceeca547b080",
+          "source": "5aa400c14d82",
+          "expected": 113,
+          "completed": 113,
+          "passed": 108,
+          "complete": true,
+          "state": "failed",
+          "production_matches": true,
+          "log": "artifacts/remote/3b0a979b78d447218ae8ceeca547b080/instrumentation.log"
+        },
+        "youtube021FinalPlayback105": {
+          "job": "25ea866c201447f0aadf74bd61ee2e48",
+          "source": "5aa400c14d82",
+          "expected": 105,
+          "completed": 105,
+          "passed": 105,
+          "complete": true,
+          "state": "passed",
+          "production_matches": true,
+          "log": "artifacts/remote/25ea866c201447f0aadf74bd61ee2e48/instrumentation.log"
+        },
+        "youtube021FinalPerformance": {
+          "job": "62f50b80708b4869909615b2db719cc6",
+          "source": "5aa400c14d82",
+          "expected": 2,
+          "completed": 2,
+          "passed": 2,
+          "complete": true,
+          "state": "passed",
+          "production_matches": true,
+          "log": "artifacts/remote/62f50b80708b4869909615b2db719cc6/instrumentation.log"
+        },
+        "youtube021CorrectedUi19": {
+          "job": "fb946b80c5c84fb792e83b465dd10c6b",
+          "source": "8f4bc59b46b1",
+          "expected": 19,
+          "completed": 19,
+          "passed": 18,
+          "complete": true,
+          "state": "failed",
+          "production_matches": true,
+          "log": "artifacts/remote/fb946b80c5c84fb792e83b465dd10c6b/instrumentation.log"
+        },
+        "youtube021CorrectedActions18": {
+          "job": "ff38372169384c7c985d0c41b0a1114b",
+          "source": "709151afb7fb",
+          "expected": 18,
+          "completed": 18,
+          "passed": 16,
+          "complete": true,
+          "state": "failed",
+          "production_matches": true,
+          "log": "artifacts/remote/ff38372169384c7c985d0c41b0a1114b/instrumentation.log"
+        },
+        "youtube021PlaylistReady3": {
+          "job": "7511836605d54af28182d57381ab3d79",
+          "source": "63f8069d0d60",
+          "expected": 3,
+          "completed": 3,
+          "passed": 3,
+          "complete": true,
+          "state": "passed",
+          "production_matches": true,
+          "log": "artifacts/remote/7511836605d54af28182d57381ab3d79/instrumentation.log"
+        },
+        "youtube021InteractionsReady2": {
+          "job": "9cd5be65056145999d3dc16b782ae1f6",
+          "source": "fba1b69108f5",
+          "expected": 2,
+          "completed": 2,
+          "passed": 2,
+          "complete": true,
+          "state": "passed",
+          "production_matches": true,
+          "log": "artifacts/remote/9cd5be65056145999d3dc16b782ae1f6/instrumentation.log"
+        }
+      },
+      "superseded_failures": [
+        {
+          "case": "xyz.billybishop4.fleet.tv.SettingsNavigationTest#settingsRailFollowsFocusAndOneRightEntersTheMatchingPage",
+          "old_role": "youtube021FinalUi113",
+          "old": "failed",
+          "new": "passed",
+          "role": "youtube021CorrectedUi19"
+        },
+        {
+          "case": "xyz.billybishop4.fleet.tv.YouTubeGroupedBrowseTest#searchPlayActionsChannelAndBackReturnsToTheSameSearchShelfAndVideo",
+          "old_role": "youtube021FinalUi113",
+          "old": "failed",
+          "new": "passed",
+          "role": "youtube021CorrectedUi19"
+        },
+        {
+          "case": "xyz.billybishop4.fleet.tv.YouTubePlaylistBrowseTest#aNewlyCreatedPlaylistIsReachableAndBackRestoresItsCollectionCard",
+          "old_role": "youtube021FinalUi113",
+          "old": "failed",
+          "new": "passed",
+          "role": "youtube021CorrectedUi19"
+        },
+        {
+          "case": "xyz.billybishop4.fleet.tv.YouTubePlaylistBrowseTest#signOutRemovesPlaylistCoversAndTheirPrivateVideoPages",
+          "old_role": "youtube021FinalUi113",
+          "old": "failed",
+          "new": "failed",
+          "role": "youtube021CorrectedUi19"
+        },
+        {
+          "case": "xyz.billybishop4.fleet.tv.YouTubeActionsUiTest#liveYouTubeHasAccountActionsWithoutAddingTransportOrPausingTheStream",
+          "old_role": "youtube021FinalUi113",
+          "old": "failed",
+          "new": "passed",
+          "role": "youtube021CorrectedActions18"
+        },
+        {
+          "case": "xyz.billybishop4.fleet.tv.YouTubePlaylistBrowseTest#signOutRemovesPlaylistCoversAndTheirPrivateVideoPages",
+          "old_role": "youtube021CorrectedUi19",
+          "old": "failed",
+          "new": "passed",
+          "role": "youtube021PlaylistReady3"
+        },
+        {
+          "case": "xyz.billybishop4.fleet.tv.YouTubeActionsUiTest#menuOnACardBrowsesTheCreatorAndTabsWithoutResolvingMediaAndBackRestoresTheSearchCard",
+          "old_role": "youtube021CorrectedActions18",
+          "old": "failed",
+          "new": "passed",
+          "role": "youtube021InteractionsReady2"
+        },
+        {
+          "case": "xyz.billybishop4.fleet.tv.YouTubeQueueUiTest#aRelatedCardCanBeQueuedWithTheRemoteWithoutStartingIt",
+          "old_role": "youtube021CorrectedActions18",
+          "old": "failed",
+          "new": "passed",
+          "role": "youtube021InteractionsReady2"
+        }
+      ],
+      "standalone_performance_unresolved": [],
+      "unexpected_cases": [],
+      "unresolved_cases": [],
+      "unresolved_omitted": 0,
+      "pending_checks": [],
+      "problems": []
+    },
+    "correctionScope": "Corrected test/fixture snapshots share all 59 production hashes with the candidate. Only explicit named reruns supersede previous results; all failed runs remain recorded. Standalone performance cannot supersede UI failures.",
+    "developmentFailures": [
+      {
+        "version": "0.20.0",
+        "job": "bde895a6a4364e8da01be33138eba6a2",
+        "run": 98,
+        "failed": 9,
+        "details": [
+          "Five Shorts failures from a Python fixture name collision.",
+          "Audio-focus check observed the previous live preview.",
+          "Panel check omitted the new actions button.",
+          "Live information needed safe orphan-release recovery.",
+          "One real startup rebuffer; retained strict continuous/no-rebuffer assertions and added diagnostics."
+        ]
+      },
+      {
+        "version": "0.21.0",
+        "source": "1732756822099180c10d46c84f266eed7b57c6f82694d2ee0291a7c538bec126",
+        "jobs": [
+          "ecdff9c105e74330a5692ca83eb5e989",
+          "03af516b6cf24798bb5d977882b14a5b"
+        ],
+        "run": 218,
+        "failed": 23,
+        "details": [
+          "Generated live resolver omitted live mode.",
+          "Seek tests requested unsupported 1-second preferences, correctly sanitized to 10.",
+          "Dialog lookups searched the activity window; touch taps focused without activating buttons.",
+          "Initial readiness checks preceded rendered shelves/players and could cancel a synthetic premature Play.",
+          "Account playlist fixture responses omitted required success metadata.",
+          "Older settings assertions skipped the new YouTube category."
+        ]
+      }
+    ],
+    "infrastructureFailures": [
+      {
+        "job": "ea1f0ffbad224028bbd7c9ddc464ee3a",
+        "scenariosExecuted": 0,
+        "reason": "Optional emulator wake-up input failed before APK installation; now retried without masking instrumentation."
+      },
+      {
+        "job": "16c379c8a4a14e6c865e3b30a0c1e049",
+        "resultsAvailable": false,
+        "reason": "Worker replaced after submission; new healthy instance returned 404 for that job. No scenario result is counted."
+      }
+    ],
+    "publicApi": {
+      "testsPassed": 2,
+      "sourceScope": "Home/search/Shorts, comments/replay, device-code issuance and accessible public media; API/parser/resolver files unchanged by later playback-model corrections.",
+      "accountCreated": false,
+      "personalAccountMutationsTested": false,
+      "output": "Verified signed-out YouTube recommendations: 49 videos in 7 native shelves, no account created\nVerified live YouTube: search=37, Shorts=7, device pairing=issued, media=accessible, separateAudio=false"
+    }
+  },
+  "customerReview": {
+    "reviewer": "/root/customer_lens",
+    "visualApproved": true,
+    "imagesViewed": 30,
+    "screenshots": [
+      "artifacts/remote/03af516b6cf24798bb5d977882b14a5b/screenshots/fleet-tv-player-mode-youtube.png",
+      "artifacts/remote/03af516b6cf24798bb5d977882b14a5b/screenshots/fleet-tv-player-mode-shorts.png",
+      "artifacts/remote/03af516b6cf24798bb5d977882b14a5b/screenshots/fleet-tv-player-mode-live.png",
+      "artifacts/remote/03af516b6cf24798bb5d977882b14a5b/screenshots/fleet-tv-player-mode-on-demand.png",
+      "artifacts/remote/03af516b6cf24798bb5d977882b14a5b/screenshots/fleet-tv-youtube-native-comments.png",
+      "artifacts/remote/03af516b6cf24798bb5d977882b14a5b/screenshots/fleet-tv-youtube-replies-return.png",
+      "artifacts/remote/03af516b6cf24798bb5d977882b14a5b/screenshots/fleet-tv-youtube-replay-graph.png",
+      "artifacts/remote/03af516b6cf24798bb5d977882b14a5b/screenshots/fleet-tv-three-pane-exoplayer.png",
+      "artifacts/remote/03af516b6cf24798bb5d977882b14a5b/screenshots/fleet-tv-ios-vod-seek-exoplayer.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-youtube-tv-home-shelves.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-youtube-compact-home-search-navigation.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-youtube-grouped-search.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-youtube-search-horizontal-focus-and-return.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-youtube-tv-search-results.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-youtube-tv-search-keyboard.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-youtube-tv-related-row.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-youtube-video-actions.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-youtube-save-playlists.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-movie-inline-streams.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-series-inline-selected-episode.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-episode-season-rollover.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-poster-image-focus-search.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-catalog-grouped-search.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-addons-managed.png",
+      "artifacts/remote/ecdff9c105e74330a5692ca83eb5e989/screenshots/fleet-tv-settings-playback.png",
+      "artifacts/remote/fb946b80c5c84fb792e83b465dd10c6b/screenshots/fleet-tv-youtube-library-created-playlist.png",
+      "artifacts/remote/fb946b80c5c84fb792e83b465dd10c6b/screenshots/fleet-tv-youtube-search-play-channel-return.png",
+      "artifacts/remote/fb946b80c5c84fb792e83b465dd10c6b/screenshots/fleet-tv-settings-direct-navigation.png",
+      "artifacts/remote/9cd5be65056145999d3dc16b782ae1f6/screenshots/fleet-tv-youtube-queued-video-actions.png",
+      "artifacts/remote/9cd5be65056145999d3dc16b782ae1f6/screenshots/fleet-tv-youtube-channel-back.png"
+    ],
+    "pendingScreenshots": [],
+    "scope": "Generated native-fixture supported layouts: all four players, Home/search/keyboard, comments/replies/Related, account actions, playlists/Back, episodes/streams, add-ons and settings. Functional results come from the separate named-scenario audit.",
+    "blockingVisualFindings": [],
+    "nonblockingPolish": [
+      "After Add to queue becomes disabled In queue, an automatic focus fallback to Done or another enabled action would make confirmation clearer. Another direction or Back remains usable."
+    ],
+    "reference": "Inspected TizenTube Cobalt v2.0.3 / YouTube TV flows; 777tv visual design.",
+    "productionDeltaSinceInitialScreenshots": [
+      "Account/queue lifecycle fixes and propagation of live mode in the generated-media resolver; no later player/search layout or styling change. Final native scenarios cover the candidate production files."
+    ],
+    "noTclContactForCandidate": true,
+    "limitations": [
+      "Scoped visual approval does not claim exact YouTube parity or hardware performance superiority.",
+      "Real Google owner approval, actual phone pairing/command acceptance and physical TCL behavior remain unvalidated."
+    ]
+  },
+  "performance": {
+    "job": "62f50b80708b4869909615b2db719cc6",
+    "artwork": {
+      "catalogSize": 120,
+      "artwork": "Distinct URL 480x270 JPEGs, eight deterministic generated patterns",
+      "workload": "Horizontal TV Search shelf; 120 frames, \u00b196dp, 18 Right presses. Compare matching layouts only.",
+      "initialMemory": {
+        "pssKiB": 146948,
+        "privateDirtyKiB": 125160,
+        "nativeAllocatedBytes": 59248560,
+        "managedUsedBytes": 5098608,
+        "artworkCacheBytes": 2189320,
+        "artworkCacheMaxBytes": 8388608,
+        "artworkEntries": 5,
+        "artworkPixelBytes": 2189320,
+        "bitmapSample": [
+          {
+            "width": 490,
+            "height": 245,
+            "config": "HARDWARE",
+            "platformAllocationBytes": 4096
+          },
+          {
+            "width": 436,
+            "height": 245,
+            "config": "HARDWARE",
+            "platformAllocationBytes": 4096
+          },
+          {
+            "width": 436,
+            "height": 245,
+            "config": "HARDWARE",
+            "platformAllocationBytes": 4096
+          }
+        ]
+      },
+      "afterScrollMemory": {
+        "pssKiB": 154694,
+        "privateDirtyKiB": 132936,
+        "nativeAllocatedBytes": 69054000,
+        "managedUsedBytes": 5167248,
+        "artworkCacheBytes": 8118320,
+        "artworkCacheMaxBytes": 8388608,
+        "artworkEntries": 19,
+        "artworkPixelBytes": 8118320,
+        "bitmapSample": [
+          {
+            "width": 436,
+            "height": 245,
+            "config": "HARDWARE",
+            "platformAllocationBytes": 4096
+          },
+          {
+            "width": 436,
+            "height": 245,
+            "config": "HARDWARE",
+            "platformAllocationBytes": 4096
+          },
+          {
+            "width": 436,
+            "height": 245,
+            "config": "HARDWARE",
+            "platformAllocationBytes": 4096
+          }
+        ]
+      },
+      "afterNavigationMemory": {
+        "pssKiB": 155754,
+        "privateDirtyKiB": 133152,
+        "nativeAllocatedBytes": 68674400,
+        "managedUsedBytes": 5324864,
+        "artworkCacheBytes": 8118320,
+        "artworkCacheMaxBytes": 8388608,
+        "artworkEntries": 19,
+        "artworkPixelBytes": 8118320,
+        "bitmapSample": [
+          {
+            "width": 436,
+            "height": 245,
+            "config": "HARDWARE",
+            "platformAllocationBytes": 4096
+          },
+          {
+            "width": 436,
+            "height": 245,
+            "config": "HARDWARE",
+            "platformAllocationBytes": 4096
+          },
+          {
+            "width": 436,
+            "height": 245,
+            "config": "HARDWARE",
+            "platformAllocationBytes": 4096
+          }
+        ]
+      },
+      "scrollTrials": [
+        {
+          "trial": 0,
+          "scrollSteps": 120,
+          "elapsedMs": 5709,
+          "processCpuMs": 1476,
+          "frames": 116,
+          "frameP50Ms": 116.834461,
+          "frameP95Ms": 174.027334,
+          "layoutP95Ms": 0.156204,
+          "drawP95Ms": 0.494558,
+          "gcBefore": {
+            "art.gc.blocking-gc-count": "12",
+            "art.gc.gc-time": "2761",
+            "art.gc.bytes-allocated": "72295088",
+            "art.gc.bytes-freed": "67196432",
+            "art.gc.gc-count-rate-histogram": "0:1,2:1",
+            "art.gc.total-time-waiting-for-gc": null,
+            "art.gc.blocking-gc-count-rate-histogram": "0:1,2:1",
+            "art.gc.pre-oome-gc-count": null,
+            "art.gc.objects-allocated": null,
+            "art.gc.gc-count": "13",
+            "art.gc.blocking-gc-time": "2172"
+          },
+          "gcAfter": {
+            "art.gc.blocking-gc-count": "12",
+            "art.gc.gc-time": "3648",
+            "art.gc.bytes-allocated": "77754064",
+            "art.gc.bytes-freed": "72271424",
+            "art.gc.gc-count-rate-histogram": "0:1,2:1,11:1",
+            "art.gc.total-time-waiting-for-gc": null,
+            "art.gc.blocking-gc-count-rate-histogram": "0:1,2:1,10:1",
+            "art.gc.pre-oome-gc-count": null,
+            "art.gc.objects-allocated": null,
+            "art.gc.gc-count": "14",
+            "art.gc.blocking-gc-time": "2172"
+          }
+        },
+        {
+          "trial": 1,
+          "scrollSteps": 120,
+          "elapsedMs": 6123,
+          "processCpuMs": 1266,
+          "frames": 112,
+          "frameP50Ms": 128.718513,
+          "frameP95Ms": 185.670051,
+          "layoutP95Ms": 0.088863,
+          "drawP95Ms": 0.603451,
+          "gcBefore": {
+            "art.gc.blocking-gc-count": "12",
+            "art.gc.gc-time": "3648",
+            "art.gc.bytes-allocated": "77754112",
+            "art.gc.bytes-freed": "72271424",
+            "art.gc.gc-count-rate-histogram": "0:1,2:1,11:1",
+            "art.gc.total-time-waiting-for-gc": null,
+            "art.gc.blocking-gc-count-rate-histogram": "0:1,2:1,10:1",
+            "art.gc.pre-oome-gc-count": null,
+            "art.gc.objects-allocated": null,
+            "art.gc.gc-count": "14",
+            "art.gc.blocking-gc-time": "2172"
+          },
+          "gcAfter": {
+            "art.gc.blocking-gc-count": "12",
+            "art.gc.gc-time": "3648",
+            "art.gc.bytes-allocated": "80224000",
+            "art.gc.bytes-freed": "72271424",
+            "art.gc.gc-count-rate-histogram": "0:1,2:1,11:1",
+            "art.gc.total-time-waiting-for-gc": null,
+            "art.gc.blocking-gc-count-rate-histogram": "0:1,2:1,10:1",
+            "art.gc.pre-oome-gc-count": null,
+            "art.gc.objects-allocated": null,
+            "art.gc.gc-count": "14",
+            "art.gc.blocking-gc-time": "2172"
+          }
+        }
+      ],
+      "input": [
+        {
+          "held": false,
+          "deliveredKeys": 18,
+          "focused": "youtube-video:P0000000019",
+          "elapsedMs": 5372
+        },
+        {
+          "held": true,
+          "deliveredKeys": 18,
+          "focused": "youtube-video:P0000000019",
+          "elapsedMs": 2725
+        }
+      ],
+      "fixture": {
+        "thumbnailRequests": 29,
+        "thumbnailBytes": 316219
+      },
+      "attachedCards": 4,
+      "device": "sdk_google_atv64_x86_64",
+      "api": 36,
+      "renderer": "remote-swiftshader",
+      "version": "0.21.0"
+    },
+    "playback": {
+      "media": "Generated 90 s H264/AAC HLS, 8 Mbps CBR, 640x360 at 24 fps",
+      "movie": {
+        "allocatorBytes": 26345472,
+        "bufferedMs": 11022,
+        "memory": {
+          "pssKiB": 137501,
+          "privateDirtyKiB": 116632,
+          "nativeAllocatedBytes": 26792496,
+          "managedUsedBytes": 32976704,
+          "artworkCacheBytes": 0,
+          "artworkCacheMaxBytes": 8388608,
+          "artworkEntries": 0,
+          "artworkPixelBytes": 0,
+          "bitmapSample": []
+        },
+        "playback": {
+          "engine": "ExoPlayer",
+          "playing": false,
+          "positionMs": 61,
+          "width": 640,
+          "height": 360,
+          "audio": true,
+          "dropped": 1,
+          "decoder": "c2.goldfish.h264.decoder",
+          "audioTrack": "",
+          "subtitleText": "",
+          "frameRateHint": 0,
+          "forwardCapMiB": 24,
+          "displayFps": 0
+        }
+      },
+      "youtube": {
+        "startMs": 1639,
+        "descendantViews": 60,
+        "hiddenPanelCreated": false,
+        "memory": {
+          "pssKiB": 134646,
+          "privateDirtyKiB": 113524,
+          "nativeAllocatedBytes": 50747488,
+          "managedUsedBytes": 8581040,
+          "artworkCacheBytes": 480200,
+          "artworkCacheMaxBytes": 8388608,
+          "artworkEntries": 1,
+          "artworkPixelBytes": 480200,
+          "bitmapSample": [
+            {
+              "width": 490,
+              "height": 245,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            }
+          ]
+        },
+        "commentsOpenMemory": {
+          "pssKiB": 137611,
+          "privateDirtyKiB": 116380,
+          "nativeAllocatedBytes": 51268656,
+          "managedUsedBytes": 11837872,
+          "artworkCacheBytes": 480200,
+          "artworkCacheMaxBytes": 8388608,
+          "artworkEntries": 1,
+          "artworkPixelBytes": 480200,
+          "bitmapSample": [
+            {
+              "width": 490,
+              "height": 245,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            }
+          ]
+        },
+        "commentsRows": 6,
+        "commentsClosedMemory": {
+          "pssKiB": 139701,
+          "privateDirtyKiB": 118452,
+          "nativeAllocatedBytes": 50899168,
+          "managedUsedBytes": 13316496,
+          "artworkCacheBytes": 480200,
+          "artworkCacheMaxBytes": 8388608,
+          "artworkEntries": 1,
+          "artworkPixelBytes": 480200,
+          "bitmapSample": [
+            {
+              "width": 490,
+              "height": 245,
+              "config": "HARDWARE",
+              "platformAllocationBytes": 4096
+            }
+          ]
+        }
+      },
+      "stoppedMemory": {
+        "pssKiB": 135244,
+        "privateDirtyKiB": 114044,
+        "nativeAllocatedBytes": 48931120,
+        "managedUsedBytes": 5022976,
+        "artworkCacheBytes": 839808,
+        "artworkCacheMaxBytes": 8388608,
+        "artworkEntries": 1,
+        "artworkPixelBytes": 839808,
+        "bitmapSample": [
+          {
+            "width": 648,
+            "height": 324,
+            "config": "HARDWARE",
+            "platformAllocationBytes": 4096
+          }
+        ]
+      },
+      "device": "sdk_google_atv64_x86_64",
+      "api": 36,
+      "renderer": "remote-swiftshader",
+      "version": "0.21.0"
+    },
+    "startup": {
+      "version": "0.21.0",
+      "measure": "Explicit Play to rendered frame AND active playback; resume disabled; 204800 bytes/s media; 160 ms portal RPC",
+      "results": [
+        {
+          "mode": "SHORTS",
+          "iteration": 0,
+          "firstFrameMs": 454,
+          "sourceMs": 6,
+          "playbackMs": 478,
+          "playableMs": 478,
+          "pipelineMs": 448,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 272,
+              "positionMs": 0,
+              "bufferedMs": 916,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 523,
+              "positionMs": 271,
+              "bufferedMs": 978,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 784,
+              "positionMs": 549,
+              "bufferedMs": 1033,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1088,
+              "positionMs": 850,
+              "bufferedMs": 983,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1338,
+              "positionMs": 1105,
+              "bufferedMs": 894,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1589,
+              "positionMs": 1359,
+              "bufferedMs": 973,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1839,
+              "positionMs": 1604,
+              "bufferedMs": 1020,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2089,
+              "positionMs": 1860,
+              "bufferedMs": 1098,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2339,
+              "positionMs": 2109,
+              "bufferedMs": 1181,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2589,
+              "positionMs": 2358,
+              "bufferedMs": 1224,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "SHORTS",
+          "iteration": 1,
+          "firstFrameMs": 562,
+          "sourceMs": 17,
+          "playbackMs": 641,
+          "playableMs": 641,
+          "pipelineMs": 545,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 325,
+              "positionMs": 111,
+              "bufferedMs": 971,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 591,
+              "positionMs": 369,
+              "bufferedMs": 1047,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 846,
+              "positionMs": 682,
+              "bufferedMs": 1025,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1098,
+              "positionMs": 928,
+              "bufferedMs": 1071,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1348,
+              "positionMs": 1180,
+              "bufferedMs": 986,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1599,
+              "positionMs": 1427,
+              "bufferedMs": 988,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1850,
+              "positionMs": 1683,
+              "bufferedMs": 1066,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2100,
+              "positionMs": 1932,
+              "bufferedMs": 1109,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2350,
+              "positionMs": 2182,
+              "bufferedMs": 1108,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2601,
+              "positionMs": 2438,
+              "bufferedMs": 1144,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "SHORTS",
+          "iteration": 2,
+          "firstFrameMs": 620,
+          "sourceMs": 15,
+          "playbackMs": 624,
+          "playableMs": 624,
+          "pipelineMs": 605,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 262,
+              "positionMs": 31,
+              "bufferedMs": 802,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 534,
+              "positionMs": 283,
+              "bufferedMs": 883,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 799,
+              "positionMs": 580,
+              "bufferedMs": 878,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1083,
+              "positionMs": 815,
+              "bufferedMs": 934,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1388,
+              "positionMs": 1172,
+              "bufferedMs": 827,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1639,
+              "positionMs": 1422,
+              "bufferedMs": 827,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1890,
+              "positionMs": 1671,
+              "bufferedMs": 745,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2184,
+              "positionMs": 1973,
+              "bufferedMs": 693,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2435,
+              "positionMs": 2221,
+              "bufferedMs": 736,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2687,
+              "positionMs": 2472,
+              "bufferedMs": 694,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "SHORTS",
+          "iteration": 3,
+          "firstFrameMs": 661,
+          "sourceMs": 86,
+          "playbackMs": 791,
+          "playableMs": 791,
+          "pipelineMs": 575,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 250,
+              "positionMs": 148,
+              "bufferedMs": 934,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 568,
+              "positionMs": 500,
+              "bufferedMs": 999,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 864,
+              "positionMs": 755,
+              "bufferedMs": 994,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1114,
+              "positionMs": 1055,
+              "bufferedMs": 944,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1368,
+              "positionMs": 1313,
+              "bufferedMs": 895,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1618,
+              "positionMs": 1565,
+              "bufferedMs": 934,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1912,
+              "positionMs": 1857,
+              "bufferedMs": 933,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2165,
+              "positionMs": 2077,
+              "bufferedMs": 930,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2464,
+              "positionMs": 2354,
+              "bufferedMs": 895,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2715,
+              "positionMs": 2664,
+              "bufferedMs": 835,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "YOUTUBE",
+          "iteration": 0,
+          "firstFrameMs": 702,
+          "sourceMs": 89,
+          "playbackMs": 934,
+          "playableMs": 934,
+          "pipelineMs": 613,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 297,
+              "positionMs": 190,
+              "bufferedMs": 976,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 563,
+              "positionMs": 423,
+              "bufferedMs": 1076,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1168,
+              "positionMs": 1078,
+              "bufferedMs": 713,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1472,
+              "positionMs": 1377,
+              "bufferedMs": 664,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1722,
+              "positionMs": 1628,
+              "bufferedMs": 705,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1983,
+              "positionMs": 1887,
+              "bufferedMs": 737,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2233,
+              "positionMs": 2137,
+              "bufferedMs": 809,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2484,
+              "positionMs": 2389,
+              "bufferedMs": 860,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2734,
+              "positionMs": 2644,
+              "bufferedMs": 855,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2984,
+              "positionMs": 2888,
+              "bufferedMs": 861,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "YOUTUBE",
+          "iteration": 1,
+          "firstFrameMs": 577,
+          "sourceMs": 26,
+          "playbackMs": 889,
+          "playableMs": 889,
+          "pipelineMs": 551,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 281,
+              "positionMs": 301,
+              "bufferedMs": 1073,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 557,
+              "positionMs": 570,
+              "bufferedMs": 1013,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 822,
+              "positionMs": 782,
+              "bufferedMs": 1092,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1143,
+              "positionMs": 1161,
+              "bufferedMs": 880,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1421,
+              "positionMs": 1400,
+              "bufferedMs": 932,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1672,
+              "positionMs": 1691,
+              "bufferedMs": 975,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1935,
+              "positionMs": 1954,
+              "bufferedMs": 920,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2220,
+              "positionMs": 2185,
+              "bufferedMs": 897,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2521,
+              "positionMs": 2540,
+              "bufferedMs": 808,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2772,
+              "positionMs": 2791,
+              "bufferedMs": 791,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "YOUTUBE",
+          "iteration": 2,
+          "firstFrameMs": 651,
+          "sourceMs": 48,
+          "playbackMs": 785,
+          "playableMs": 785,
+          "pipelineMs": 603,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 271,
+              "positionMs": 245,
+              "bufferedMs": 962,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 528,
+              "positionMs": 499,
+              "bufferedMs": 958,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 832,
+              "positionMs": 805,
+              "bufferedMs": 902,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1124,
+              "positionMs": 1100,
+              "bufferedMs": 899,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1426,
+              "positionMs": 1327,
+              "bufferedMs": 797,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1677,
+              "positionMs": 1644,
+              "bufferedMs": 772,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1934,
+              "positionMs": 1901,
+              "bufferedMs": 765,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2184,
+              "positionMs": 2153,
+              "bufferedMs": 805,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2434,
+              "positionMs": 2408,
+              "bufferedMs": 841,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2724,
+              "positionMs": 2699,
+              "bufferedMs": 842,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "YOUTUBE",
+          "iteration": 3,
+          "firstFrameMs": 597,
+          "sourceMs": 59,
+          "playbackMs": 763,
+          "playableMs": 763,
+          "pipelineMs": 538,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 259,
+              "positionMs": 161,
+              "bufferedMs": 921,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 510,
+              "positionMs": 394,
+              "bufferedMs": 1022,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 761,
+              "positionMs": 664,
+              "bufferedMs": 1085,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1055,
+              "positionMs": 962,
+              "bufferedMs": 1037,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1306,
+              "positionMs": 1214,
+              "bufferedMs": 993,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1557,
+              "positionMs": 1458,
+              "bufferedMs": 999,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1849,
+              "positionMs": 1758,
+              "bufferedMs": 991,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2152,
+              "positionMs": 2060,
+              "bufferedMs": 981,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2403,
+              "positionMs": 2307,
+              "bufferedMs": 984,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2654,
+              "positionMs": 2560,
+              "bufferedMs": 939,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "ON_DEMAND",
+          "iteration": 0,
+          "firstFrameMs": 664,
+          "sourceMs": 85,
+          "playbackMs": 995,
+          "playableMs": 995,
+          "pipelineMs": 579,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 253,
+              "positionMs": 551,
+              "bufferedMs": 948,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 543,
+              "positionMs": 846,
+              "bufferedMs": 861,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 845,
+              "positionMs": 1150,
+              "bufferedMs": 849,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1096,
+              "positionMs": 1387,
+              "bufferedMs": 779,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1347,
+              "positionMs": 1644,
+              "bufferedMs": 730,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1640,
+              "positionMs": 1944,
+              "bufferedMs": 722,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1890,
+              "positionMs": 2185,
+              "bufferedMs": 730,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2147,
+              "positionMs": 2444,
+              "bufferedMs": 639,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2398,
+              "positionMs": 2696,
+              "bufferedMs": 595,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2648,
+              "positionMs": 2944,
+              "bufferedMs": 513,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "ON_DEMAND",
+          "iteration": 1,
+          "firstFrameMs": 689,
+          "sourceMs": 156,
+          "playbackMs": 825,
+          "playableMs": 825,
+          "pipelineMs": 533,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 307,
+              "positionMs": 290,
+              "bufferedMs": 876,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 572,
+              "positionMs": 560,
+              "bufferedMs": 980,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 866,
+              "positionMs": 858,
+              "bufferedMs": 974,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1119,
+              "positionMs": 1102,
+              "bufferedMs": 897,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1372,
+              "positionMs": 1355,
+              "bufferedMs": 852,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1665,
+              "positionMs": 1655,
+              "bufferedMs": 844,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1916,
+              "positionMs": 1906,
+              "bufferedMs": 885,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2166,
+              "positionMs": 2159,
+              "bufferedMs": 798,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2419,
+              "positionMs": 2404,
+              "bufferedMs": 886,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2671,
+              "positionMs": 2655,
+              "bufferedMs": 802,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "ON_DEMAND",
+          "iteration": 2,
+          "firstFrameMs": 772,
+          "sourceMs": 172,
+          "playbackMs": 859,
+          "playableMs": 859,
+          "pipelineMs": 600,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 295,
+              "positionMs": 236,
+              "bufferedMs": 763,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 553,
+              "positionMs": 501,
+              "bufferedMs": 873,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 858,
+              "positionMs": 807,
+              "bufferedMs": 942,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1109,
+              "positionMs": 1048,
+              "bufferedMs": 951,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1359,
+              "positionMs": 1303,
+              "bufferedMs": 905,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1609,
+              "positionMs": 1548,
+              "bufferedMs": 993,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1860,
+              "positionMs": 1802,
+              "bufferedMs": 988,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2154,
+              "positionMs": 2101,
+              "bufferedMs": 940,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2405,
+              "positionMs": 2345,
+              "bufferedMs": 1003,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2658,
+              "positionMs": 2602,
+              "bufferedMs": 897,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "ON_DEMAND",
+          "iteration": 3,
+          "firstFrameMs": 681,
+          "sourceMs": 122,
+          "playbackMs": 900,
+          "playableMs": 900,
+          "pipelineMs": 559,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 296,
+              "positionMs": 252,
+              "bufferedMs": 955,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 575,
+              "positionMs": 629,
+              "bufferedMs": 1036,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 827,
+              "positionMs": 879,
+              "bufferedMs": 1120,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1078,
+              "positionMs": 1128,
+              "bufferedMs": 1038,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1329,
+              "positionMs": 1378,
+              "bufferedMs": 1080,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1584,
+              "positionMs": 1632,
+              "bufferedMs": 1033,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1886,
+              "positionMs": 1900,
+              "bufferedMs": 1057,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2174,
+              "positionMs": 2228,
+              "bufferedMs": 938,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2425,
+              "positionMs": 2468,
+              "bufferedMs": 906,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2675,
+              "positionMs": 2700,
+              "bufferedMs": 882,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "LIVE",
+          "iteration": 0,
+          "firstFrameMs": 840,
+          "sourceMs": 271,
+          "playbackMs": 877,
+          "playableMs": 877,
+          "pipelineMs": 569,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 269,
+              "positionMs": 26211,
+              "bufferedMs": 1038,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 548,
+              "positionMs": 26489,
+              "bufferedMs": 1093,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 799,
+              "positionMs": 26744,
+              "bufferedMs": 1172,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1051,
+              "positionMs": 26987,
+              "bufferedMs": 1220,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1302,
+              "positionMs": 27244,
+              "bufferedMs": 1338,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1553,
+              "positionMs": 27494,
+              "bufferedMs": 1463,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1803,
+              "positionMs": 27744,
+              "bufferedMs": 1588,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2054,
+              "positionMs": 27996,
+              "bufferedMs": 1753,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2304,
+              "positionMs": 28246,
+              "bufferedMs": 1753,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2554,
+              "positionMs": 28496,
+              "bufferedMs": 1878,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "LIVE",
+          "iteration": 1,
+          "firstFrameMs": 780,
+          "sourceMs": 272,
+          "playbackMs": 902,
+          "playableMs": 902,
+          "pipelineMs": 508,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 285,
+              "positionMs": 26317,
+              "bufferedMs": 765,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 537,
+              "positionMs": 26561,
+              "bufferedMs": 896,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 789,
+              "positionMs": 26812,
+              "bufferedMs": 853,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1041,
+              "positionMs": 27065,
+              "bufferedMs": 934,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1291,
+              "positionMs": 27317,
+              "bufferedMs": 974,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1544,
+              "positionMs": 27566,
+              "bufferedMs": 1105,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1795,
+              "positionMs": 27818,
+              "bufferedMs": 1264,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2048,
+              "positionMs": 28075,
+              "bufferedMs": 1382,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2299,
+              "positionMs": 28329,
+              "bufferedMs": 1503,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2551,
+              "positionMs": 28574,
+              "bufferedMs": 1508,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "LIVE",
+          "iteration": 2,
+          "firstFrameMs": 753,
+          "sourceMs": 200,
+          "playbackMs": 786,
+          "playableMs": 786,
+          "pipelineMs": 553,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 261,
+              "positionMs": 26199,
+              "bufferedMs": 719,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 518,
+              "positionMs": 26456,
+              "bufferedMs": 835,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 770,
+              "positionMs": 26746,
+              "bufferedMs": 961,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1021,
+              "positionMs": 26991,
+              "bufferedMs": 1008,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1272,
+              "positionMs": 27249,
+              "bufferedMs": 1060,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1523,
+              "positionMs": 27494,
+              "bufferedMs": 1177,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1774,
+              "positionMs": 27746,
+              "bufferedMs": 1295,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2025,
+              "positionMs": 27998,
+              "bufferedMs": 1460,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2277,
+              "positionMs": 28244,
+              "bufferedMs": 1589,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2531,
+              "positionMs": 28508,
+              "bufferedMs": 1575,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        },
+        {
+          "mode": "LIVE",
+          "iteration": 3,
+          "firstFrameMs": 840,
+          "sourceMs": 330,
+          "playbackMs": 926,
+          "playableMs": 926,
+          "pipelineMs": 510,
+          "rebuffers": 0,
+          "continuous": true,
+          "samples": [
+            {
+              "sinceFrameMs": 255,
+              "positionMs": 26126,
+              "bufferedMs": 881,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 555,
+              "positionMs": 26458,
+              "bufferedMs": 890,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 823,
+              "positionMs": 26729,
+              "bufferedMs": 937,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1074,
+              "positionMs": 26981,
+              "bufferedMs": 1018,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1324,
+              "positionMs": 27232,
+              "bufferedMs": 1059,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1575,
+              "positionMs": 27483,
+              "bufferedMs": 1188,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 1832,
+              "positionMs": 27724,
+              "bufferedMs": 1316,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2083,
+              "positionMs": 27990,
+              "bufferedMs": 1426,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2334,
+              "positionMs": 28242,
+              "bufferedMs": 1591,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            },
+            {
+              "sinceFrameMs": 2587,
+              "positionMs": 28495,
+              "bufferedMs": 1587,
+              "state": 3,
+              "loading": true,
+              "playing": true
+            }
+          ],
+          "transitions": []
+        }
+      ]
+    },
+    "note": "Fresh standalone process for memory/input observations. Horizontal TV Search is a new workload; old grid timing is not a comparable baseline. Generated media and software rendering do not establish physical-TCL FPS or superiority over TizenTube. All 18 rapid and held moves delivered; 4 cards attached; artwork cache remains within 8 MiB. Startup covers 16 samples with zero rebuffers."
+  },
+  "limitations": [
+    "Owner-approved Google account mutations, actual phone-app pairing and successful Google watch-history synchronization need a user-led acceptance check.",
+    "Phone control uses YouTube TV-code linking; certified Cast discovery/receiver and outbound casting are not implemented.",
+    "Comments are read-only; private/restricted media, account switching and background/PiP are not supported."
+  ],
+  "physicalTV": {
+    "candidateInstalled": true,
+    "candidateTested": true,
+    "testingHeld": false,
+    "latestInstalledVersion": "0.21.1",
+    "followupVerification": "../0.21.1/verification.json",
+    "status": "User subsequently authorized TCL access. 0.21.0 was installed in place and probed; 0.21.1 adds a verified numeric reply-label fix and final hardware-stage results."
+  }
+}

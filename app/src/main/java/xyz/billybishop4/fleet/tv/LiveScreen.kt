@@ -17,8 +17,8 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
     private val m = a.model
     override val view = a.column()
     private val count = a.text("", 11f, MUTED)
-    private val grid = RecyclerView(a).apply { tag = "channels"; layoutManager = LinearLayoutManager(a); tune(cachedViews = 6) }
-    private val groups = RecyclerView(a).apply { tag = "groups"; layoutManager = LinearLayoutManager(a); tune() }
+    private val grid = TvRecyclerView(a).apply { tag = "channels"; layoutManager = LinearLayoutManager(a); tune(cachedViews = 6) }
+    private val groups = TvRecyclerView(a).apply { tag = "groups"; layoutManager = LinearLayoutManager(a); tune(cachedViews = 4) }
     private val options = a.action("Options", "Live TV options") { showOptions() }.quiet()
     private val preview = FrameLayout(a).apply {
         tag = "channel-preview"; background = a.round(PANEL); clipToOutline = true
@@ -31,7 +31,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
     private val guideHeading = a.text("Schedule", 11f, MUTED).apply { visibility = View.GONE }
     private val guide = a.column().apply { tag = "channel-guide"; visibility = View.GONE }
     private val empty = a.column().apply { gravity = Gravity.CENTER; pad(12); visibility = View.GONE }
-    private val emptyProgress = ProgressBar(a).apply { isIndeterminate = true; visibility = View.GONE }
+    private val emptyProgress = ProgressBar(a).themeTint().apply { isIndeterminate = true; visibility = View.GONE }
     private val emptyTitle = a.text("", 15f, bold = true).apply { gravity = Gravity.CENTER }
     private val emptyMessage = a.text("", 12f, MUTED).apply { gravity = Gravity.CENTER }
     private val emptyAction = a.action("", "Channel recovery") {}.quiet().apply { visibility = View.GONE }
@@ -55,6 +55,17 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
     private var shownPrograms: List<GuideProgram>? = null
     private var shownGuideMessage = ""
     private var shownCurrentStart: Long? = null
+    private var dialog: android.app.AlertDialog? = null
+    // Valid cached holders can reattach without onBindViewHolder. Selection and
+    // favorites live outside Channel/LiveGroup, so refresh just that small state.
+    private val channelAttach=object:RecyclerView.OnChildAttachStateChangeListener {
+        override fun onChildViewAttachedToWindow(child:View){if(!closed)updateChannelRow(child)}
+        override fun onChildViewDetachedFromWindow(child:View){}
+    }
+    private val groupAttach=object:RecyclerView.OnChildAttachStateChangeListener {
+        override fun onChildViewAttachedToWindow(child:View){if(!closed)updateGroupRow(child)}
+        override fun onChildViewDetachedFromWindow(child:View){}
+    }
     private val adapter = NativeAdapter<Channel>({ it.identity }, { _, _ ->
         LiveChannelRow(a, ::openChannel, { m.toggleFavorite(provider, it) })
     }, { v, c, _ ->
@@ -66,7 +77,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
             gravity = Gravity.START or Gravity.CENTER_VERTICAL; maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END; textSize = 13f
             background = android.graphics.drawable.StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, WHITE))
+                addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, FOCUS))
                 addState(intArrayOf(android.R.attr.state_selected), a.round(PANEL))
                 addState(intArrayOf(), a.round(Color.TRANSPARENT))
             }
@@ -118,7 +129,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
         }, FrameLayout.LayoutParams(-1, -1))
         preview.addView(previewHost, FrameLayout.LayoutParams(-1, -1))
         preview.foreground = android.graphics.drawable.StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused), a.round(Color.TRANSPARENT, WHITE))
+            addState(intArrayOf(android.R.attr.state_focused), a.round(Color.TRANSPARENT, FOCUS))
             addState(intArrayOf(), a.round(Color.TRANSPARENT))
         }
         preview.setOnFocusChangeListener { _, focus -> a.previewFocused(focus) }
@@ -135,6 +146,8 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
             val height = ((r - l) * 9 / 16).coerceAtLeast(a.dp(100))
             if (preview.layoutParams.height != height) preview.layoutParams = preview.layoutParams.apply { this.height = height }
         }
+        grid.addOnChildAttachStateChangeListener(channelAttach)
+        groups.addOnChildAttachStateChangeListener(groupAttach)
     }
 
     private fun favoriteDescription() = if (m.onlyFavoriteChannels) "★ Favorites only" else "★ Favorites"
@@ -148,7 +161,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
             "Edit categories" to { editCategories() },
             "Manage IPTV profiles" to { m.manageProfiles() },
         ))
-        a.showActions("Live TV",actions)
+        dialog?.dismiss();dialog=a.showActions("Live TV",actions)
     }
     private fun clearQuery() { searchInput.setText(""); searchInput.requestFocus() }
     private fun activateGroup(item: LiveGroup, source: View) {
@@ -243,22 +256,25 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
             return
         }
         val checked = BooleanArray(names.size) { names[it] !in m.hiddenCategories[provider.id].orEmpty() }
-        val dialog = android.app.AlertDialog.Builder(a).setTitle("Visible categories")
+        dialog?.dismiss()
+        val categoriesDialog = android.app.AlertDialog.Builder(a).setTitle("Visible categories")
             .setMultiChoiceItems(names.toTypedArray(), checked) { _, index, visible -> m.setCategoryVisible(provider.id, names[index], visible) }
             .setNeutralButton("Show all", null).setPositiveButton("Done", null).create()
-        dialog.setOnShowListener {
-            dialog.window?.setBackgroundDrawable(a.round(PANEL)); dialog.window?.decorView?.clipToOutline = true
-            dialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).quiet().isAllCaps = false
-            dialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).quiet().isAllCaps = false
-            dialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+        dialog=categoriesDialog
+        categoriesDialog.setOnShowListener {
+            a.styleDialog(categoriesDialog)
+            categoriesDialog.window?.setBackgroundDrawable(a.round(PANEL)); categoriesDialog.window?.decorView?.clipToOutline = true
+            categoriesDialog.getButton(android.app.AlertDialog.BUTTON_POSITIVE).quiet().isAllCaps = false
+            categoriesDialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).quiet().isAllCaps = false
+            categoriesDialog.getButton(android.app.AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
                 m.showAllCategories(provider.id)
-                names.indices.forEach { checked[it] = true; dialog.listView.setItemChecked(it, true) }
+                names.indices.forEach { checked[it] = true; categoriesDialog.listView.setItemChecked(it, true) }
             }
             // Options may have been chosen with a touch/mouse click. Enter
             // keyboard focus explicitly so the next OK toggles the first row.
-            dialog.listView.requestFocusFromTouch(); dialog.listView.setSelection(0)
+            categoriesDialog.listView.requestFocusFromTouch(); categoriesDialog.listView.setSelection(0)
         }
-        dialog.show()
+        categoriesDialog.show()
     }
     private fun hasPreview(c: Channel) = selectedId == c.identity && a.playback != null
     /** Focus only browses. The first OK previews; another OK on that channel expands it. */
@@ -303,7 +319,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
                 tag = "guide:${p.startMs}"; isFocusable = true; isFocusableInTouchMode = true
                 setPadding(a.dp(6), a.dp(8), a.dp(6), a.dp(8))
                 background = android.graphics.drawable.StateListDrawable().apply {
-                    addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, WHITE))
+                    addState(intArrayOf(android.R.attr.state_focused), a.round(RAISED, FOCUS))
                     addState(intArrayOf(), a.round(Color.TRANSPARENT))
                 }
             }
@@ -315,9 +331,21 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
         }
     }
     private fun updateSelectedRows() {
-        for (i in 0 until grid.childCount) (grid.getChildAt(i) as? LiveChannelRow)?.let { row ->
-            val c = adapter.currentList.getOrNull(grid.getChildAdapterPosition(row))
-            if (c != null) row.mark(hasPreview(c), favoriteKey(provider.id, c) in m.favorites, m.channelGroup == "All channels")
+        for (i in 0 until grid.childCount)updateChannelRow(grid.getChildAt(i))
+    }
+    private fun updateChannelRow(child:View) {
+        val row=child as? LiveChannelRow?:return
+        val channel=row.boundChannel?:return
+        row.mark(hasPreview(channel),favoriteKey(provider.id,channel) in m.favorites,m.channelGroup=="All channels")
+    }
+    private fun updateGroupRow(child:View) {
+        val row=child as? Button?:return
+        val favorite=row.tag=="category:favorites"
+        val selected=if(favorite)m.onlyFavoriteChannels else !m.onlyFavoriteChannels && row.tag=="button:${m.channelGroup}"
+        if(row.isSelected!=selected)row.isSelected=selected
+        if(favorite) {
+            val description=favoriteDescription()
+            if(row.contentDescription!=description)row.contentDescription=description
         }
     }
     private fun showEmpty(title: String, message: String = "", action: String? = null, busy: Boolean = false, run: () -> Unit = {}) {
@@ -333,10 +361,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
         val hidden = m.hiddenCategories[provider.id].orEmpty()
         if (m.channelGroup != "All channels" && m.channelGroup in hidden) m.channelGroup = "All channels"
         updateSelectedRows()
-        for (i in 0 until groups.childCount) (groups.getChildAt(i) as? Button)?.let { row ->
-            if (row.tag == "category:favorites") { row.isSelected = m.onlyFavoriteChannels; row.contentDescription = favoriteDescription() }
-            else row.isSelected = !m.onlyFavoriteChannels && row.tag == "button:${m.channelGroup}"
-        }
+        for (i in 0 until groups.childCount)updateGroupRow(groups.getChildAt(i))
         if (m.busy && m.channels.isEmpty()) showEmpty("Loading channels…", busy = true)
         else if (m.error != null && m.channels.isEmpty()) showEmpty("Couldn't load channels", m.error.orEmpty(), "Try again") { m.retry() }
         val key = listOf(listVersion, m.channelGroup, m.channelQuery, m.onlyFavoriteChannels, if (m.onlyFavoriteChannels) m.favorites else null, m.preferences.liveSort, hidden, m.busy, m.error)
@@ -390,7 +415,9 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
     @Suppress("DEPRECATION") override fun restoreState(state: Parcelable?) {
         if (state is Bundle) { restored = state.getParcelable("list"); selectedId = state.getString("selected").orEmpty() } else restored = state
     }
-    override fun background() { cancelRowFocus(); guideJob?.cancel() }
-    override fun foreground() { selected?.takeIf { guideJob?.isActive != true }?.let(::loadGuide) }
-    override fun close() { closed = true; filterJob?.cancel(); cancelRowFocus(); guideJob?.cancel(); grid.adapter = null; groups.adapter = null }
+    override fun background() { cancelRowFocus(); guideJob?.cancel();filterJob?.cancel();filterKey=null }
+    override fun foreground() { if(filterKey==null)update();selected?.takeIf { guideJob?.isActive != true }?.let(::loadGuide) }
+    override fun close() { closed = true; filterJob?.cancel(); cancelRowFocus(); guideJob?.cancel();dialog?.dismiss();dialog=null
+        grid.removeOnChildAttachStateChangeListener(channelAttach);groups.removeOnChildAttachStateChangeListener(groupAttach)
+        grid.adapter = null; groups.adapter = null }
 }

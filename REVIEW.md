@@ -533,3 +533,385 @@ Full results and artifact hashes are recorded in `artifacts/verification-0.9.0.j
 Functional emulator results do not establish physical TV smoothness or codec
 compatibility for an untested production stream. No TCL or production IPTV
 connection is part of this verification.
+
+## Native YouTube candidate (0.16.0)
+
+The official TizenTube Cobalt APK was inspected before implementing the native
+feature; findings and source links are in `docs/tizentube-investigation.md`.
+777tv uses recycled native cards and its existing ExoPlayer instead of shipping
+the Cobalt runtime. The candidate has no native libraries or WebViews. Public
+media signature resolution uses the pinned NewPipeExtractor dependency, created
+only for explicit playback.
+
+| Viewer action | Reviewed behavior |
+| --- | --- |
+| Move through Home, search or Shorts. | Focus frames the thumbnail, leaving text outside. Focusing never resolves or starts a stream. Search is native and debounced. |
+| Sign in. | A native code/QR sheet uses Google's returned URL. Pending, cancel, decline, expiry and sign-out are recoverable; account tokens are encrypted separately from add-ons and IPTV. |
+| Press Down while watching an ordinary video. | A compact native related-video sheet opens over the same player. Shorts retain hidden-controls Up/Down navigation. |
+| Choose a related video. | The player route is replaced, so Back does not step through an accumulating chain of old players. |
+| Open Comments. | Text loads on demand into recycled rows. Page cursors and reply cursors stay separate. Reading/replies keep playback running. Back returns from replies; Close dismisses the entire sheet. |
+| Reveal or seek with the playback controls. | The existing slim, unboxed strip and hold acceleration remain. Optional replay intensities draw as one cached Canvas path above the seek line. Absent data and uncovered time ranges stay clear; controls still auto-hide. |
+| Close a sheet or leave playback. | Pending sheet requests cancel; visible artwork is released. Optional metadata failures do not stop the video. |
+
+The 95 ordinary JVM checks and Android lint pass. The opt-in public YouTube
+probe also passed actual search, Shorts, device-code issuance, public stream
+access, related videos, comments and replay-marker parsing. Actual Google owner
+approval was not performed; account completion uses generated fixtures.
+
+Worker emulator checks exercise the above actions and existing on-demand,
+Live TV and settings behavior. The candidate verification under
+`releases/0.16.0/verification.json` records every case, source/archive hash and
+the scope of reruns. A timing-dependent test assertion was corrected to wait
+for the new player after a related-video route changes; its assertions still
+require a different, playing player and the correct Back destination.
+The expanded run also exposed a real cancellation race: scroll pagination
+cancelled a video being opened. Continuations now preserve explicit playback
+resolution. A regression selects a video and starts pagination concurrently;
+the same test/fixtures compare the original behavior with the corrected model.
+
+The base 0.15.0 candidate was checked on the physical TCL before the user's
+later instruction to hold TV testing. The 0.16.0 candidate is not installed or
+tested there. No physical-TV memory or frame-rate improvement is claimed for
+the new YouTube feature. IPTV defaults remain empty and existing data is kept.
+
+
+## Bounded memory and idle work (0.16.1)
+
+The artwork cache uses the greater of Android's allocation report and the actual
+pixel footprint. The worker's hardware bitmaps reported 4 KiB for 456×257 pixels;
+trusting that report retained far more artwork than the configured budget. The
+new strong LRU retains at most 8 MiB (4 MiB on low-memory devices), decodes at
+the display size with at most two simultaneous decoders, and never recycles an
+image still displayed by a view.
+
+Movie buffering now targets 24 MiB (16 MiB on low-memory devices), prioritizing
+the byte budget over filling a long forward buffer. Playback controls stop their
+ticker while steadily paused, unchanged progress does not rewrite history, and
+YouTube comments/related UI is created on first opening and released on trim.
+
+A controlled pair on the same worker, with identical generated media and test
+bytes, measured 48.3 → 25.1 MiB in the encoded movie allocator and 156.4 → 130.2
+MiB in movie-process PSS. Retained artwork pixel bytes fell from 13.0 to 7.6 MiB.
+Overall browsing PSS stayed around 145 MiB. Frame p95 remained dominated by the
+software renderer; this comparison does not establish a frame-rate or CPU gain.
+
+95 JVM checks, lint, and 123 unique worker scenarios pass. Two first-run assertions
+were corrected: waiting for the coalesced episode header frame, and asserting
+the exact paused seek destination instead of assuming the previous resume was
+before it. Both reruns pass against unchanged production sources. The failed
+runs and their replacements remain recorded in `releases/0.16.1/verification.json`.
+The candidate was neither installed nor tested on the physical TCL.
+
+
+## Native YouTube TV layouts (0.17.0)
+
+YouTube Home now retains the TV feed’s shelf names and order instead of
+flattening recommendations into one grid. Large first-row landscape thumbnails,
+smaller subsequent shelves and portrait Shorts follow the TV layout loaded by
+TizenTube. A left icon rail expands over the content without moving it. The
+777tv navigation, colors, corners, thumbnail-only focus borders and ExoPlayer
+remain native. No browser engine or alternate player is included.
+
+Search has a field above recent queries and a single Canvas TV keyboard.
+Selecting a result gives the grid the full browsing area; Up from its first row
+restores the keyboard. Deleting text handles Unicode code points and clearing
+the field keeps Search open. Session-only recent queries are bounded and cleared
+by sign-out. System input remains available. Completing Google fixture pairing
+exercises the account transition and moves focus into recommendations.
+
+Related videos stay below playback. Comments occupy the right side, with the
+video fitted beside them, separate page/reply cursors, and a direct Close action.
+Opening, switching and closing these panels preserves the ExoPlayer instance
+and video decoder. Artwork changes in measured fixed frames avoid redundant
+parent measurement; dynamic frames retain normal layout requests.
+
+The final complete production sources pass 98 JVM checks, lint with no errors,
+and 43 worker scenarios: 15 existing YouTube navigation checks, nine layout and
+remote checks, 11 watch-panel checks, three idle/memory regressions, three cache
+checks and two generated-media performance workloads. Rapid and held scrolling
+accept all 18 delivered keys; the retained image cache stays within 8 MiB. A
+Search focus race found during development is fixed by waiting for attached
+result cards after the adapter commits. The initial failed jobs and fixture
+setup corrections remain recorded, with final passing replacements.
+
+The 0.16.1 controlled memory comparison is retained separately. The 0.17.0 smoke
+workload verifies memory bounds and navigation after the redesign; it does not
+establish a matched frame-rate gain or a universal TV performance guarantee.
+See `releases/0.17.0/verification.json` for exact source, APK and test records.
+
+
+0.17.0 was installed in place on the TCL under the user’s earlier authorization;
+the package UID remained unchanged and app data was not cleared. The already
+started opt-in live probe’s local instrumentation log records one passing test.
+The user subsequently requested local-only work again; the app was stopped to
+halt any remaining instrumentation, and no further TV checks or report retrieval
+were performed. That hold remains active. This bounded probe does not establish
+a general physical-device performance guarantee or real Google owner approval.
+
+
+## Guest YouTube and source-specific players (0.18.0)
+
+Anonymous Home now loads real public TV Music, Gaming and News feeds rather
+than displaying YouTube’s default sign-in nudge. Discover interleaves those
+suggestions; existing local history supplies a related-video row after a video
+has been watched for 30 seconds. Three topic calls share a two-request limit.
+No account bearer, account creation, browser or extra playback engine is needed.
+A live Kotlin check returned 43 valid video cards with artwork in four shelves.
+The parser also now reads current TV thumbnail-header titles, channels, duration
+and live badges, while excluding playlist/channel/menu cards.
+
+Subscriptions and Library provide account History, Watch Later and Liked videos.
+Signed-out History reads existing local records, and account-only screens offer
+one direct sign-in action without sending anonymous private-feed requests.
+Sign-out removes personal cached cards; clearing watch history removes local
+recommendation seeds too. Account completion and private feed transitions are
+validated with generated credentials; no real Google owner approval is claimed.
+
+The player has four presentations. Shorts retain the portrait picture, a
+read-only progress line and compact side actions; Up/Down changes clips and
+Center or a surface click toggles playback. The movie transport and replay
+chart are absent. A cancellable URL-only warmup holds one upcoming clip for at
+most a minute and is released on navigation/background/memory pressure. Shorts
+use 8/6 MiB of encoded buffering with a 500 ms startup threshold, compared with
+24/16 MiB for ordinary video. No additional player or media buffer is warmed.
+
+Regular YouTube keeps related videos, comments, the optional replay graph and
+actual supported Auto/fixed video-quality choices. On-demand retains episode
+identity, the thin unboxed transport and audio/subtitle choices. Live TV has a
+brief channel/available-guide overlay, no transport, and no extra Back press for
+hiding channel information. Guide parsing excludes elapsed programs before
+retaining the next eight. Default neutral playback stays on the direct codec
+surface; picture controls remain a separate action.
+
+The ordinary JVM suite passes 108 checks and lint reports no errors. Two opt-in
+checks verify real public recommendations, search, Shorts, metadata, media and
+code issuance from the Mac. All 145 unique emulator scenarios pass across the
+worker suites and two targeted reruns, including input-window readiness and effective
+parent visibility checks. Earlier failed jobs remain visible rather than being
+relabelled. Existing 0.16.1 before/after data is retained separately; the new
+memory workload is a smoke check, not a physical-TV frame-rate claim.
+
+The latest user instruction holds all TCL deployment and testing again.
+0.18.0 has not been installed or tested on the physical TV. The earlier 0.17.0
+installation remains; no IPTV profile was provisioned or other TV app changed.
+
+## Playback startup (0.18.1)
+
+Public YouTube playback no longer waits for WEB thumbnail metadata and watch-next
+before creating the player. The pinned NewPipe library supplies its anonymous
+visitor/player response directly, including captions; matching, playable HLS
+responses use this path and other responses retain the full extractor fallback.
+One cancellable resolver worker remains. In alternating comparisons of the same
+three public videos from the Mac, median source resolution fell from 810.5 ms to
+152.5 ms. The manifests remained accessible. These are source-resolution timings,
+not physical-TV first-frame measurements or a matched TizenTube comparison.
+
+Three recently selected URL records expire after 60 seconds. Retry resolves a
+fresh source; sign-out, history clearing and memory pressure release the cache.
+An explicit next-Short selection adopts an already resolving warmup instead of
+discarding and repeating its requests. A warmup still in its delay is cancelled,
+and changing the explicit selection cancels any adopted work. No media resolves
+on browsing focus and no additional decoder or media buffer is preloaded.
+
+All four players use the Media3 OkHttp data source and reuse API/media HTTP
+connections. Credentials stay with their origin across redirects. Media loading
+starts while controls and the media session are being built. Initial buffering
+is 250 ms for Shorts, 350 ms for Live TV and 500 ms otherwise; steady-state duration/byte
+budgets and rebuffer thresholds are unchanged. Stalker reuses one authenticated
+session for 60 seconds, keyed by the complete validated provider identity.
+Expiry, rejection, changed credentials and explicit refresh authenticate again;
+concurrent guide and tune requests remain serialized to avoid invalidating tokens.
+
+The matched worker workload disables resume so every trial begins at the same
+media position. It records both the first rendered frame and active playback,
+using their maximum as playable latency. Generated HLS is limited to 204800
+bytes/second and portal RPCs each take 160 ms. The versioned verification contains
+the raw samples, source checksums, worker instance and regression results.
+Physical TCL testing and deployment remain on hold.
+
+The matched run uses the same worker instance and identical timing/fixture code.
+Median playable latency improves from 1178 to 1027.5 ms for Shorts, 1465.5 to
+1096.5 ms for regular YouTube, 1239 to 871 ms for on-demand, and 1319 to 951.5 ms
+for Live TV. All 32 before/after samples retain playback without rebuffering.
+An earlier 150/250 ms buffer experiment stalled on the constrained connection;
+the final 250/350/500 ms settings retain more startup protection.
+
+The faster path also exposed an Android input transition that consumes an initial
+OK DOWN but still delivers its UP. The focused Shorts surface accepts that
+unmatched release once, ignores duplicates/cancellation and keeps normal pairs
+at one action. The actual remote-flow, duplicate-release and cancelled-release
+checks pass alongside the existing seeking, pause and focus scenarios.
+
+## Whole-app UI review (0.19.0)
+
+Three domain reviewers covered YouTube, playback, and on-demand/Live/settings.
+An independent customer reviewer inspected 26 emulator screenshots across all
+sections. The supported YouTube layouts follow the official TV reference more
+closely: compact Home Search, prominent horizontal shelves, a recent-search
+keyboard, predictable grid edges and remembered rail/content focus. Keyboard
+Back retains results. Comments, replies and related videos restore their own
+reading positions and receive content focus without an extra Down.
+
+Settings selects its matching page on rail focus and enters its first control
+with OK/Right. Shared dialogs retire with their screen; delayed focus restoration
+respects newer input. Live filtering cancels in the background, and guide gaps
+retain known upcoming programmes. The live-facing player cannot be paused by
+an external controller; the engine still handles transient audio-focus loss.
+Manual pause and resume remain available for ordinary playback.
+
+Hidden Left/Right now seeks immediately and one uninterrupted hold accelerates
+on the timeline. Closing a watch panel exposed first directional presses whose
+DOWN was consumed by Android's focus-mode transition. Related Down and ordinary
+video Up recover a fresh unmatched release once, with cancellation/deduplication
+guards. Tests retain continuous playback, player identity, pause intent and
+zero unintended seeks while checking panel restoration.
+
+On-demand reuses unchanged catalog rows/scopes. Fixed artwork redraws without
+remeasuring parent shelves, and size-aware request identity prevents a small
+image from suppressing a larger request for the same URL. Normal YouTube grid
+movement uses RecyclerView instead of restarting a scroll for every repeat.
+Existing cache/buffer limits and the single-player design remain.
+
+[Verification](releases/0.19.0/verification.json) records source scopes, scenarios,
+paired measurements and resolved development failures. Browse validation
+predates only the final input-specific VodControls edit; the player and YouTube
+suites cover that final implementation. Standalone before/after benchmarks use
+the same worker, measurement code and fresh process history. The larger mixed
+suite's PSS samples are excluded from that comparison. These emulator results
+do not establish physical-TV performance or universal frame-rate/RAM gains.
+
+No blocking visual findings remain. Neighboring-season episode labels are an
+optional polish item. Full YouTube parity is not claimed: voice, channel pages,
+account mutations, casting and Google watch-history upload remain absent.
+Google account-owner approval was not exercised. No TCL contact, testing or
+deployment occurred; the latest user hold remains in force.
+
+
+## Native YouTube functional review (0.21.0)
+
+Search now keeps actual TV video shelves first and gathers canonical Shorts in
+one portrait shelf. Home requests the real TV feed first; guest nudges use
+bounded topic shelves. Music videos remain regular videos when their watch
+endpoint identifies them that way. Native voice input has keyboard fallback.
+Channels expose available tabs; Library includes real playlist collections and
+their videos. Confirmed account actions invalidate the affected cached lists.
+
+YouTube players omit Picture controls. Single taps retain the selected seek
+interval; a held direction accelerates earlier and grows to 128 times the interval
+after 3.2 seconds, resetting on release, reversal or timeline focus loss. The
+existing thin, unboxed transport remains. Next/Previous, a 20-item queue and saved
+Autoplay use real watch-next metadata fetched after a rendered frame, shared with
+Related. Media resolution begins when a next video is selected or enabled
+Autoplay reaches the end. A paused seek to the end remains paused.
+
+Queue replacement is transactional. Failed or canceled local, related and phone
+requests retain the current queue and video; completed phone control owns its
+queue until disconnected or replaced locally. Disconnect preserves the decoder
+and restores local next-video eligibility. Late recommendations can advance an
+ended, playing-intent video when Autoplay is enabled. Account changes refresh
+next metadata for the same player. Action sheets opened before browsing publish
+saved credentials before deciding whether another sign-in is required.
+
+TV-code phone linking uses a separately encrypted anonymous screen identity.
+Account History reporting observes actual watched spans, account epochs and
+Google's paused-history policy. Device-local Clear history explicitly leaves
+Google history alone. Real owner-approved account changes, phone app pairing
+and successful Google history synchronization require a user-led acceptance
+check. Automated account/phone tests use generated fixtures; separate public
+read-only probes verify current Home/search/Shorts, comments/replay, code issuance
+and accessible media without creating an account.
+
+Independent reviewers examined native layouts, lifecycle and queue failure
+paths. Captured failures also exposed test issues: a Python fixture name
+collision broke Shorts, account playlist fixtures lacked success metadata,
+initial readiness checks could observe an old player/shelf, remote tests used
+touch taps that only focused modal buttons, and older assertions omitted the
+new YouTube settings category. Corrected checks exercise real remote focus and
+activation and retain their intended behavior assertions.
+
+[Verification](releases/0.21.0/verification.json) records exact production hashes,
+local checks, native scenario coverage, corrected reruns, scoped screenshot
+reviews and startup/memory evidence. Physical access was held at that verification
+cutoff; the subsequent user-authorized TCL deployment and 0.21.1 review below
+supersede that device status.
+
+
+## Physical TCL release and customer review (0.21.1)
+
+The signed release was updated in place from 0.20.0 through 0.21.0 to 0.21.1,
+with unchanged application UID and preserved preferences, add-ons and zero IPTV
+profiles. Real comments exposed bare numeric reply counts. A cached count parser
+now labels them as replies while preserving already localized text and cursors;
+the new regression and actual reply dialog/replies pass.
+
+Nine final signed-release device stages pass. Regular YouTube, portrait Shorts
+and a selected 4K HEVC on-demand source used hardware decoders and had zero
+recorded decoder drops, rebuffers or decoder restarts in their bounded 30/20/30
+second steady windows. The first movie link failed with upstream HTTP 502; the
+second visible card played. Failed links remain recorded. Generated profileless
+live HLS also passed; this does not establish real Stalker service compatibility.
+
+The final episode probe enters the rail through the native season-selector Right
+handoff and verifies settled focus before measuring. All 18 moves crossed season
+boundaries; OK updated the selected episode and stream context together. Earlier
+probe attempts incorrectly compared API episode order with sorted native order,
+or treated a prefetched holder as visible focus; those samples are excluded.
+Cold search had four actual deadline overruns in 132 measured frames; warm search
+had none in 124. Decoder counters and FrameMetrics are not displayed-video FPS.
+
+The independent customer reviewer approved actual Home/search, comments/replies,
+Related, Shorts, selected episode/streams, player, settings and live captures with
+no blocking visual findings. The standard square read-comment dialog remains
+minor polish. The release stays open on On-Demand; test instrumentation,
+diagnostic downloads, reverse forwarding and the local media server were removed.
+The [TCL report](releases/0.21.1/README.md) and its verification JSON retain exact
+metrics, source hashes, scope and remaining owner/IPTV acceptance limits.
+
+
+## App and independent section themes (0.22.0)
+
+Classic remains the app and upgrade default. Ten presets coordinate backgrounds,
+solid surfaces, readable text, focused/selected controls and progress accents.
+Each area can inherit the app theme or keep its own explicit override. Settings
+uses the app palette; YouTube livestreams retain YouTube styling. Background
+Theme default follows the preset, while Solid keeps only its coordinated colors.
+
+A dedicated visual-design reviewer refined Cinema violet/blue-black, solid Tube
+black/white/red with neutral white focus, and Aurora charcoal teal/mint. Tube's
+selected surface meets 4.56:1 contrast for its red labels. Recommended presets
+appear first in section pickers; a check identifies saved selection separately
+from focus and the explicit inheritance control. The final three-area native
+captures and Classic settings received visual approval without blocking findings.
+
+The implementation shares immutable palette data and static native drawables,
+retains model/navigation/artwork state, clears old colored recycled views, and
+keeps any active decoder. The native scenario verifies exact player identity,
+position, pause intent and decoder-init count; a fresh player verifies the saved
+accent. No wallpaper bitmap, blur, animation or new rendering dependency is added.
+
+218 ordinary JVM tests, lint and 31 unique native emulator scenarios pass. All
+63 production-file hashes match the signed candidate. The installed release
+passes ten actual TCL picker selections and independent section routing, with
+73–158 ms commit-to-focused-row timings (median146 ms, including probe overhead).
+The short PSS workload reclaims memory naturally; it does not prove long-term
+leak freedom or video FPS. Original appearance/preferences, profiles and add-ons
+were preserved, and temporary instrumentation/downloads removed. The
+[release record](releases/0.22.0/verification.json) keeps corrected test readiness,
+selection and contrast findings, exact scopes and the reviewed screenshot hashes.
+
+
+## Black On-Demand refinement (0.22.1)
+
+The user clarified that the whole On-Demand area should use black with accents.
+Cinema now has a true black solid backdrop and neutral charcoal surfaces, keeping
+violet focus, selection and action accents. Layout and artwork/video pixels are
+unchanged. The visual designer approved the new fixture and private real-TCL
+captures. Existing contrast checks pass; the native section journey now verifies
+pure black samples across the page instead of a gradient.
+
+218 JVM checks and lint pass. The updated native journey matches all 63 production
+hashes; the two production changes are the palette and version declaration.
+The patch is installed in place on the TCL and Cinema was selected only for
+On-Demand through Settings. Other visible appearance choices and the app UID/data
+are preserved. The full 0.22.0 native suite remains a separately scoped historical
+record. See [patch verification](releases/0.22.1/verification.json).

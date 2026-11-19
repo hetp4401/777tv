@@ -15,6 +15,9 @@ import android.widget.*
 import androidx.recyclerview.widget.*
 import java.security.MessageDigest
 
+private data class HomeRowsKey(val progress:List<Progress>,val saved:List<Title>,val shelves:List<Shelf>,val filter:CatalogFilter,
+    val continuing:Boolean,val recent:Boolean,val myList:Boolean)
+
 internal class SearchScreen(private val a:MainActivity):NativeScreen {
     private val m=a.model
     override val view=object:LinearLayout(a) {
@@ -24,8 +27,8 @@ internal class SearchScreen(private val a:MainActivity):NativeScreen {
             return super.dispatchKeyEvent(event)
         }
     }
-    private val home=RecyclerView(a).apply { tag="search-home";layoutManager=LinearLayoutManager(a);tune(cachedViews=1) }
-    private val results=RecyclerView(a).apply { tag="search-results";layoutManager=LinearLayoutManager(a);tune(cachedViews=1) }
+    private val home=TvRecyclerView(a).apply { tag="search-home";layoutManager=LinearLayoutManager(a);tune(cachedViews=1) }
+    private val results=TvRecyclerView(a).apply { tag="search-results";layoutManager=LinearLayoutManager(a);tune(cachedViews=1) }
     private val filterRow=a.row()
     private val filters=HorizontalScrollView(a).apply { tag="catalog-filters";isHorizontalScrollBarEnabled=false;addView(filterRow) }
     private var filterDefinitions:List<CatalogDefinition>?=null
@@ -57,7 +60,7 @@ internal class SearchScreen(private val a:MainActivity):NativeScreen {
         imeOptions=EditorInfo.IME_ACTION_SEARCH or EditorInfo.IME_FLAG_NO_EXTRACT_UI
         showSoftInputOnFocus=false
         background=StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused),a.round(PANEL,WHITE))
+            addState(intArrayOf(android.R.attr.state_focused),a.round(PANEL,FOCUS))
             addState(intArrayOf(),a.round(PANEL))
         }
         setPadding(a.dp(14),a.dp(10),a.dp(14),a.dp(10))
@@ -70,6 +73,11 @@ internal class SearchScreen(private val a:MainActivity):NativeScreen {
     private var homeState:Parcelable?=null
     private var resultsState:Parcelable?=null
     private var lastQuery=m.searchText
+    private var homeRowsKey:HomeRowsKey?=null
+    private var homeRows:List<HomeRow> = emptyList()
+    private var resultsShelves:List<Shelf>?=null
+    private var resultsQuery:String?=null
+    private var resultRows:List<HomeRow> = emptyList()
     private val shelfStates=LinkedHashMap<String,Parcelable>()
     private val focusRestore=BrowseFocusRestore(a,view)
     private fun open(t:Title)=a.openTitle(t)
@@ -162,6 +170,32 @@ internal class SearchScreen(private val a:MainActivity):NativeScreen {
         .take(12).joinToString("") { "%02x".format(it.toInt() and 255) }
     private fun filterHash()=hash(org.json.JSONObject().put("type",m.catalogFilter.type).put("catalog",m.catalogFilter.catalogKey)
         .put("extra",org.json.JSONObject(m.catalogFilter.extras.toSortedMap())).toString())
+    private fun homeRows():List<HomeRow> {
+        val prefs=m.preferences
+        val next=HomeRowsKey(m.progress,m.saved,m.shelves,m.catalogFilter,prefs.showContinue,prefs.showRecent,prefs.showMyList)
+        if(next==homeRowsKey)return homeRows
+        homeRowsKey=next
+        val items=ArrayList<HomeRow>()
+        val continuing=if(prefs.showContinue)m.progress.filter { !it.finished && it.positionMs>0 }.map { it.title }.distinctBy { it.key } else emptyList()
+        val continuingKeys=continuing.mapTo(HashSet()) { it.key }
+        if(continuing.isNotEmpty())items+=HomeRow("Continue watching",continuing)
+        if(prefs.showRecent)m.progress.map { it.title }.distinctBy { it.key }.filterNot { it.key in continuingKeys }
+            .takeIf { it.isNotEmpty() }?.let { items+=HomeRow("Recently watched",it) }
+        if(prefs.showMyList && m.saved.isNotEmpty())items+=HomeRow("My list",m.saved)
+        // One scope per filter change, rather than a digest for every shelf/update.
+        val scope="browse:${filterHash()}"
+        m.shelves.forEach { shelf -> if(shelf.titles.isNotEmpty())items+=HomeRow(shelf.name,shelf.titles,"${shelf.id}:$scope") }
+        homeRows=items
+        return items
+    }
+    private fun resultRows():List<HomeRow> {
+        val query=m.searchText.trim()
+        if(resultsShelves===m.searchShelves && resultsQuery==query)return resultRows
+        resultsShelves=m.searchShelves;resultsQuery=query
+        val scope="search:${hash(query)}"
+        resultRows=m.searchShelves.filter { it.titles.isNotEmpty() }.map { HomeRow(it.name,it.titles,"${it.id}:$scope") }
+        return resultRows
+    }
     private fun saveShelf(key:String,state:Parcelable) {
         shelfStates[key]=state
         while(shelfStates.size>64)shelfStates.remove(shelfStates.keys.first())
@@ -241,42 +275,31 @@ internal class SearchScreen(private val a:MainActivity):NativeScreen {
         if(capabilities.addons!==m.addons)capabilities=BrowseAddonCapabilities(m.addons)
         val recovery=addonRecovery(m,capabilities,if(searching)capabilities.search || m.catalogDefinitions.any { it.canSearch } else capabilities.home || m.catalogDefinitions.any { it.canBrowse },
             if(searching)"search movies and shows" else "browse movies and shows")
-        addonMessage.text=recovery.orEmpty();addonNotice.visibility=if(recovery==null)View.GONE else View.VISIBLE
+        addonMessage.textIfChanged(recovery.orEmpty());addonNotice.visibility=if(recovery==null)View.GONE else View.VISIBLE
         clear.visibility=if(m.searchText.isNotEmpty())View.VISIBLE else View.GONE
         submit.nextFocusRightId=if(clear.visibility==View.VISIBLE)clear.id else View.NO_ID
         home.visibility=if(searching)View.GONE else View.VISIBLE;results.visibility=if(searching && recovery==null)View.VISIBLE else View.GONE
         val shortQuery=m.searchText.isNotBlank() && !searching
         summary.visibility=if(shortQuery || searching && !m.busy && m.results.isNotEmpty())View.VISIBLE else View.GONE
-        summary.text=if(shortQuery)"Enter at least 2 characters" else m.results.size.toString()+" "+if(m.results.size==1)"title" else "titles"
+        summary.textIfChanged(if(shortQuery)"Enter at least 2 characters" else m.results.size.toString()+" "+if(m.results.size==1)"title" else "titles")
         if(searching) {
             if(lastQuery!=m.searchText) { resultsState=null;results.scrollToPosition(0) }
             lastQuery=m.searchText
-            val scope="search:${hash(m.searchText.trim())}"
-            val grouped=m.searchShelves.filter { it.titles.isNotEmpty() }.map { HomeRow(it.name,it.titles,"${it.id}:$scope") }
-            searchRows.submitList(grouped) {
+            searchRows.submitList(resultRows()) {
                 if(m.results.isNotEmpty())resultsState?.let { results.layoutManager?.onRestoreInstanceState(it);resultsState=null }
             }
-            emptyTitle.text="No results"
-            emptyMessage.text="Try another title or check the spelling."
+            emptyTitle.textIfChanged("No results")
+            emptyMessage.textIfChanged("Try another title or check the spelling.")
             emptyRefresh.visibility=View.GONE
             empty.visibility=if(recovery==null && !m.busy && m.results.isEmpty() && m.error==null)View.VISIBLE else View.GONE
         } else {
             lastQuery=m.searchText
-            val items=ArrayList<HomeRow>()
-            val continuing=if(m.preferences.showContinue)m.progress.filter { !it.finished && it.positionMs>0 }.map { it.title }.distinctBy { it.key } else emptyList()
-            val continuingKeys=continuing.mapTo(HashSet()) { it.key }
-            if(continuing.isNotEmpty())items+=HomeRow("Continue watching",continuing)
-            if(m.preferences.showRecent)m.progress.map { it.title }.distinctBy { it.key }.filterNot { it.key in continuingKeys }
-                .takeIf { it.isNotEmpty() }?.let { items+=HomeRow("Recently watched",it) }
-            if(m.preferences.showMyList && m.saved.isNotEmpty())items+=HomeRow("My list",m.saved)
-            m.shelves.forEach { shelf ->
-                if(shelf.titles.isNotEmpty())items+=HomeRow(shelf.name,shelf.titles,"${shelf.id}:browse:${filterHash()}")
-            }
+            val items=homeRows()
             rows.submitList(items) {
                 if(items.isNotEmpty())homeState?.let { home.layoutManager?.onRestoreInstanceState(it);homeState=null }
             }
-            emptyTitle.text="Nothing to browse yet"
-            emptyMessage.text="Search for a title, or refresh your catalog."
+            emptyTitle.textIfChanged("Nothing to browse yet")
+            emptyMessage.textIfChanged("Search for a title, or refresh your catalog.")
             emptyRefresh.visibility=View.VISIBLE
             empty.visibility=if(recovery==null && !m.busy && items.isEmpty() && m.error==null)View.VISIBLE else View.GONE
         }
@@ -312,6 +335,10 @@ internal class SearchScreen(private val a:MainActivity):NativeScreen {
         } else homeState=state
     }
     override fun background() { focusRestore.cancel();hideKeyboard() }
-    override fun close() { background();filterDialog?.dismiss();filterDialog=null;home.adapter=null;results.adapter=null }
+    override fun close() {
+        background();filterDialog?.dismiss();filterDialog=null;home.adapter=null;results.adapter=null
+        rows.submitList(emptyList());searchRows.submitList(emptyList())
+        homeRowsKey=null;homeRows=emptyList();resultsShelves=null;resultRows=emptyList();shelfStates.clear()
+    }
 }
 

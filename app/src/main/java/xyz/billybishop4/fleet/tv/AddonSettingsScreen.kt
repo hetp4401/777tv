@@ -29,7 +29,7 @@ internal class AddonSettingsScreen(private val a: MainActivity) : NativeScreen {
         tag = "addons-status"; visibility = View.GONE
         accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
     }
-    private val storageWarning = a.text("Add-on storage could not be read. Reset add-ons to restore the defaults.", 13f, 0xFFFFC4C4.toInt()).apply {
+    private val storageWarning = a.text("Add-on storage could not be read. Reset add-ons to restore the defaults.", 13f, ERROR_TEXT).apply {
         tag = "addons-storage-warning"; visibility = View.GONE
     }
     private val install = a.action("Install add-on", prominent = true) { submit() }
@@ -43,6 +43,7 @@ internal class AddonSettingsScreen(private val a: MainActivity) : NativeScreen {
     private var syncingDraft = false
     private var closed = false
     private var installing = false
+    private var installInputGeneration = 0
     private var installedBefore = emptySet<String>()
 
     init {
@@ -84,6 +85,7 @@ internal class AddonSettingsScreen(private val a: MainActivity) : NativeScreen {
         }
         if (localError != null) { m.addonEdited(); update(); manifest.requestFocus(); return }
         hideKeyboard(); installedBefore = m.addons.mapTo(HashSet()) { it.manifestUrl }; installing = true
+        installInputGeneration = a.focusInputGeneration
         m.installAddon(url); update()
     }
 
@@ -91,6 +93,7 @@ internal class AddonSettingsScreen(private val a: MainActivity) : NativeScreen {
         val previous = a.currentFocus?.tag?.toString()?.takeIf { it.startsWith("addon-options:") }
         val previousIndex = displayed?.indexOfFirst { addonOptionTag(it.manifestUrl) == previous } ?: -1
         val oldScroll = scroll.scrollY
+        val inputGeneration = a.focusInputGeneration
         rows.removeAllViews()
         if (m.addons.isEmpty()) rows.add(a.text("No add-ons installed.", 14f, MUTED).apply { tag = "addons-empty"; pad(14) })
         m.addons.forEach { addon ->
@@ -112,7 +115,7 @@ internal class AddonSettingsScreen(private val a: MainActivity) : NativeScreen {
         }
         displayed = m.addons.toList()
         scroll.post {
-            if (!closed) {
+            if (!closed && a.focusInputGeneration == inputGeneration) {
                 scroll.scrollTo(0, oldScroll)
                 if (previous != null) {
                     val replacement = m.addons.getOrNull(previousIndex.coerceAtLeast(0)) ?: m.addons.lastOrNull()
@@ -147,13 +150,15 @@ internal class AddonSettingsScreen(private val a: MainActivity) : NativeScreen {
         val error = localError ?: m.error?.let(::safeMessage)
         val message = error ?: m.addonStatus?.let(::safeMessage) ?: if (m.busy) "Updating add-ons…" else ""
         status.text = message; status.visibility = if (message.isBlank()) View.GONE else View.VISIBLE
-        status.setTextColor(if (error != null) 0xFFFFC4C4.toInt() else MUTED)
+        status.setTextColor(if (error != null) ERROR_TEXT else MUTED)
         if (installing && !m.busy) {
             installing = false
+            if (a.focusInputGeneration != installInputGeneration) return
             if (m.error != null || m.addonDraft.isNotEmpty()) manifest.requestFocus()
             else {
                 val added = m.addons.firstOrNull { it.manifestUrl !in installedBefore }
-                view.post { if (!closed) (added?.let { rows.findTag(addonOptionTag(it.manifestUrl)) } ?: install).requestFocus() }
+                view.post { if (!closed && a.focusInputGeneration == installInputGeneration)
+                    (added?.let { rows.findTag(addonOptionTag(it.manifestUrl)) } ?: install).requestFocus() }
             }
         }
     }

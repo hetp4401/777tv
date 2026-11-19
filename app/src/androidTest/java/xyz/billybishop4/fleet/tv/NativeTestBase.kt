@@ -35,6 +35,9 @@ open class NativeTestBase {
                 File(dir,"failure-$name.json").writeText(ui { JSONObject().put("phase",phase).put("route",a.model.route.javaClass.simpleName)
                     .put("section",a.model.section.name).put("busy",a.model.busy).put("channels",a.model.channels.size)
                     .put("results",a.model.results.size).put("focus",a.currentFocus?.tag?.toString())
+                    .put("youtubeFeed",a.model.youtube.feed.name).put("youtubeBusy",a.model.youtube.busy)
+                    .put("youtubeError",a.model.youtube.error).put("youtubeVideos",a.model.youtube.videos.size)
+                    .put("playbackMatchesRoute",a.playback?.watch===(a.model.route as? Route.Player)?.watch)
                     .put("windowFocus",a.hasWindowFocus()).put("touchMode",a.window.decorView.isInTouchMode)
                     .put("playback",JSONObject(a.playbackInfo)).toString(2) })
                 if(safe) { device.dumpWindowHierarchy(File(dir,"failure-$name.xml"));screenshot("failure-$name") }
@@ -65,7 +68,13 @@ open class NativeTestBase {
         val found=target()
         if(found!=null)ui{found.requestFocus();found.performClick()}else device.findObject(selector).click()
     }
-    protected fun sendRemoteKey(code:Int) { InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(code) }
+    protected fun sendRemoteKey(code:Int) {
+        val instrumentation=InstrumentationRegistry.getInstrumentation();instrumentation.waitForIdleSync()
+        val down=SystemClock.uptimeMillis()
+        // A real remote keeps one downTime across DOWN/UP; avoid synthetic zero-time pairs.
+        for(action in intArrayOf(KeyEvent.ACTION_DOWN,KeyEvent.ACTION_UP))instrumentation.sendKeySync(
+            KeyEvent(down,SystemClock.uptimeMillis(),action,code,0,0,KeyCharacterMap.VIRTUAL_KEYBOARD,0,0,InputDevice.SOURCE_DPAD))
+    }
     @Suppress("UNCHECKED_CAST") protected fun firstMovieCard():View?=ui {
         val home=a.window.decorView.findTag("search-home") as? androidx.recyclerview.widget.RecyclerView?:return@ui null
         val shelf=descendants(home).filterIsInstance<ShelfCard>().firstOrNull { it.shelfName=="Popular · Movies" }

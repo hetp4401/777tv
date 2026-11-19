@@ -60,7 +60,7 @@ internal class ProfilesScreen(private val a:MainActivity):NativeScreen {
     private val emptyText=a.text("Add a Stalker portal using its URL and registered MAC address.",14f,MUTED)
     private val repair=a.action("Open settings") { m.open(Route.Settings) }.quiet()
     private val empty=a.column().apply { add(emptyText);gap(12);add(repair,width=-2) }
-    private val list=RecyclerView(a).apply { layoutManager=LinearLayoutManager(a);tune();tag="profiles" }
+    private val list=TvRecyclerView(a).apply { layoutManager=LinearLayoutManager(a);tune();tag="profiles" }
     private var restored:Parcelable?=null
     private val focusRestore=BrowseFocusRestore(a,view)
     private val adapter=NativeAdapter<ProfileRow>({it.provider.id},
@@ -116,7 +116,7 @@ private class ProfileCard(a:MainActivity,open:(Provider)->Unit,options:(Provider
     val primary=a.column().apply {
         gravity=Gravity.CENTER_VERTICAL;pad(12);isFocusable=true;isFocusableInTouchMode=true;isClickable=true
         background=StateListDrawable().apply {
-            addState(intArrayOf(android.R.attr.state_focused),a.round(RAISED,WHITE))
+            addState(intArrayOf(android.R.attr.state_focused),a.round(RAISED,FOCUS))
             addState(intArrayOf(),a.round(Color.TRANSPARENT))
         }
         add(name);gap(4);add(subtitle)
@@ -171,15 +171,15 @@ private class StreamChoices(private val a:MainActivity,private val showErrors:Bo
         }
         lines(16f,2)+lines(13f,2)+lines(12f,1)+a.dp(34)
     })
-    private val list=RecyclerView(a).apply {
-        layoutManager=LinearLayoutManager(a,RecyclerView.HORIZONTAL,false);tune();tag="streams"
+    private val list=TvRecyclerView(a).apply {
+        layoutManager=LinearLayoutManager(a,RecyclerView.HORIZONTAL,false).apply{initialPrefetchItemCount=4};tune(cachedViews=4);tag="streams"
         setPadding(a.dp(2),a.dp(4),a.dp(2),a.dp(4))
     }
     private val emptyText=a.text("",15f,MUTED)
     private var focusFirstGeneration:Int?=null
     private val refresh=a.action("Refresh streams") { focusFirstGeneration=a.focusInputGeneration;m.retryStreams() }.quiet()
     private val retry=a.action("Retry streams") { focusFirstGeneration=a.focusInputGeneration;m.retryStreams() }.quiet()
-    private val streamError=a.text("",13f,0xFFFFC4C4.toInt()).apply { tag="streams-error";maxLines=3;ellipsize=TextUtils.TruncateAt.END }
+    private val streamError=a.text("",13f,ERROR_TEXT).apply { tag="streams-error";maxLines=3;ellipsize=TextUtils.TruncateAt.END }
     private val failure=a.row().apply {
         addView(streamError,LinearLayout.LayoutParams(0,-2,1f).apply { marginEnd=a.dp(12) });add(retry,width=-2)
     }
@@ -191,6 +191,18 @@ private class StreamChoices(private val a:MainActivity,private val showErrors:Bo
     private var contextKey:String?=null
     private var submittedStreams:List<Stream> = emptyList()
     private var submittedModelStreams:List<Stream>?=null
+    // Only the current source list is prepared/indexed. Unrelated model renders
+    // must not sort again or restart an identical diff already in flight.
+    private var preparedModelStreams:List<Stream>?=null
+    private var preparedLargestFirst:Boolean?=null
+    private var preparedWaiting:Boolean?=null
+    private var submittedRevision=0
+    private var committedRevision=0
+    private var committedItems:List<Stream>?=null
+    private val sourceIndices=HashMap<String,Int>()
+    private val semanticLabels=HashMap<String,String>()
+    private var semanticIndices:Map<String,Int>?=null
+    private var closed=false
     private var restoredIndex:Int?=null
     private var restoredLabel:String?=null
     private var rememberedIndex:Int?=null
@@ -199,8 +211,8 @@ private class StreamChoices(private val a:MainActivity,private val showErrors:Bo
     private val focusRestore=BrowseFocusRestore(a,view)
     private val adapter:NativeAdapter<Stream> = NativeAdapter({it.identity},
         { _,_->StreamContainer(a,tileHeight,{ stream ->
-            rememberedIndex=adapter.currentList.indexOfFirst { it.identity==stream.identity }.takeIf { it>=0 }
-            rememberedLabel=streamSemantic(stream);rememberedContext=streamContext(stream)
+            rememberedIndex=sourceIndices[stream.identity]
+            rememberedLabel=semanticLabel(stream);rememberedContext=streamContext(stream)
         }) { stream ->
             val detail=m.route as? Route.Detail
             val current=detail==null || detail.title.type!="series" || contextKey==detail.title.key+"/"+m.selectedEpisode?.id.orEmpty()
@@ -209,7 +221,7 @@ private class StreamChoices(private val a:MainActivity,private val showErrors:Bo
         { v,s,_->(v as StreamContainer).bind(s) })
     init {
         failure.visibility=View.GONE;empty.visibility=View.GONE;list.visibility=View.GONE;detailsHint.visibility=View.GONE
-        list.adapter=adapter
+        list.adapter=adapter;committedItems=adapter.currentList
         val status=a.column().apply { add(loading);add(failure);add(empty) }
         view.add(FrameLayout(a).apply {
             tag="stream-viewport"
@@ -219,6 +231,7 @@ private class StreamChoices(private val a:MainActivity,private val showErrors:Bo
         view.gap(8);view.add(detailsHint)
     }
     fun update(title:Title,episode:Episode?) {
+        if(closed)return
         val nextContext=title.key+"/"+episode?.id.orEmpty()
         if(contextKey!=null && contextKey!=nextContext) {
             focusRestore.cancel();focusFirstGeneration=null;restored=null;restoredIndex=null;restoredLabel=null
@@ -229,29 +242,59 @@ private class StreamChoices(private val a:MainActivity,private val showErrors:Bo
         val waitingForEpisode=title.type=="series" && episode==null
         if(capabilities.addons!==m.addons)capabilities=BrowseAddonCapabilities(m.addons)
         val recovery=if(waitingForEpisode)null else addonRecovery(m,capabilities,capabilities.streams(title,episode),"provide stream links for this title")
-        val streams=if(waitingForEpisode)emptyList() else m.streams.distinctBy { it.identity }
         submittedModelStreams=m.streams
-        submittedStreams=if(m.preferences.largestFirst)streams else streams.sortedWith(compareBy<Stream>{it.sizeBytes==null}.thenBy{it.sizeBytes})
-        adapter.submitList(submittedStreams) {
-            if(streams.isNotEmpty())restored?.let { list.layoutManager?.onRestoreInstanceState(it);restored=null }
-            if(streams.isNotEmpty())focusFirstGeneration?.let { generation ->
-                focusFirstGeneration=null
-                if(generation==a.focusInputGeneration)focusRestore.start { sourceAt(0) }
+        if(preparedModelStreams!==m.streams || preparedLargestFirst!=m.preferences.largestFirst || preparedWaiting!=waitingForEpisode) {
+            preparedModelStreams=m.streams;preparedLargestFirst=m.preferences.largestFirst;preparedWaiting=waitingForEpisode
+            val unique=if(waitingForEpisode)emptyList() else m.streams.distinctBy { it.identity }
+            val next=if(m.preferences.largestFirst)unique else unique.sortedWith(compareBy<Stream>{it.sizeBytes==null}.thenBy{it.sizeBytes})
+            if(next!=submittedStreams) {
+                submittedStreams=next;val revision=++submittedRevision
+                adapter.submitList(next) {
+                    if(!closed && submittedRevision==revision) {
+                        // Old visible holders can still gain focus while the diff
+                        // runs. Keep their committed ordinals until replacement
+                        // is accepted, including renewed URLs/headers and labels.
+                        sourceIndices.clear();semanticLabels.clear();semanticIndices=null
+                        adapter.currentList.forEachIndexed{index,stream->sourceIndices[stream.identity]=index}
+                        committedRevision=revision;committedItems=adapter.currentList;restoreCommittedState()
+                    }
+                }
             }
         }
-        loading.text=if(waitingForEpisode)if(m.busy)"Loading episodes…" else "Select an episode" else "Finding streams…"
+        restoreCommittedState()
+        val streams=submittedStreams
+        loading.textIfChanged(if(waitingForEpisode)if(m.busy)"Loading episodes…" else "Select an episode" else "Finding streams…")
         loading.visibility=if(waitingForEpisode || m.streamsBusy && streams.isEmpty() && recovery==null)View.VISIBLE else View.GONE
-        streamError.text=m.streamsError.orEmpty()
+        streamError.textIfChanged(m.streamsError.orEmpty())
         failure.visibility=if(!waitingForEpisode && showErrors && !m.streamsBusy && m.streamsError!=null && recovery==null)View.VISIBLE else View.GONE
         val needsManagement=recovery!=null || m.streamsError!=null
         empty.visibility=if(!waitingForEpisode && (recovery!=null || !m.streamsBusy && streams.isEmpty()))View.VISIBLE else View.GONE
-        emptyText.text=recovery?:if(m.streamsError!=null)"Try another add-on." else "No stream links were returned for this title. Try refreshing or check your add-ons in Settings."
+        emptyText.textIfChanged(recovery?:if(m.streamsError!=null)"Try another add-on." else "No stream links were returned for this title. Try refreshing or check your add-ons in Settings.")
         refresh.visibility=if(needsManagement)View.GONE else View.VISIBLE
         manageAddons.visibility=if(needsManagement)View.VISIBLE else View.GONE
         list.visibility=if(streams.isEmpty() || recovery!=null)View.GONE else View.VISIBLE
         detailsHint.visibility=if(list.visibility==View.VISIBLE)View.VISIBLE else View.INVISIBLE
     }
-    private fun streamsCommitted():Boolean = !m.streamsBusy && submittedModelStreams===m.streams && adapter.currentList==submittedStreams
+    private fun restoreCommittedState() {
+        if(!streamsCommitted() || submittedStreams.isEmpty())return
+        restored?.let { list.layoutManager?.onRestoreInstanceState(it);restored=null }
+        focusFirstGeneration?.let { generation ->
+            focusFirstGeneration=null
+            if(generation==a.focusInputGeneration)focusRestore.start { sourceAt(0) }
+        }
+    }
+    private fun semanticLabel(stream:Stream):String {
+        val identity=stream.identity
+        val committed=sourceIndices[identity]?.let{adapter.currentList.getOrNull(it)}?.takeIf{it.identity==identity}
+        // A committed metadata diff can precede its holder rebind. Focus from
+        // that old holder must not cache its old label for the current source.
+        return if(committed==null)streamSemantic(stream)
+            else semanticLabels.getOrPut(identity){streamSemantic(committed)}
+    }
+    private fun streamsCommitted():Boolean = !m.streamsBusy && submittedModelStreams===m.streams &&
+        // currentList is an unmodifiable wrapper, so retain the exact committed
+        // wrapper as well as its revision instead of rescanning it every frame.
+        committedRevision==submittedRevision && committedItems===adapter.currentList
     private fun sourceAt(index:Int):View? {
         if(!streamsCommitted() || list.isComputingLayout || list.hasPendingAdapterUpdates() || list.isLayoutRequested)return null
         val stream=adapter.currentList.getOrNull(index)?:return null
@@ -267,12 +310,21 @@ private class StreamChoices(private val a:MainActivity,private val showErrors:Bo
         else if(empty.visibility==View.VISIBLE)if(manageAddons.visibility==View.VISIBLE)manageAddons else refresh else null
     fun restoreFocus(tag:String,parentTag:String?):Boolean {
         if(!tag.startsWith("stream:"))return false
+        var resolvedRevision=-1;var index=-1
         return focusRestore.start {
             if(!streamsCommitted())return@start null
-            var index=adapter.currentList.indexOfFirst { streamContext(it)==parentTag }
-            if(index<0 && restoredLabel!=null)index=adapter.currentList.indexOfFirst { streamSemantic(it)==restoredLabel }
-            if(index<0 && restoredIndex!=null)index=restoredIndex!!.takeIf { it in adapter.currentList.indices }?:-1
-            if(index<0)index=adapter.currentList.indexOfFirst { "stream:${streamProvider(it)}"==tag }
+            if(resolvedRevision!=submittedRevision) {
+                resolvedRevision=submittedRevision
+                index=parentTag?.takeIf{it.startsWith("stream-source:")}?.removePrefix("stream-source:")?.let{sourceIndices[it]}?:-1
+                if(index<0 && restoredLabel!=null) {
+                    val labels=semanticIndices?:buildMap {
+                        submittedStreams.forEachIndexed{position,stream->putIfAbsent(semanticLabel(stream),position)}
+                    }.also{semanticIndices=it}
+                    index=restoredLabel?.let{labels[it]}?:-1
+                }
+                if(index<0 && restoredIndex!=null)index=restoredIndex!!.takeIf { it in adapter.currentList.indices }?:-1
+                if(index<0)index=adapter.currentList.indexOfFirst { "stream:${streamProvider(it)}"==tag }
+            }
             if(index<0)focusTarget()
             else sourceAt(index)
         }
@@ -297,7 +349,11 @@ private class StreamChoices(private val a:MainActivity,private val showErrors:Bo
             state.getString("focused")?.let { restoreFocus(it,state.getString("context")) }
         } else restored=state
     }
-    fun close() { focusRestore.cancel();list.adapter=null }
+    fun close() {
+        closed=true;focusRestore.cancel();list.adapter=null;adapter.submitList(emptyList())
+        submittedStreams=emptyList();submittedModelStreams=null;preparedModelStreams=null;committedItems=null
+        sourceIndices.clear();semanticLabels.clear();semanticIndices=null
+    }
 }
 
 private fun streamContext(s:Stream)="stream-source:"+s.identity
@@ -365,9 +421,10 @@ private class StreamCard(private val a:MainActivity,onFocus:(Stream)->Unit,open:
         }
     }
     fun bind(s:Stream) {
-        stream=s
+        val previous=stream;stream=s
+        if(previous==s)return
         val presentation=streamPresentation(s)
-        name.text=presentation.headline;detail.text=presentation.information;filename.text=presentation.filename
+        name.textIfChanged(presentation.headline);detail.textIfChanged(presentation.information);filename.textIfChanged(presentation.filename)
         detail.visibility=if(presentation.information.isEmpty())View.GONE else View.VISIBLE;detailGap.visibility=detail.visibility
         filename.visibility=if(presentation.filename.isEmpty())View.GONE else View.VISIBLE;fileGap.visibility=filename.visibility
         tag="stream:"+streamProvider(s);contentDescription=listOf(presentation.headline,presentation.information,presentation.filename).filter { it.isNotEmpty() }.joinToString(", ")
@@ -394,14 +451,16 @@ internal class DetailScreen(private val a:MainActivity,private val initial:Title
     private val metadata=a.text("",if(series)12f else 13f,MUTED).apply { maxLines=if(series)1 else 2;ellipsize=TextUtils.TruncateAt.END }
     private val episodeHeading=a.text("",13f).apply { tag="source-context";maxLines=1;ellipsize=TextUtils.TruncateAt.END }
     private val description=a.text("",if(series)13f else 14f).apply { tag="episode-description";maxLines=if(series)2 else 3;ellipsize=TextUtils.TruncateAt.END }
-    private val poster=ImageView(a).apply { tag="detail-poster";scaleType=ImageView.ScaleType.CENTER_CROP;background=a.round(PANEL);clipToOutline=true }
+    private val poster=FixedArtworkView(a).apply { tag="detail-poster";scaleType=ImageView.ScaleType.CENTER_CROP;background=a.round(PANEL);clipToOutline=true }
     private val saved=a.action("My list","Save to my list") { m.toggle(current) }.quiet()
     private val streams=StreamChoices(a,showErrors=true) { stream ->
         m.open(Route.Player(Watch(current,stream,if(series)m.selectedEpisode else null,headers=stream.headers)))
     }
     private val refreshStreams=a.action("Refresh streams") { streams.refreshCurrent() }.quiet()
     private val seasons=a.column()
-    private val episodes=RecyclerView(a).apply { tag="episodes";layoutManager=LinearLayoutManager(a,RecyclerView.HORIZONTAL,false);tune() }
+    private val episodes=TvRecyclerView(a).apply {
+        tag="episodes";layoutManager=LinearLayoutManager(a,RecyclerView.HORIZONTAL,false).apply{initialPrefetchItemCount=4};tune(cachedViews=6)
+    }
     private val chooser=a.row().apply {
         addView(seasons,LinearLayout.LayoutParams(-2,-2).apply { marginEnd=a.dp(10) })
         addView(episodes,LinearLayout.LayoutParams(0,a.dp(56),1f))
@@ -412,7 +471,28 @@ internal class DetailScreen(private val a:MainActivity,private val initial:Title
     private val empty=a.column().apply { add(emptyMessage);gap(8);add(refreshEpisodes,width=-2);add(manageAddons,width=-2) }
     private var current=initial
     private var last:Title?=null
+    // These caches belong to one series screen and are discarded on close.
+    // Selection/progress changes reuse its catalog/index and only rebuild rows.
+    private var sourceEpisodes:List<Episode>?=null
     private var orderedEpisodes:List<Episode> = emptyList()
+    private var episodeIndices:Map<String,Int> = emptyMap()
+    private var episodesById:Map<String,Episode> = emptyMap()
+    private var availableSeasons:List<Int> = emptyList()
+    private var lastEpisodeTag:String?=null
+    private var progressSource:List<Progress>?=null
+    private var progressEpisodeSource:List<Episode>?=null
+    private var resumeEnabled:Boolean?=null
+    private var resumableEpisodeId:String?=null
+    private var episodeRows:List<EpisodeRow> = emptyList()
+    private var rowEpisodeSource:List<Episode>?=null
+    private var rowSelectedId:String?=null
+    private var rowResumableId:String?=null
+    private var submittedEpisodeRows:List<EpisodeRow>?=null
+    private var episodeRevision=0
+    private var committedEpisodeRevision=0
+    private var afterEpisodeCommit:(()->Unit)?=null
+    private var scrollEpisodeId:String?=null
+    private var scrollEpisodeGeneration=0
     private var shownSeason:Int?=null
     private var selectedEpisodeId:String?=null
     private var seasonChoices:List<Int>?=null
@@ -431,21 +511,25 @@ internal class DetailScreen(private val a:MainActivity,private val initial:Title
             layoutParams=RecyclerView.LayoutParams(a.dp(200),a.dp(48)).apply { marginEnd=a.dp(8) }
             gravity=Gravity.START or Gravity.CENTER_VERTICAL;maxLines=2;ellipsize=TextUtils.TruncateAt.END;textSize=13f
             background=StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_focused),a.round(RAISED,WHITE))
+                addState(intArrayOf(android.R.attr.state_focused),a.round(RAISED,FOCUS))
                 addState(intArrayOf(android.R.attr.state_selected),a.round(RAISED))
                 addState(intArrayOf(),a.round(PANEL))
+            }
+            // Listeners belong to the recycled button, not each selected-state
+            // bind. Resolve its current tag against this series' small index.
+            setOnFocusChangeListener { view,focused ->
+                if(focused)(view.tag as? String)?.removePrefix("episode:")?.let{episodesById[it]}?.let{showSeason(it.season)}
+            }
+            setOnKeyListener { view,code,_ -> code==KeyEvent.KEYCODE_DPAD_RIGHT && view.tag==lastEpisodeTag }
+            setOnClickListener { view->
+                (view.tag as? String)?.removePrefix("episode:")?.let{episodesById[it]}?.let{episode->focusRestore.cancel();m.selectEpisode(episode)}
             }
         } },
         { v,row,_->(v as Button).apply {
             val e=row.episode
-            text=(if(row.resumable)"Resume · " else "")+"E${e.number}  ${e.name}"
+            textIfChanged((if(row.resumable)"Resume · " else "")+"E${e.number}  ${e.name}")
             contentDescription=(if(row.resumable)"Resume · " else "")+e.label
             tag="episode:"+e.id;isSelected=row.selected
-            setOnFocusChangeListener { _,focused -> if(focused)showSeason(e.season) }
-            // Let RecyclerView advance focus and scroll continuously, including
-            // held keys. Only clamp Right at the end of the entire series.
-            setOnKeyListener { _,code,_ -> code==KeyEvent.KEYCODE_DPAD_RIGHT && e.id==orderedEpisodes.lastOrNull()?.id }
-            setOnClickListener { focusRestore.cancel();m.selectEpisode(e) }
         } })
     init {
         val header=a.row().apply {
@@ -475,7 +559,7 @@ internal class DetailScreen(private val a:MainActivity,private val initial:Title
         current=m.detail?.takeIf { it.key==initial.key }?:initial
         if(capabilities.addons!==m.addons)capabilities=BrowseAddonCapabilities(m.addons)
         val inList=m.saved.any { it.key==current.key }
-        saved.text=if(inList)"✓ In My list" else "+ My list"
+        saved.textIfChanged(if(inList)"✓ In My list" else "+ My list")
         saved.contentDescription=if(inList)"Remove from my list" else "Save to my list";saved.isSelected=inList
         if(series && !m.busy)restoredEpisodeId?.let { id ->
             current.episodes.firstOrNull { it.id==id }?.let { episode ->
@@ -487,45 +571,70 @@ internal class DetailScreen(private val a:MainActivity,private val initial:Title
         refreshStreams.visibility=if(series && selected!=null && (m.streams.isNotEmpty() || m.streamsBusy))View.VISIBLE else View.INVISIBLE
         refreshStreams.isEnabled=!m.streamsBusy
         if(last!=current) {
-            orderedEpisodes=current.episodes.sortedWith(compareBy({ it.season },{ it.number }))
-            last=current;title.text=current.name
-            metadata.text=listOf(current.year,current.rating.takeIf { it.isNotBlank() }?.let { "★ $it" }.orEmpty(),current.genres.joinToString(" · ")).filter { it.isNotBlank() }.joinToString(" · ")
+            if(sourceEpisodes!==current.episodes) {
+                sourceEpisodes=current.episodes
+                var sorted=true
+                for(index in 1 until current.episodes.size) {
+                    val previous=current.episodes[index-1];val next=current.episodes[index]
+                    if(previous.season>next.season || previous.season==next.season && previous.number>next.number){sorted=false;break}
+                }
+                orderedEpisodes=if(sorted)current.episodes else current.episodes.sortedWith(compareBy({it.season},{it.number}))
+                episodeIndices=buildMap {orderedEpisodes.forEachIndexed{index,episode->putIfAbsent(episode.id,index)}}
+                episodesById=buildMap {orderedEpisodes.forEach{episode->putIfAbsent(episode.id,episode)}}
+                availableSeasons=orderedEpisodes.map{it.season}.distinct()
+                lastEpisodeTag=orderedEpisodes.lastOrNull()?.let{"episode:${it.id}"}
+            }
+            last=current;title.textIfChanged(current.name)
+            metadata.textIfChanged(listOf(current.year,current.rating.takeIf { it.isNotBlank() }?.let { "★ $it" }.orEmpty(),current.genres.joinToString(" · ")).filter { it.isNotBlank() }.joinToString(" · "))
             metadata.visibility=if(series)View.VISIBLE else if(metadata.text.isEmpty())View.GONE else View.VISIBLE
             a.artwork.show(poster,m.repository.artwork(current.poster),a.dp(posterWidth),a.dp(posterHeight))
         }
         if(series) {
-            episodeHeading.text=selected?.let { listOf(if(it.season==0)"Specials" else "Season ${it.season}","Episode ${it.number}",it.name).filter { value->value.isNotBlank() }.joinToString(" · ") }.orEmpty()
+            episodeHeading.textIfChanged(selected?.let { listOf(if(it.season==0)"Specials" else "Season ${it.season}","Episode ${it.number}",it.name).filter { value->value.isNotBlank() }.joinToString(" · ") }.orEmpty())
             val overview=selected?.description.orEmpty()
-            description.text=overview.ifBlank { current.description.takeIf { it.isNotBlank() }?.let { "About the show: $it" }.orEmpty() }
+            description.textIfChanged(overview.ifBlank { current.description.takeIf { it.isNotBlank() }?.let { "About the show: $it" }.orEmpty() })
             val recovery=addonRecovery(m,capabilities,capabilities.metadata(current),"load episodes for this show")
             empty.visibility=if(current.episodes.isEmpty() && (!m.busy || recovery!=null))View.VISIBLE else View.GONE
-            emptyMessage.text=recovery?:"Episodes are not available for this title."
+            emptyMessage.textIfChanged(recovery?:"Episodes are not available for this title.")
             refreshEpisodes.visibility=if(recovery==null)View.VISIBLE else View.GONE
             manageAddons.visibility=if(recovery!=null)View.VISIBLE else View.GONE
             chooser.visibility=if(current.episodes.isEmpty())View.GONE else View.VISIBLE
             val selectionChanged=selectedEpisodeId!=selected?.id
             selectedEpisodeId=selected?.id
-            val choices=orderedEpisodes.map { it.season }.distinct()
+            val choices=availableSeasons
             val focusedId=(episodes.findFocus()?.tag as? String)?.removePrefix("episode:")
-            val focusedSeason=orderedEpisodes.firstOrNull { it.id==focusedId }?.season
+            val focusedSeason=episodesById[focusedId]?.season
             val season=focusedSeason?:shownSeason?.takeIf { (!selectionChanged || episodeState!=null) && it in choices }
                 ?:selected?.season?:choices.firstOrNull { it>0 }?:choices.firstOrNull()
             showSeasons(choices,season)
-            val resumable=if(m.preferences.resume)m.progress.asSequence().filter { it.title.key==current.key && it.episode!=null && it.positionMs>0 && !it.finished }
-                .sortedByDescending { it.updated }.mapNotNull { progress -> current.episodes.firstOrNull { it.id==progress.episode?.id } }.firstOrNull()?.id else null
+            if(progressSource!==m.progress || progressEpisodeSource!==sourceEpisodes || resumeEnabled!=m.preferences.resume) {
+                progressSource=m.progress;progressEpisodeSource=sourceEpisodes;resumeEnabled=m.preferences.resume
+                resumableEpisodeId=if(m.preferences.resume)m.progress.asSequence()
+                    .filter{it.title.key==current.key && it.positionMs>0 && !it.finished && episodesById.containsKey(it.episode?.id)}
+                    .maxByOrNull{it.updated}?.episode?.id else null
+            }
             // One virtualized row lets native D-pad focus cross season boundaries
             // without replacing the adapter or loading another episode's streams.
-            val rows=orderedEpisodes.map { EpisodeRow(it,it.id==selected?.id,it.id==resumable) }
-            val reposition=selectionChanged && !episodes.hasFocus()
-            val inputGeneration=a.focusInputGeneration
+            if(rowEpisodeSource!==sourceEpisodes || rowSelectedId!=selected?.id || rowResumableId!=resumableEpisodeId) {
+                rowEpisodeSource=sourceEpisodes;rowSelectedId=selected?.id;rowResumableId=resumableEpisodeId
+                episodeRows=orderedEpisodes.map{EpisodeRow(it,it.id==selected?.id,it.id==resumableEpisodeId)}
+            }
+            if(selectionChanged && !episodes.hasFocus()) {scrollEpisodeId=selected?.id;scrollEpisodeGeneration=a.focusInputGeneration}
             val position:()->Unit={
                 val state=episodeState
+                val target=scrollEpisodeId;scrollEpisodeId=null
                 if(state!=null) { episodes.layoutManager?.onRestoreInstanceState(state);episodeState=null }
-                else if(reposition && a.focusInputGeneration==inputGeneration)scrollToEpisode(selected?.id)
+                else if(target!=null && a.focusInputGeneration==scrollEpisodeGeneration)scrollToEpisode(target)
             }
-            if(rows!=adapter.currentList)adapter.submitList(rows,position) else position()
+            afterEpisodeCommit=position
+            if(submittedEpisodeRows!==episodeRows) {
+                submittedEpisodeRows=episodeRows;val revision=++episodeRevision
+                adapter.submitList(episodeRows) {
+                    if(!closed && revision==episodeRevision){committedEpisodeRevision=revision;afterEpisodeCommit?.invoke();afterEpisodeCommit=null}
+                }
+            } else if(committedEpisodeRevision==episodeRevision){afterEpisodeCommit=null;position()}
         } else {
-            description.text=current.description;description.visibility=if(current.description.isBlank())View.GONE else View.VISIBLE
+            description.textIfChanged(current.description);description.visibility=if(current.description.isBlank())View.GONE else View.VISIBLE
         }
         streams.update(current,selected)
         if(!restored && !initialFocusStarted && (if(series)!m.busy else !m.streamsBusy)) {
@@ -573,13 +682,15 @@ internal class DetailScreen(private val a:MainActivity,private val initial:Title
         seasonButton?.apply { if(text.toString()!=label) { text=label;contentDescription=label } }
     }
     private fun scrollToEpisode(id:String?) {
-        val index=adapter.currentList.indexOfFirst { it.episode.id==id }
+        val index=episodeIndices[id]?.takeIf{adapter.currentList.getOrNull(it)?.episode?.id==id}
+            ?:adapter.currentList.indexOfFirst { it.episode.id==id }
         if(index>=0)episodes.scrollToPosition(index)
     }
     private fun episodeTarget(id:String):View? {
+        if(committedEpisodeRevision!=episodeRevision)return null
         if(episodes.isComputingLayout || episodes.hasPendingAdapterUpdates() || episodes.isLayoutRequested)return null
         if(episodes.scrollState!=RecyclerView.SCROLL_STATE_IDLE)return null
-        val index=orderedEpisodes.indexOfFirst { it.id==id }
+        val index=episodeIndices[id]?:-1
         if(index<0 || adapter.currentList.getOrNull(index)?.episode?.id!=id)return null
         val holder=episodes.findViewHolderForAdapterPosition(index)
         val child=holder?.itemView
@@ -618,7 +729,12 @@ internal class DetailScreen(private val a:MainActivity,private val initial:Title
             streams.restoreState(state.getParcelable("streams"));scrollState=state.getInt("scroll")
         }
     }
-    override fun close() { closed=true;focusRestore.cancel();streams.close();episodes.adapter=null;poster.dispose();poster.setImageDrawable(null) }
+    override fun close() {
+        closed=true;focusRestore.cancel();streams.close();episodes.adapter=null;adapter.submitList(emptyList());afterEpisodeCommit=null
+        sourceEpisodes=null;orderedEpisodes=emptyList();episodeIndices=emptyMap();episodesById=emptyMap();availableSeasons=emptyList()
+        progressSource=null;progressEpisodeSource=null;episodeRows=emptyList();rowEpisodeSource=null;submittedEpisodeRows=null
+        poster.dispose();poster.setImageDrawable(null)
+    }
 }
 
 /** Restore recycled content only while the user has not started another action. */
