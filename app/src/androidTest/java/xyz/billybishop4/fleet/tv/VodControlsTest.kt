@@ -38,7 +38,13 @@ class VodControlsTest : NativeTestBase() {
     private fun stopObservingSeeks() = ui { observedPlayer?.removeListener(seekListener); observedPlayer = null }
     private fun seekCount() = seekEvents.get()
     // UiDevice's accessibility-idle wait can outlast an active HUD's auto-hide timer.
-    private fun key(code: Int) = InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(code)
+    private fun key(code:Int) {
+        val instrumentation=InstrumentationRegistry.getInstrumentation();val down=SystemClock.uptimeMillis()
+        // sendKeyDownUpSync creates two zero-time events; Instrumentation fills
+        // each separately, so they do not represent one remote key gesture.
+        instrumentation.sendKeySync(KeyEvent(down,down,KeyEvent.ACTION_DOWN,code,0))
+        instrumentation.sendKeySync(KeyEvent(down,down+1,KeyEvent.ACTION_UP,code,0))
+    }
     private fun hold(code: Int, repeats: Int) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val down = SystemClock.uptimeMillis()
@@ -49,7 +55,7 @@ class VodControlsTest : NativeTestBase() {
             if (delay > 0) SystemClock.sleep(delay)
             instrumentation.sendKeySync(KeyEvent(down, time, KeyEvent.ACTION_DOWN, code, index + 1))
         }
-        instrumentation.sendKeySync(KeyEvent(down, SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, code, 0))
+        instrumentation.sendKeySync(KeyEvent(down, down+repeats+2, KeyEvent.ACTION_UP, code, 0))
     }
     private fun info() = JSONObject(ui { a.playbackInfo })
     private fun pictureDialogSelector() = By.desc("Picture controls").clazz("android.widget.LinearLayout")
@@ -195,11 +201,11 @@ class VodControlsTest : NativeTestBase() {
 
         key(KeyEvent.KEYCODE_DPAD_UP); focusedTimeline()
         hold(KeyEvent.KEYCODE_DPAD_RIGHT, repeats = 2)
-        await(15000) { at(40000) && seekCount() in 7..8 }
+        await(15000) { at(20000) && seekCount() in 6..7 }
         val heldSeeks = seekCount()
         SystemClock.sleep(400)
         assertEquals("Held seek continued after key-up in ExoPlayer", heldSeeks, seekCount())
-        assertTrue(at(40000))
+        assertTrue(at(20000))
         assertEquals("Player strip height in ExoPlayer", ui { a.dp(48) }, ui { tagged("vod-panel")!!.height })
         screenshot("ios-vod-seek-exoplayer")
 
@@ -210,56 +216,43 @@ class VodControlsTest : NativeTestBase() {
         assertTrue("Auto-hide left playback in ExoPlayer", ui { a.model.route is Route.Player })
         assertTrue("Auto-hide interrupted playback in ExoPlayer", info().optBoolean("playing") && info().optLong("positionMs") >= playingAt + 3000)
     }
-    @Test fun heldTimelineAcceleratesByDurationAndResetsOnReleaseReversalAndFocusLoss() {
-        start(preferences=Preferences(seekSeconds=5)); ui { a.activePlayer!!.pause(); a.activePlayer!!.seekTo(0) }
-        fun at(position: Long) = kotlin.math.abs(info().optLong("positionMs") - position) < 300
-        fun seeked(position: Long) = await(15000) { at(position) && ui { a.activePlayer?.playWhenReady == false } }
-        seeked(0)
-        key(KeyEvent.KEYCODE_DPAD_UP); focusedTimeline()
-        key(KeyEvent.KEYCODE_DPAD_RIGHT); seeked(5000)
-        key(KeyEvent.KEYCODE_DPAD_LEFT); seeked(0)
-        val instrumentation = InstrumentationRegistry.getInstrumentation()
-        fun event(code: Int, action: Int, down: Long, time: Long, repeats: Int) {
-            val delay = time - SystemClock.uptimeMillis()
-            if (delay > 0) SystemClock.sleep(delay)
-            instrumentation.sendKeySync(KeyEvent(down, time, action, code, repeats))
+    @Test fun heldTimelineUsesContinuousTimeAndResetsOnReleaseReversalAndFocusLoss() {
+        start(preferences=Preferences(seekSeconds=5));ui{a.activePlayer!!.pause();a.activePlayer!!.seekTo(0)}
+        fun seeked(position:Long)=await(15000){kotlin.math.abs(info().optLong("positionMs")-position)<300 && ui{a.activePlayer?.playWhenReady==false}}
+        val instrumentation=InstrumentationRegistry.getInstrumentation()
+        fun event(code:Int,action:Int,down:Long,time:Long,repeats:Int=0) {
+            val wait=time-SystemClock.uptimeMillis();if(wait>0)SystemClock.sleep(wait)
+            instrumentation.sendKeySync(KeyEvent(down,time,action,code,repeats))
         }
-        val down = SystemClock.uptimeMillis()
-        event(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_DOWN, down, down, 0)
-        event(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_DOWN, down, down + 50, 1); seeked(10000)
-        event(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_DOWN, down, down + 600, 2); seeked(50000)
-        // Keep one held key but make room in the60s fixture to observe each later tier.
-        ui { a.activePlayer!!.seekTo(0) }; seeked(0)
-        val duration = ui { a.activePlayer!!.duration }
-        event(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_DOWN, down, down + 1400, 3); seeked(duration)
-        ui { a.activePlayer!!.seekTo(0) }; seeked(0)
-        event(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_DOWN, down, down + 2700, 4)
-        seeked(duration)
-        await { ui { (tagged("vod-progress") as SeekBar).let { it.progress >= it.max - 100 } } }
-
-        event(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.ACTION_DOWN, down, SystemClock.uptimeMillis(), 5); seeked(duration - 5000)
-        event(KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.ACTION_UP, down, SystemClock.uptimeMillis(), 0)
-        event(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.ACTION_UP, down, SystemClock.uptimeMillis(), 0)
-        key(KeyEvent.KEYCODE_DPAD_LEFT); seeked(duration - 10000)
-        key(KeyEvent.KEYCODE_DPAD_RIGHT); seeked(duration - 5000)
-
-        val secondDown = SystemClock.uptimeMillis()
-        event(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.ACTION_DOWN, secondDown, secondDown, 0); seeked(duration - 10000)
-        event(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.ACTION_DOWN, secondDown, secondDown + 600, 1); seeked(duration - 50000)
-        ui { a.window.decorView.findTag("vod-options")!!.requestFocus() }
-        ui { a.window.decorView.findTag("vod-progress")!!.requestFocus() }
-        event(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.ACTION_DOWN, secondDown, SystemClock.uptimeMillis(), 2); seeked(duration - 55000)
-        event(KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.ACTION_UP, secondDown, SystemClock.uptimeMillis(), 0)
-        key(KeyEvent.KEYCODE_DPAD_DOWN); key(KeyEvent.KEYCODE_DPAD_RIGHT)
-        await { tagged("vod-forward")?.hasFocus() == true }
-        key(KeyEvent.KEYCODE_DPAD_CENTER); seeked(duration - 50000)
-        key(KeyEvent.KEYCODE_DPAD_UP); focusedTimeline()
+        seeked(0);key(KeyEvent.KEYCODE_DPAD_UP);focusedTimeline()
+        key(KeyEvent.KEYCODE_DPAD_RIGHT);seeked(5000);key(KeyEvent.KEYCODE_DPAD_LEFT);seeked(0)
+        val down=SystemClock.uptimeMillis()
+        event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down)
+        event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down+600,1)
+        event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_UP,down,down+600)
+        seeked(11900)
+        key(KeyEvent.KEYCODE_DPAD_LEFT);seeked(6900)
+        ui{a.activePlayer!!.seekTo(0)};seeked(0)
+        val held=SystemClock.uptimeMillis()
+        event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,held,held)
+        event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,held,held+600,1)
+        val reverse=held+600
+        event(KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.ACTION_DOWN,reverse,reverse)
+        event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_UP,held,reverse+20)
+        event(KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.ACTION_UP,reverse,reverse+100)
+        seeked(6900)
+        val focused=SystemClock.uptimeMillis()
+        event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,focused,focused)
+        ui{tagged("vod-options")!!.requestFocus()}
+        event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_UP,focused,SystemClock.uptimeMillis())
+        val stopped=info().optLong("positionMs");SystemClock.sleep(250)
+        assertTrue(kotlin.math.abs(info().optLong("positionMs")-stopped)<300)
+        ui{tagged("vod-progress")!!.requestFocus()};key(KeyEvent.KEYCODE_DPAD_RIGHT);seeked(stopped+5000)
         val finalDown=SystemClock.uptimeMillis()
-        event(KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.ACTION_DOWN,finalDown,finalDown,0)
-        event(KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.ACTION_DOWN,finalDown,finalDown+3300,1)
-        event(KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.ACTION_UP,finalDown,SystemClock.uptimeMillis(),0);seeked(0)
-        await { ui { (tagged("vod-progress") as SeekBar).progress <= 100 } }
-        assertFalse(ui { a.activePlayer!!.playWhenReady })
+        event(KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.ACTION_DOWN,finalDown,finalDown)
+        event(KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.ACTION_UP,finalDown,finalDown+2000)
+        seeked(0);await{ui{(tagged("vod-progress") as SeekBar).progress<=100}}
+        assertFalse(ui{a.activePlayer!!.playWhenReady})
     }
     @Test fun hiddenAndVideoSurfaceDirectionsSeekImmediatelyWithoutPausingOrAnExtraPress() {
         for(youtube in listOf(false,true)) {
@@ -279,33 +272,27 @@ class VodControlsTest : NativeTestBase() {
     }
     @Test fun oneContinuousHoldFromHiddenControlsAcceleratesAndReleaseResetsIt() {
         val instrumentation=InstrumentationRegistry.getInstrumentation()
-        fun event(code:Int,action:Int,down:Long,time:Long,repeats:Int) {
+        fun event(code:Int,action:Int,down:Long,time:Long,repeats:Int=0) {
             val wait=time-SystemClock.uptimeMillis();if(wait>0)SystemClock.sleep(wait)
             instrumentation.sendKeySync(KeyEvent(down,time,action,code,repeats))
         }
         for(youtube in listOf(false,true)) {
             start(youtube=youtube,preferences=Preferences(seekSeconds=5));ui{a.activePlayer!!.pause();a.activePlayer!!.seekTo(0)}
-            await{ui{!a.activePlayer!!.playWhenReady && a.activePlayer!!.currentPosition<1200}}
+            await{ui{!a.activePlayer!!.playWhenReady && a.activePlayer!!.currentPosition<300}}
             key(KeyEvent.KEYCODE_BACK);await{tagged("vod-controls")?.isShown==false && tagged("native-player")?.hasFocus()==true}
             observeSeeks();val down=SystemClock.uptimeMillis()
-            event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down,0)
+            event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down)
             focusedTimeline()
-            if(youtube) {
-                await{ui{(tagged("youtube-seek-preview-time") as? TextView)?.text=="0:05"}}
-                assertEquals("YouTube previews must not seek the decoder before release",0,seekCount())
-            } else await{seekCount()==1 && kotlin.math.abs(info().optLong("positionMs")-5000)<300}
             event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down+600,1)
-            if(youtube) {
-                await{ui{(tagged("youtube-seek-preview-time") as? TextView)?.text=="0:45"}}
-                assertEquals(0,seekCount())
-            } else await{kotlin.math.abs(info().optLong("positionMs")-45000)<300}
-            event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down+800,2)
-            event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_UP,down,SystemClock.uptimeMillis(),0)
-            val duration=ui{a.activePlayer!!.duration}
-            await{seekCount()==(if(youtube)1 else 3) && kotlin.math.abs(info().optLong("positionMs")-duration)<300}
+            if(youtube)assertEquals("YouTube must defer decoder seeks until release",0,seekCount())
+            event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_UP,down,down+800)
+            // A5s tap plus12.5s integrated held travel. Repeat density cannot
+            // turn this800ms gesture into the whole60s video.
+            await{kotlin.math.abs(info().optLong("positionMs")-17500)<300}
+            if(youtube)assertEquals(1,seekCount()) else assertTrue(seekCount() in 2..10)
             val released=seekCount();SystemClock.sleep(250);assertEquals("Held seeking continued after UP",released,seekCount())
             key(KeyEvent.KEYCODE_DPAD_LEFT)
-            await{seekCount()==(if(youtube)2 else 4) && kotlin.math.abs(info().optLong("positionMs")-(duration-5000))<300}
+            await{seekCount()==released+1 && kotlin.math.abs(info().optLong("positionMs")-12500)<300}
             assertFalse("Held directional seeking resumed paused playback",ui{a.activePlayer!!.playWhenReady})
             assertTrue(tagged("vod-progress")?.hasFocus()==true)
         }

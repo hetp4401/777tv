@@ -1,13 +1,18 @@
 package xyz.billybishop4.fleet.tv
 
 import android.app.AlertDialog
+import android.os.SystemClock
 import android.text.InputFilter
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewTreeObserver
 import android.widget.*
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -39,11 +44,56 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
     private var disposed=false
     private var saveEntry=false
     private var observedEpoch=m.client.historyAccountEpoch()
+    private data class ReadyFocus(val tag:String,val input:Int,val generation:Int,val account:Int?,val sheet:AlertDialog,
+        val deadline:Long=SystemClock.uptimeMillis()+5000)
+    private var readyFocus:ReadyFocus?=null
+    private var focusObserver:ViewTreeObserver?=null
+    private val focusAttempt:Runnable=Runnable { applyReadyFocus() }
+    private val focusExpired:Runnable=Runnable { cancelReadyFocus() }
+    private val windowFocus:ViewTreeObserver.OnWindowFocusChangeListener=ViewTreeObserver.OnWindowFocusChangeListener { focused->if(focused)rows.postOnAnimation(focusAttempt) }
+    private val layoutFocus:ViewTreeObserver.OnPreDrawListener=ViewTreeObserver.OnPreDrawListener { applyReadyFocus();true }
+    private val focusLifecycle:DefaultLifecycleObserver=object:DefaultLifecycleObserver {
+        override fun onStop(owner:LifecycleOwner){cancelReadyFocus()}
+    }
     private val rows by lazy { a.column().apply { tag="youtube-video-actions";setPadding(a.dp(16),a.dp(4),a.dp(16),a.dp(4)) } }
     private val content by lazy { ScrollView(a).apply { isFillViewport=false;addView(rows) } }
     internal val view:View get()=content
     val visible get()=dialog?.isShowing==true
     private val active get()=!disposed && (playerChanged!=null || visible)
+
+    /** Metadata can finish before an opening dialog receives window focus.
+     * Keep one scoped target until that window/layout is ready, with no polling. */
+    private fun focusWhenReady(tag:String,input:Int) {
+        val sheet=dialog?:return
+        if(!a.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED))return
+        readyFocus=ReadyFocus(tag,input,generation,m.client.historyAccountEpoch(),sheet)
+        focusObserver=content.viewTreeObserver.also {
+            it.addOnWindowFocusChangeListener(windowFocus);it.addOnPreDrawListener(layoutFocus)
+        }
+        a.lifecycle.addObserver(focusLifecycle)
+        rows.postOnAnimation(focusAttempt);rows.postDelayed(focusExpired,5000)
+    }
+    private fun applyReadyFocus() {
+        val pending=readyFocus?:return
+        if(disposed || !visible || dialog!==pending.sheet || pending.input!=inputGeneration || pending.generation!=generation ||
+            pending.account!=m.client.historyAccountEpoch() || busy || SystemClock.uptimeMillis()>pending.deadline ||
+            !a.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) { cancelReadyFocus();return }
+        if(!content.isAttachedToWindow || !content.hasWindowFocus() || rows.isLayoutRequested)return
+        val target=rows.findTag(pending.tag)?.takeIf{it.isEnabled && it.isShown && it.width>0 && it.height>0}?:return
+        if(target.requestFocus()){actionAnchor=null;cancelReadyFocus()}
+    }
+    private fun cancelReadyFocus() {
+        val previous=focusObserver
+        if(readyFocus==null && previous==null)return
+        readyFocus=null;focusObserver=null
+        rows.removeCallbacks(focusAttempt);rows.removeCallbacks(focusExpired)
+        fun remove(observer:ViewTreeObserver) {
+            if(observer.isAlive){observer.removeOnWindowFocusChangeListener(windowFocus);observer.removeOnPreDrawListener(layoutFocus)}
+        }
+        if(previous!=null)remove(previous)
+        content.viewTreeObserver.takeIf{it!==previous}?.let(::remove)
+        a.lifecycle.removeObserver(focusLifecycle)
+    }
 
     fun show()=showSheet(false)
     private fun showSheet(save:Boolean) {
@@ -53,7 +103,7 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
         (content.parent as? ViewGroup)?.removeView(content)
         val sheet=AlertDialog.Builder(a).setTitle(if(save)"Save video" else "Video actions").setView(content).setNegativeButton("Done",null).create()
         dialog=sheet;a.ownDialog(sheet)
-        sheet.setOnKeyListener { _,_,event->if(event.action==android.view.KeyEvent.ACTION_DOWN)inputGeneration++;false }
+        sheet.setOnKeyListener { _,_,event->if(event.action==android.view.KeyEvent.ACTION_DOWN){inputGeneration++;cancelReadyFocus()};false }
         sheet.setOnShowListener {
             a.styleDialog(sheet)
             sheet.window?.apply {
@@ -65,6 +115,7 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
             if(save)loadPlaylists() else loadDetails()
         }
         sheet.setOnDismissListener {
+            cancelReadyFocus()
             if(dialog===sheet)dialog=null
             generation++;request?.cancel();request=null;busy=false;notice="";signIn?.close();signIn=null;a.releaseDialog(sheet);publishPlayerState()
             val input=a.focusInputGeneration
@@ -208,9 +259,11 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
     private fun render() {
         publishPlayerState()
         if(!visible)return
-        val input=if(nextFocus!=null)requestInput else inputGeneration
-        val focused=nextFocus?:(rows.findFocus()?.tag as? String)?:actionAnchor?.takeIf{it.second==inputGeneration}?.first
+        val requested=nextFocus?.takeIf{requestInput==inputGeneration}
+        val input=if(requested!=null)requestInput else inputGeneration
+        val focused=requested?:(rows.findFocus()?.tag as? String)?:actionAnchor?.takeIf{it.second==inputGeneration}?.first
         nextFocus=null
+        cancelReadyFocus()
         rows.removeAllViews()
         rows.add(a.text(video.name,14f,bold=true).apply { maxLines=2;ellipsize=TextUtils.TruncateAt.END },height=-2);rows.gap(7)
         val status=error?:notice
@@ -224,10 +277,7 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
             Page.CREATE->renderCreate()
         }
         if(error!=null && details==null && page==Page.ACTIONS)row("Retry","youtube-actions-retry"){loadDetails()}
-        if(focused!=null && !busy)rows.postOnAnimation {
-            if(visible && input==inputGeneration && content.hasWindowFocus())rows.findTag(focused)?.takeIf{it.isEnabled}?.requestFocus()
-            actionAnchor=null
-        }
+        if(focused!=null && !busy)focusWhenReady(focused,input)
     }
     private fun renderActions() {
         val channel=details?.channel
@@ -310,7 +360,7 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
     }
     fun close(){
         if(disposed)return
-        disposed=true;dialog?.dismiss();generation++;request?.cancel();request=null;busy=false;signIn?.close();signIn=null
+        disposed=true;cancelReadyFocus();dialog?.dismiss();generation++;request?.cancel();request=null;busy=false;signIn?.close();signIn=null
         details=null;playlists=emptyList()
     }
 }

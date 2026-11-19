@@ -1,6 +1,14 @@
 package xyz.billybishop4.fleet.tv
 
 import android.content.Context
+import android.animation.ValueAnimator
+import android.graphics.Canvas
+import android.graphics.ColorFilter
+import android.graphics.Paint
+import android.graphics.PixelFormat
+import android.graphics.Rect
+import android.graphics.RectF
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
 import android.os.Parcelable
@@ -20,8 +28,11 @@ import coil.dispose
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlin.math.abs
+import kotlin.math.exp
+import kotlin.math.roundToInt
 
-/** Native TV shelves and search. The overlay rail never resizes the browsing surface. */
+/** Native TV shelves and search. Sidebar changes compose over stable measured geometry. */
 internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
     private val m=a.model.youtube
     private var syncing=false;private var closed=false;private var searchCollapsed=false
@@ -133,8 +144,37 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         importantForAccessibility=View.IMPORTANT_FOR_ACCESSIBILITY_NO
         if(android.os.Build.VERSION.SDK_INT>=26)defaultFocusHighlightEnabled=false
     }
+    /** Local native pills reveal with their label; the sidebar itself has no
+     * backplate, so solid and gradient section backgrounds stay continuous. */
+    private fun railSurface():Drawable=object:Drawable() {
+        private val palette=AppTheme.palette
+        private val fill=Paint(Paint.ANTI_ALIAS_FLAG)
+        private val outline=Paint(Paint.ANTI_ALIAS_FLAG).apply { style=Paint.Style.STROKE;strokeWidth=a.dp(2).toFloat() }
+        private val box=RectF()
+        private var opacity=255
+        override fun isStateful()=true
+        override fun onStateChange(state:IntArray):Boolean { invalidateSelf();return true }
+        override fun draw(canvas:Canvas) {
+            val focused=state.contains(android.R.attr.state_focused) || state.contains(android.R.attr.state_pressed)
+            if(!focused && !state.contains(android.R.attr.state_selected))return
+            val visible=(a.dp(52)+a.dp(112)*railFraction).coerceAtMost(bounds.width().toFloat())
+            val left=if(view.layoutDirection==View.LAYOUT_DIRECTION_RTL)bounds.right-visible else bounds.left.toFloat()
+            box.set(left+a.dp(4),bounds.top+a.dp(4).toFloat(),left+visible-a.dp(4),bounds.bottom-a.dp(4).toFloat())
+            fill.color=if(focused)palette.raised else palette.panel;fill.alpha=opacity
+            canvas.drawRoundRect(box,a.dp(22).toFloat(),a.dp(22).toFloat(),fill)
+            if(focused) {
+                outline.color=palette.focusRing;outline.alpha=opacity
+                canvas.drawRoundRect(box,a.dp(22).toFloat(),a.dp(22).toFloat(),outline)
+            }
+        }
+        override fun setAlpha(alpha:Int){opacity=alpha;invalidateSelf()}
+        override fun setColorFilter(filter:ColorFilter?){fill.colorFilter=filter;outline.colorFilter=filter;invalidateSelf()}
+        @Deprecated("Deprecated in Java") override fun getOpacity()=PixelFormat.TRANSLUCENT
+    }
     private fun railButton(label:String,description:String,click:()->Unit)=a.action(label,description,click=click).quiet().apply {
         id=View.generateViewId()
+        background=railSurface()
+        if(android.os.Build.VERSION.SDK_INT>=26)defaultFocusHighlightEnabled=false
         gravity=Gravity.CENTER_VERTICAL or Gravity.START;setPadding(a.dp(13),0,a.dp(8),0)
         setCompoundDrawablesRelativeWithIntrinsicBounds(YouTubeRailIcon(label,a.dp(23)),null,null,null)
         compoundDrawablePadding=a.dp(17);setSingleLine(true)
@@ -145,8 +185,18 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
     private val subscriptions=railButton("Subscriptions","YouTube subscriptions"){browse(YouTubeFeed.SUBSCRIPTIONS)}
     private val library=railButton("Library","YouTube library"){browse(if(m.feed.library)m.feed else YouTubeFeed.HISTORY)}
     private val account=railButton("Sign in","YouTube account"){account()}
-    private val rail=a.column().apply {
-        tag="youtube-navigation";clipChildren=true;setBackgroundColor(INK)
+    private val railItems=arrayOf(account,searchNav,home,shorts,subscriptions,library)
+    private val rail=object:LinearLayout(a) {
+        override fun dispatchTouchEvent(event:MotionEvent):Boolean {
+            // The full sidebar is preallocated; its invisible label region must
+            // not intercept a pointer intended for the browsing surface.
+            val clip=clipBounds
+            if(event.actionMasked==MotionEvent.ACTION_DOWN && clip!=null && (event.x<clip.left || event.x>=clip.right))return false
+            return super.dispatchTouchEvent(event)
+        }
+    }.apply {
+        orientation=LinearLayout.VERTICAL
+        tag="youtube-navigation";clipChildren=true;background=null
         add(account,width=a.dp(164),height=a.dp(48));gap(22)
         for(button in listOf(searchNav,home,shorts,subscriptions,library))add(button,width=a.dp(164),height=a.dp(48))
     }
@@ -293,6 +343,7 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
     private var lastFeed:YouTubeFeed?=null;private var lastQuery=""
     private var submitted:List<YouTubeVideo>?=null;private var submittedShelves:List<YouTubeShelf>?=null;private var submittedShelfScope=""
     private var presentedShelves:List<ShelfRow> = emptyList()
+    private var shelfStarts=IntArray(1)
     private val scrollStates=linkedMapOf<YouTubeFeed,Parcelable>()
     private var pendingScroll:Parcelable?=null;private var pendingHomeScroll:Parcelable?=null
     private var signIn:YouTubeSignIn?=null
@@ -340,6 +391,31 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         (firstCard()?:emptySignIn.takeIf{it.isShown}?:emptyRefresh.takeIf{it.isShown}?:
             if(m.feed.library)libraryTarget() else if(m.feed==YouTubeFeed.SEARCH)input else button).requestFocus()
     }
+    private val body=a.column().apply { tag="youtube-content" }
+    private var railFraction=0f
+    private var railExpanded=false
+    private var railAnimation:ValueAnimator?=null
+    private val railClip=Rect()
+    private fun composeRail(fraction:Float) {
+        railFraction=fraction
+        val reveal=a.dp(112)*fraction
+        val rtl=view.layoutDirection==View.LAYOUT_DIRECTION_RTL
+        body.translationX=if(rtl)-reveal else reveal
+        val visible=a.dp(52)+reveal.roundToInt()
+        railClip.set(if(rtl)(rail.width-visible).coerceAtLeast(0) else 0,0,if(rtl)rail.width else visible,rail.height)
+        rail.clipBounds=railClip
+        for(button in railItems)
+            if(button.hasFocus() || button.isSelected || button.isPressed)button.background.invalidateSelf()
+    }
+    private fun revealRail(expanded:Boolean) {
+        if(railExpanded==expanded)return
+        railExpanded=expanded;railAnimation?.cancel()
+        val destination=if(expanded)1f else 0f
+        railAnimation=ValueAnimator.ofFloat(railFraction,destination).apply {
+            duration=140;interpolator=android.view.animation.DecelerateInterpolator(1.5f)
+            addUpdateListener { composeRail(it.animatedValue as Float) };start()
+        }
+    }
     private val railFocus=ViewTreeObserver.OnGlobalFocusChangeListener { previous,focused->
         if(!closed) {
             rememberShelfFocus(previous);rememberShelfFocus(focused)
@@ -353,9 +429,7 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
                 val shelf=parent?.parent as? YouTubeShelfView
                 contentAnchor=ContentAnchor(card.tag.toString(),shelf?.tag?.toString(),m.feed,m.query)
             }
-            val expanded=within(focused,rail)
-            val width=a.dp(if(expanded)164 else 52)
-            if(rail.layoutParams.width!=width)rail.layoutParams=rail.layoutParams.apply { this.width=width }
+            revealRail(within(focused,rail))
             if(m.feed==YouTubeFeed.SEARCH) {
                 if(within(focused,shelves)){searchCollapsed=true;searchTools.visibility=View.GONE}
                 else if(focused===input || within(focused,keyboard) || within(focused,recent))expandSearch()
@@ -363,7 +437,7 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         }
     }
     init {
-        val body=a.column().apply {
+        body.apply {
             add(homeSearchRow,height=a.dp(44));add(searchHeader,height=a.dp(48));add(heading,height=a.dp(42))
             add(progress,height=a.dp(2));add(feedback);gap(8)
             add(searchTools,height=a.dp(168))
@@ -374,7 +448,9 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
             },LinearLayout.LayoutParams(-1,0,1f))
         }
         view.addView(body,FrameLayout.LayoutParams(-1,-1).apply{marginStart=a.dp(64)})
-        view.addView(rail,FrameLayout.LayoutParams(a.dp(52),-1,Gravity.START))
+        view.addView(rail,FrameLayout.LayoutParams(a.dp(164),-1,Gravity.START))
+        rail.addOnLayoutChangeListener { _,_,_,_,_,_,_,_,_->composeRail(railFraction) }
+        composeRail(0f)
         view.addView(shelfFocusAnchor,FrameLayout.LayoutParams(1,1,Gravity.TOP or Gravity.START))
         list.adapter=adapter;shelves.adapter=shelfAdapter
         homeSearch.setOnKeyListener { _,key,event->
@@ -445,8 +521,61 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         ShelfSelection(index,pendingShelfScope,pendingShelfKey,pendingShelfTag,pendingShelfAccount).takeIf(::currentShelfSelection)
     }
     private var pendingShelfAccount:Int?=null
+    private var shelfScrollPosted=false
+    private var shelfMoving=false
+    private var shelfScrollAt=0L
+    private var shelfScrollDeadline=0L
+    private fun shelvesCommitted()=submittedShelves===shelfSource() && submittedShelfScope==shelfScope() &&
+        shelfAdapter.currentList==presentedShelves && shelfStarts.size==presentedShelves.size+1
+    private fun shelfOffset():Int? {
+        val position=homeLayout.findFirstVisibleItemPosition()
+        val child=homeLayout.findViewByPosition(position)?:return null
+        return shelfStarts.getOrNull(position)?.minus(homeLayout.getDecoratedTop(child)-shelves.paddingTop)
+    }
+    private fun shelfDestination(index:Int):Int {
+        val viewport=(shelves.height-shelves.paddingTop-shelves.paddingBottom).coerceAtLeast(0)
+        return shelfStarts.getOrElse(index){0}.coerceIn(0,(shelfStarts.last()-viewport).coerceAtLeast(0))
+    }
+    private fun shelfAligned(index:Int)=shelvesCommitted() && !shelves.isLayoutRequested && !shelves.hasPendingAdapterUpdates() &&
+        !shelves.isComputingLayout && shelfOffset()?.let{abs(shelfDestination(index)-it)<=1}==true
+    private fun postShelfScroll() {
+        if(!shelfScrollPosted){shelfScrollPosted=true;view.postOnAnimation(shelfScrollFrame)}
+    }
+    private fun stopShelfScroll() {
+        view.removeCallbacks(shelfScrollFrame);shelfScrollPosted=false;shelfMoving=false;shelfScrollAt=0
+    }
+    /** One native scroll driver survives repeated keys and reversals. It moves
+     * existing RecyclerView pixels each frame; retargeting never jumps/restarts
+     * a layout or allocates another animator. Shelf extents are fixed above. */
+    private val shelfScrollFrame:Runnable=object:Runnable {
+        override fun run() {
+            shelfScrollPosted=false
+            val selection=pendingShelfSelection()
+            if(selection==null || !view.isAttachedToWindow || !view.isShown || !a.hasWindowFocus() || SystemClock.uptimeMillis()>shelfScrollDeadline) {
+                abortShelfMove(restoreFocus=false);return
+            }
+            val now=SystemClock.uptimeMillis()
+            if(!shelvesCommitted() || shelves.isLayoutRequested || shelves.hasPendingAdapterUpdates() || shelves.isComputingLayout || shelves.isLayoutSuppressed) {
+                shelfScrollAt=now;postShelfScroll();return
+            }
+            val offset=shelfOffset()
+            if(offset==null){shelfScrollAt=now;postShelfScroll();return}
+            val remaining=shelfDestination(selection.index)-offset
+            if(abs(remaining)<=1) {
+                if(remaining!=0)shelves.scrollBy(0,remaining)
+                shelfMoving=false;shelfScrollAt=0;return
+            }
+            val elapsed=(if(shelfScrollAt==0L)16L else now-shelfScrollAt).coerceIn(1,48)
+            shelfScrollAt=now;shelfMoving=true
+            val fraction=(1-exp(-elapsed/45.0)).toFloat()
+            val maximum=4.2f*a.resources.displayMetrics.density*elapsed
+            val amount=(remaining*fraction).coerceIn(-maximum,maximum).roundToInt()
+                .let{if(it==0)if(remaining>0)1 else -1 else it}
+            shelves.scrollBy(0,amount);postShelfScroll()
+        }
+    }
     private fun shelfTarget(value:ShelfSelection,scroll:Boolean=false):View? {
-        if(!currentShelfSelection(value) || submittedShelfScope!=value.scope || submittedShelves!==shelfSource() || shelfAdapter.currentList!=presentedShelves)return null
+        if(!currentShelfSelection(value) || shelfMoving || !shelfAligned(value.index))return null
         val row=homeLayout.findViewByPosition(value.index) as? YouTubeShelfView?:return null
         if(shelves.getChildAdapterPosition(row)!=value.index || row.stateKey!="${value.scope}/${value.key}")return null
         return row.attachedVideo(value.tag)?:if(scroll)row.focusVideo(value.tag) else null
@@ -461,19 +590,24 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
     private fun focusShelfSelection(value:ShelfSelection):Boolean {
         if(!currentShelfSelection(value)){abortShelfMove();return true}
         restore.cancel()
+        // Retire a native focus-reveal pan once when taking ownership. Repeated
+        // keys retain the same driver and pixel position until handoff finishes.
+        if(pendingShelfIndex==null)shelves.stopScroll()
         pendingShelfIndex=value.index;pendingShelfScope=value.scope;pendingShelfKey=value.key;pendingShelfTag=value.tag;pendingShelfAccount=value.account
         val target=shelfTarget(value)
         if(target!=null && target.requestFocus()){clearShelfMove();releaseShelfAnchor();return true}
         // Retain a page-local input owner while the old row is detached. Every repeat
         // reaches the logical pending cursor instead of spending a key on a top tab.
         shelfFocusAnchor.isFocusable=true;shelfFocusAnchor.isFocusableInTouchMode=true;shelfFocusAnchor.requestFocus()
-        shelves.scrollToPosition(value.index)
+        shelfScrollDeadline=SystemClock.uptimeMillis()+30_000
+        shelfMoving=!shelfAligned(value.index)
+        if(shelfMoving)postShelfScroll()
         restore.start {
             if(!currentShelfSelection(value)){abortShelfMove();null} else shelfTarget(value,scroll=true)
         }
         return true
     }
-    private fun clearShelfMove(){pendingShelfIndex=null;pendingShelfScope="";pendingShelfKey="";pendingShelfTag="";pendingShelfAccount=null}
+    private fun clearShelfMove(){stopShelfScroll();pendingShelfIndex=null;pendingShelfScope="";pendingShelfKey="";pendingShelfTag="";pendingShelfAccount=null}
     private fun releaseShelfAnchor(){if(!shelfFocusAnchor.hasFocus()){shelfFocusAnchor.isFocusable=false;shelfFocusAnchor.isFocusableInTouchMode=false}}
     private fun cancelShelfActivation(){pendingShelfActivation=null;view.removeCallbacks(activateShelf)}
     private fun abortShelfMove(restoreFocus:Boolean=true) {
@@ -716,6 +850,9 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         if(submittedShelves!==source || submittedShelfScope!=scope) {
             submittedShelves=source;submittedShelfScope=scope;val state=pendingHomeScroll;pendingHomeScroll=null
             presentedShelves=source.mapIndexed { index,row->ShelfRow(row,"$scope/${row.key}",if(row.portrait)2 else if(m.feed==YouTubeFeed.HOME && index==0)1 else 0) }
+            shelfStarts=IntArray(presentedShelves.size+1).also { starts->
+                for(index in presentedShelves.indices)starts[index+1]=starts[index]+YouTubeShelfView.extent(a,presentedShelves[index].kind)
+            }
             shelfAdapter.submitList(presentedShelves) { if(state!=null)homeLayout.onRestoreInstanceState(state) }
         }
         val typedQuery=m.query.trim()
@@ -786,9 +923,10 @@ internal class YouTubeScreen(private val a:MainActivity):NativeScreen {
         submitted=null;submittedShelves=null
     }
     override fun foreground(){m.activate()}
-    override fun background(){abortShelfMove(restoreFocus=false);hideKeyboard();m.deactivate();channelRequest++;channelJob?.cancel();channelJob=null;channelBusy=false;signIn?.close()}
+    override fun background(){abortShelfMove(restoreFocus=false);railAnimation?.cancel();railAnimation=null;composeRail(if(railExpanded)1f else 0f)
+        hideKeyboard();m.deactivate();channelRequest++;channelJob?.cancel();channelJob=null;channelBusy=false;signIn?.close()}
     override fun close(){
-        closed=true;abortShelfMove(restoreFocus=false);signIn?.close();signIn=null;m.deactivate();channelRequest++;channelJob?.cancel();channelJob=null
+        closed=true;abortShelfMove(restoreFocus=false);railAnimation?.cancel();railAnimation=null;signIn?.close();signIn=null;m.deactivate();channelRequest++;channelJob?.cancel();channelJob=null
         channelImage.dispose();channelImage.setImageDrawable(null)
         view.viewTreeObserver.removeOnGlobalFocusChangeListener(railFocus)
         for(i in 0 until list.childCount)when(val card=list.getChildAt(i)){is YouTubeCard->card.release();is YouTubePlaylistCard->card.release()}

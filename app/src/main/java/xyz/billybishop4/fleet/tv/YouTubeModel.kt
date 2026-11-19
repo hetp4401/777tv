@@ -386,6 +386,15 @@ internal class YouTubeModel(
         }
     }
     fun cancelShortPreload(){preloadJob?.cancel();preloadJob=null;preloadGeneration++;preloadId=null;preloaded=null;preloadStarted=false}
+    /** Animation follows a successfully committed queue move. Resolution failure
+     * leaves the current player still and rapid changes use the winning ID. */
+    internal fun shortTransitionDirection(from:Watch,to:Watch):Int {
+        if(!from.short || !to.short || from.title.id==to.title.id)return 0
+        val previous=queue.indexOfFirst{it.id==from.title.id}
+        val next=queue.indexOfFirst{it.id==to.title.id}
+        if(previous<0 || next<0)return 0
+        return if(next>previous)1 else -1
+    }
     fun step(watch:Watch,direction:Int) {
         if(!watch.short || queue.isEmpty())return
         val id=requestedVideo?:watch.title.id

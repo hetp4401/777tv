@@ -37,7 +37,11 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
         { watch,replace ->
             if(watch.requestedPositionMs!=null) {
                 section=Section.YOUTUBE;history.clear();history+=Location(Route.Browse(Section.YOUTUBE),Section.YOUTUBE);route=Route.Player(watch);load()
-            }else if(replace && (route as? Route.Player)?.watch?.title?.type=="youtube")route=Route.Player(watch) else open(Route.Player(watch))
+            }else if(replace) {
+                // A replacement belongs to the player it was requested from.
+                // A late source must never reopen playback after local exit.
+                if((route as? Route.Player)?.watch?.title?.type=="youtube")route=Route.Player(watch)
+            }else open(Route.Player(watch))
         },
         { message -> android.widget.Toast.makeText(getApplication(),message,android.widget.Toast.LENGTH_LONG).show() },resolver)
     internal fun youTubeBackground(){youtubeValue?.deactivate()}
@@ -128,11 +132,17 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
             Section.YOUTUBE -> route==Route.Browse(Section.YOUTUBE)
         }
         if(this.section==section && root)return
+        cancelYouTubeReplacementOnExit()
         this.section = section; history.clear(); route = Route.Browse(section)
         if (section == Section.LIVE) enterLive()
         load()
     }
-    fun showProfiles() { section = Section.LIVE; history.clear(); route = Route.Browse(Section.LIVE); load() }
+    private fun cancelYouTubeReplacementOnExit() {
+        // Also covers initial Play from browse, before the next render has had
+        // a chance to retire that screen. Never creates a YouTube model here.
+        youtubeValue?.cancelPlayback()
+    }
+    fun showProfiles() { cancelYouTubeReplacementOnExit();section = Section.LIVE; history.clear(); route = Route.Browse(Section.LIVE); load() }
     fun manageProfiles() { open(Route.Browse(Section.LIVE));section=Section.LIVE }
     fun makeDefaultProfile(id: String) {
         if (providers.none { it.id == id && it.kind == "stalker" }) return
@@ -145,6 +155,7 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
             return
         }
         if (target == route) return
+        if((target as? Route.Player)?.watch?.title?.type!="youtube")cancelYouTubeReplacementOnExit()
         if(target is Route.Detail && target.title.type=="series")beginSeriesPage(target)
         if(history.size>=32)history.removeAt(0)
         history += Location(route,section)
@@ -153,6 +164,7 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
         load()
     }
     fun back(): Boolean {
+        cancelYouTubeReplacementOnExit()
         while(history.isNotEmpty()) {
             val previous=history.removeAt(history.lastIndex)
             if(previous.route==route && previous.section==section)continue

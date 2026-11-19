@@ -26,7 +26,7 @@ internal class FixedArtworkView(context:Context):ImageView(context) {
     override fun requestLayout() { if(!replacingFixedImage)super.requestLayout() }
 }
 
-/** The labels are clipped by the collapsed rail, and revealed without moving the content. */
+/** Native glyphs stay visible while the sidebar's labels are clipped in icon mode. */
 internal class YouTubeRailIcon(private val kind:String,private val size:Int):Drawable() {
     private val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=WHITE;style=Paint.Style.STROKE;strokeWidth=2f }
     private val path=Path();private val rect=RectF()
@@ -205,19 +205,34 @@ internal class YouTubeShelfView(
     private val kind:Int,private val play:(YouTubeVideo,List<YouTubeVideo>)->Unit,
     private val end:((String,String)->Unit)?=null,
 ):LinearLayout(context) {
+    companion object {
+        private fun cardWidth(context:Context,kind:Int)=context.dp(when(kind){2->128;1->288;else->218})
+        private fun headingHeight(context:Context):Int {
+            val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply { textSize=19*context.resources.displayMetrics.scaledDensity;typeface=Typeface.DEFAULT_BOLD }
+            val metrics=paint.fontMetricsInt
+            return maxOf(context.dp(26),metrics.bottom-metrics.top)
+        }
+        private fun listHeight(context:Context,kind:Int):Int {
+            val width=cardWidth(context,kind)
+            return (if(kind==2)width*16/9 else width*9/16)+context.dp(75)
+        }
+        /** One fixed extent per shelf kind makes retargeted vertical movement
+         * exact, including rows that have not yet acquired/rebound their views. */
+        fun extent(context:Context,kind:Int)=headingHeight(context)+context.dp(9)+listHeight(context,kind)+context.dp(16)
+    }
     var shelfKey="";private set
     var stateKey="";private set
     private var bound=false
     private var items:List<YouTubeVideo> = emptyList()
     private val heading=context.text("",19f,bold=true).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END }
     val list=TvRecyclerView(context)
-    private val width=context.dp(when(kind){2->128;1->288;else->218})
+    private val width=cardWidth(context,kind)
     private val select:(YouTubeVideo)->Unit={play(it,items)}
     private val adapter=NativeAdapter<YouTubeVideo>({it.id},{parent,_->YouTubeCard(parent.context,loader,kind==2,width,true)},
         {view,value,_->(view as YouTubeCard).bind(value,select)},type={10+kind},recycle={(it as YouTubeCard).release()})
     init {
-        orientation=VERTICAL;layoutParams=RecyclerView.LayoutParams(-1,-2).apply { bottomMargin=context.dp(16) }
-        add(heading);gap(9)
+        orientation=VERTICAL;layoutParams=RecyclerView.LayoutParams(-1,extent(context,kind)-context.dp(16)).apply { bottomMargin=context.dp(16) }
+        add(heading,height=headingHeight(context));gap(9)
         val slot=width+context.dp(16)
         val viewport=(context.resources.displayMetrics.widthPixels-context.dp(48+64)).coerceAtLeast(slot)
         val prefetch=((viewport+slot-1)/slot).coerceIn(2,if(kind==2)8 else 6)
@@ -227,7 +242,7 @@ internal class YouTubeShelfView(
             if(isShown && list.adapter===adapter && adapter.currentList==items && items.isNotEmpty() &&
                 (list.layoutManager as LinearLayoutManager).findLastVisibleItemPosition()>=items.lastIndex-2)end.invoke(shelfKey,stateKey)
         }})
-        add(list,height=(if(kind==2)width*16/9 else width*9/16)+context.dp(75))
+        add(list,height=listHeight(context,kind))
     }
     fun bind(row:YouTubeShelf,state:Parcelable?,identity:String=row.key) {
         val changed=!bound || stateKey!=identity;bound=true;shelfKey=row.key;stateKey=identity;items=row.videos;tag="youtube-shelf:${row.key}"

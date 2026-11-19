@@ -42,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private var appearanceGradient=true
     internal val posterPool = androidx.recyclerview.widget.RecyclerView.RecycledViewPool()
     private lateinit var root: FrameLayout
+    private val shortsTransition by lazy { ShortsTransition(root) }
     private lateinit var chrome: LinearLayout
     private lateinit var host: FrameLayout
     private lateinit var error: TextView
@@ -278,6 +279,7 @@ class MainActivity : ComponentActivity() {
         return true
     }
     private fun closePlayback() {
+        shortsTransition.cancel()
         previewHintHide?.let { root.removeCallbacks(it) };previewHintHide=null;previewHintUntil=0
         playback?.let{it.close();(it.view.parent as? ViewGroup)?.removeView(it.view)};playback=null
         previewDecoration?.let{root.removeView(it)};previewDecoration=null;previewBounds.setEmpty()
@@ -334,8 +336,18 @@ class MainActivity : ComponentActivity() {
         if (route is Route.Player) {
             chrome.visibility=View.GONE
             if (changed) {
-                retireScreen(); closePlayback(); chrome.visibility = View.GONE
-                playback = NativePlayback(this, model, route.watch) { model.back() }.also { root.addView(it.view, FrameLayout.LayoutParams(-1, -1)); if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) it.start() }
+                retireScreen()
+                val direction=playback?.takeIf{it.canRetireShortFrame}?.watch?.let { model.youtube.shortTransitionDirection(it,route.watch) }?:0
+                val outgoing=if(direction!=0 && lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                    shortsTransition.cancel()
+                    playback?.retireShortFrame().also { playback=null }
+                } else null
+                closePlayback(); chrome.visibility = View.GONE
+                playback = NativePlayback(this, model, route.watch) { model.back() }.also {
+                    root.addView(it.view, FrameLayout.LayoutParams(-1, -1))
+                    if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED))it.start()
+                    if(outgoing!=null)shortsTransition.start(outgoing,it.view,direction)
+                }
                 youTubePhonePlaybackChanged()
                 screenKey = next;screenRoute=route
             }
@@ -393,10 +405,10 @@ class MainActivity : ComponentActivity() {
     }
     override fun onStart() { super.onStart(); playback?.start();screen?.foreground();if(model.store.youTubePhoneEnabled())phoneLink().foreground() }
     override fun onWindowFocusChanged(hasFocus: Boolean) { super.onWindowFocusChanged(hasFocus); if(hasFocus)restorePendingFocus() }
-    override fun onStop() { youtubePhone?.background();screen?.background();model.youTubeBackground(); playback?.stop(); super.onStop() }
+    override fun onStop() { shortsTransition.cancel();youtubePhone?.background();screen?.background();model.youTubeBackground(); playback?.stop(); super.onStop() }
     override fun onDestroy() {
         youtubeVoice.close();youtubePhone?.close();youtubePhone=null
-        dismissOwnedDialogs();playback?.close(); playback = null; screen?.close(); posterPool.clear(); super.onDestroy()
+        shortsTransition.cancel();dismissOwnedDialogs();playback?.close(); playback = null; screen?.close(); posterPool.clear(); super.onDestroy()
     }
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)

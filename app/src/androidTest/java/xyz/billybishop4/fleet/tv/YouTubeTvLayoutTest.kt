@@ -55,15 +55,20 @@ class YouTubeTvLayoutTest:NativeTestBase() {
         assertFalse(ui{descendants(a.window.decorView).any{it is android.webkit.WebView}})
         screenshot("youtube-tv-home-shelves")
     }
-    @Test fun railExpandsWithoutMovingOrResizingTheHomeContent() {
+    @Test fun railExpansionRevealsContentBesideItWithoutRemeasuringTheHome() {
         home();val first=tagged("youtube-video:V0000000001")!!;ui{first.requestFocus()}
-        await{ui{tagged("youtube-navigation")!!.width==a.dp(52)}}
+        val rail=tagged("youtube-navigation")!!;val body=tagged("youtube-content")!!
+        await{ui{rail.clipBounds?.width()==a.dp(52) && kotlin.math.abs(body.translationX)<1f}}
         val before=bounds(tagged("youtube-home")!!)
+        val measured=ui{body.width to body.height}
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_LEFT)
-        await{ui{a.currentFocus?.contentDescription=="YouTube home" && tagged("youtube-navigation")!!.width==a.dp(164)}}
-        assertEquals(before,bounds(tagged("youtube-home")!!));screenshot("youtube-tv-expanded-rail")
+        await{ui{a.currentFocus?.contentDescription=="YouTube home" && rail.clipBounds?.width()==a.dp(164) &&
+            kotlin.math.abs(body.translationX-a.dp(112))<1f}}
+        assertEquals(measured,ui{body.width to body.height})
+        assertTrue("Expanded sidebar covered the content",bounds(tagged("youtube-home")!!).left>=bounds(rail).right+a.dp(12))
+        assertEquals(before.top,bounds(tagged("youtube-home")!!).top);screenshot("youtube-tv-expanded-rail")
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)
-        await{ui{a.currentFocus?.tag=="youtube-video:V0000000001" && tagged("youtube-navigation")!!.width==a.dp(52)}}
+        await{ui{a.currentFocus?.tag=="youtube-video:V0000000001" && rail.clipBounds?.width()==a.dp(52) && kotlin.math.abs(body.translationX)<1f}}
         assertEquals(before,bounds(tagged("youtube-home")!!))
     }
     @Test fun homeHasOneCompactSearchActionAndGlobalNavigationReturnsToRememberedContent() {

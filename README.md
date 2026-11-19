@@ -6,26 +6,27 @@ and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
 ## Development candidate
 
-**0.25.0 · version code 33 · Android 7.0 / API 24 or later**
+**0.26.0 · version code 34 · Android 7.0 / API 24 or later**
 
 This branch contains the native YouTube integration and continuing TizenTube
-functional review, with independent app and section themes. Version 0.25.0
-improves native scrolling, retains nearby cards and artwork, and reuses episode
-and stream presentation data. YouTube keeps its own player; IPTV and On-Demand
-retain their existing controls. Independent [whole-app QA](docs/qa-review-0.25.md)
-passes 275 fixture scenarios and a real anonymous YouTube Home/library check,
-with fixes for panel media keys and refreshed-stream focus. See the
-[navigation review](docs/navigation-performance-0.25.md).
-This build is **installed on the TCL** following the user's deployment request.
-The installed APK was pulled and checksum-matched; UID, foreground state and
-standby were preserved. QA used the Mac and worker emulators. No interactive
-physical-TV playback or performance test ran for this version.
+functional review, with independent app and section themes. Version 0.26.0
+adds a transparent sidebar with rounded local highlights, continuous vertical
+shelf movement, fixed-time seeking, quiet YouTube loading and vertical Shorts
+transitions. Guest Home preserves YouTube TV's actual anonymous response instead
+of adding local fallback shelves. Back cancels pending videos, and ready actions
+recover initial dialog focus without overriding newer remote selections. See
+the [behavior guide](docs/youtube-motion-0.26.md) and
+[QA review](docs/qa-review-0.26.md). Deployment status and validation scope are
+recorded in the versioned verification below. QA uses the Mac and worker emulators.
+The signed 0.26.0 candidate is installed on the TCL. The installed APK was pulled
+and checksum-matched; UID, foreground and standby were preserved. The app was
+not opened and no interactive physical-TV probe ran for this update.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Candidate verification](releases/0.25.0/verification.json) records the APK checksum,
+[Candidate verification](releases/0.26.0/verification.json) records the APK checksum,
 source/build checksums and validation scope.
-[SHA256SUMS](releases/0.25.0/SHA256SUMS) identifies the candidate APK. The original
+[SHA256SUMS](releases/0.26.0/SHA256SUMS) identifies the candidate APK. The original
 production import remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
@@ -42,9 +43,10 @@ are excluded from Git.
 
 - A **YouTube** section beside On-Demand: a collapsible left rail, native TV
   keyboard, live query suggestions and platform voice search. Home preserves real TV recommendation
-  shelves. Guest Home tries the public Home feed first, with bounded Music,
-  Gaming and News fallback shelves when YouTube requires sign-in. Slow guest requests
-  have bounded deadlines and retain completed topic shelves. Search puts
+  shelves and their continuation. Guest Home uses the TV bootstrap context,
+  visitor identity and a bounded memory-only anonymous session. It shows the
+  upstream sign-in/search prompt when Google returns no recommendations, without
+  inventing topic or local-history shelves. Requests have bounded deadlines. Search puts
   regular video shelves first, followed by one horizontal portrait Shorts row.
   Channel pages provide the real available video tabs and subscriptions. Watched
   thumbnail markers use supplied resume data or server percentages without inventing seek positions.

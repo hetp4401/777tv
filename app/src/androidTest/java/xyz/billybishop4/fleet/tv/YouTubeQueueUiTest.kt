@@ -102,7 +102,11 @@ class YouTubeQueueUiTest:NativeTestBase() {
         assertTrue(device.wait(Until.hasObject(By.text("In queue").enabled(false)),5000))
         screenshot("youtube-queued-video-actions")
         assertEquals(listOf("V0000000001"),resolved());click("Done")
-        ui{a.onBackPressedDispatcher.onBackPressed()};sendRemoteKey(KeyEvent.KEYCODE_MEDIA_NEXT)
+        await{ui{a.hasWindowFocus()}}
+        ui{a.onBackPressedDispatcher.onBackPressed()}
+        await{tagged("youtube-watch-panel")?.isShown!=true && tagged("native-player")?.hasFocus()==true && ui{a.hasWindowFocus()}}
+        assertTrue(ui{a.model.youtube.canStepRegular((a.model.route as Route.Player).watch,1)})
+        sendRemoteKey(KeyEvent.KEYCODE_MEDIA_NEXT)
         await{playingId("V0000000040")}
     }
     @Test fun lateRecommendationsRespectAutoplayAndCannotLeaveEnabledAutoplayStuckAtTheEnd() {

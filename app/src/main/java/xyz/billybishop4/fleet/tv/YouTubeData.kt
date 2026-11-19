@@ -3,6 +3,7 @@ package xyz.billybishop4.fleet.tv
 import java.net.URI
 import org.json.JSONArray
 import org.json.JSONObject
+import org.json.JSONTokener
 
 internal enum class YouTubeFeed {
     HOME, SHORTS, SEARCH, SUBSCRIPTIONS, HISTORY, WATCH_LATER, LIKED, CHANNEL, PLAYLISTS, PLAYLIST;
@@ -37,7 +38,7 @@ internal interface YouTubeCredentials {
     fun read(): YouTubeSession?
     fun write(session: YouTubeSession?)
 }
-internal data class YouTubeBootstrap(val version: String, val visitor: String, val scriptUrl: String, val clientId: String = "", val clientSecret: String = "") {
+internal data class YouTubeBootstrap(val version: String, val visitor: String, val scriptUrl: String, val clientId: String = "", val clientSecret: String = "",val context:JSONObject?=null) {
     override fun toString() = "YouTubeBootstrap(version=$version)"
 }
 internal class YouTubeAuthError(val reason: String) : UserMessage(when(reason) {
@@ -189,13 +190,18 @@ internal object YouTubeDecode {
     }
     fun bootstrap(html:String,origin:String):YouTubeBootstrap {
         fun match(pattern:String)=Regex(pattern).find(html)?.groupValues?.get(1).orEmpty()
-        val version=match("\"INNERTUBE_CLIENT_VERSION\":\"([^\"]+)\"")
-        val visitor=match("\"visitorData\":\"([^\"]+)\"")
+        val context=Regex("\"INNERTUBE_CONTEXT\"\\s*:\\s*").find(html)?.let { marker->
+            runCatching{JSONTokener(html.substring(marker.range.last+1)).nextValue() as? JSONObject}.getOrNull()
+        }?.takeIf{it.toString().length<=32_768}
+        val client=context?.optJSONObject("client")
+        val version=match("\"INNERTUBE_CLIENT_VERSION\"\\s*:\\s*\"([^\"]+)\"").ifBlank{client?.optString("clientVersion").orEmpty()}
+        val visitor=match("\"VISITOR_DATA\"\\s*:\\s*\"([^\"]*)\"")
+            .ifBlank{client?.optString("visitorData").orEmpty()}.ifBlank{match("\"visitorData\":\"([^\"]+)\"")}
         val path=match("id=\"base-js\" src=\"([^\"]+)\"").ifBlank { match("\\.src = '([^']+)'[; ]") }
         require(version.isNotBlank()) { "YouTube TV configuration changed." }
         val script=URI(origin).resolve(path.replace("&amp;","&")).toString()
         require(path.isNotBlank() && sameOrigin(origin,script)) { "Invalid YouTube configuration address." }
-        return YouTubeBootstrap(version,visitor.replace("\\u003d","="),script)
+        return YouTubeBootstrap(version,visitor.replace("\\u003d","="),script,context=context)
     }
     fun deviceClient(script:String):Pair<String,String> {
         val found=Regex("clientId:\"([-\\w]+\\.apps\\.googleusercontent\\.com)\",\\n?[$\\w]+:\"(\\w+)\"").find(script)

@@ -148,7 +148,12 @@ layout requests remain enabled for parent resizing and wrap-content artwork.
 
 ## Guest recommendations and account feeds (0.18.0)
 
-The live anonymous TV `default`/`FEwhat_to_watch` feed currently returns a sign-in
+**Historical implementation, superseded in 0.26.0:** the topic and local-seed
+fallbacks below have been removed. Current signed-out Home preserves the actual
+YouTube TV response with its anonymous visitor session; see
+[0.26 behavior and limits](youtube-motion-0.26.md#signed-out-home).
+
+The live anonymous TV `default`/`FEwhat_to_watch` feed at that time returned a sign-in
 nudge. Public `FEtopics_music`, `FEtopics_gaming` and `FEtopics_news` return video
 cards without an account or cookie jar. The native client requests these with
 at most two concurrent calls and no account bearer, discards response trees,

@@ -4,11 +4,13 @@ import android.os.SystemClock
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
 import kotlinx.coroutines.runBlocking
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import java.io.File
 
 /** Controller lifecycle/account checks use generated accounts and no physical TV. */
 class YouTubePlayerActionsUiTest:NativeTestBase() {
@@ -36,11 +38,39 @@ class YouTubePlayerActionsUiTest:NativeTestBase() {
     private fun create()=ui{actions=YouTubePlayerActions(a,video){shown=it;publications++}.also{it.metadata(snapshot)}}
 
     @Test fun initialMetadataDoesNotRequestInteractionOrAllocateAnActionsWindow() {
-        val before=paths();create()
-        assertEquals("Generated channel",ui{shown.channel?.name});assertFalse(ui{shown.signedIn})
-        assertEquals(before,paths())
-        assertFalse(device.hasObject(By.text("Video actions")));assertFalse(device.hasObject(By.text("Save video")))
-        assertNull(player())
+        val before=state().getJSONArray("requests")
+        var after:JSONArray?=null
+        try {
+            create()
+            assertEquals("Generated channel",ui{shown.channel?.name});assertFalse(ui{shown.signedIn})
+            after=state().getJSONArray("requests")
+            val previous=before.objects();val current=after!!.objects()
+            assertTrue("Metadata removed existing request records",current.size>=previous.size)
+            assertEquals("Existing request records changed",previous.map{it.toString()},current.take(previous.size).map{it.toString()})
+            val added=current.drop(previous.size)
+            assertTrue("Metadata introduced unexpected network requests",added.size<=1)
+            // The already-visible Home may finish its one legitimate prefetch.
+            // No other browse, account, watch/player or action request is allowed.
+            for(request in added) {
+                assertEquals("/youtube/youtubei/v1/browse",request.getString("path"))
+                assertFalse("Home continuation became authenticated",request.getBoolean("authenticated"))
+                assertEquals("TVHTML5",request.getString("client"))
+                assertEquals("fixture-guest-home-2",request.getString("continuation"))
+                assertEquals("",request.getString("browseId"));assertEquals("",request.getString("videoId"));assertEquals("",request.getString("query"))
+                val body=request.getJSONObject("body")
+                assertEquals(setOf("context","continuation"),body.keys().asSequence().toSet())
+                assertEquals("fixture-guest-home-2",body.getString("continuation"))
+            }
+            assertTrue("Home continuation was requested more than once",current.count{
+                it.optString("path")=="/youtube/youtubei/v1/browse" && it.optString("continuation")=="fixture-guest-home-2"
+            }<=1)
+            assertFalse(device.hasObject(By.text("Video actions")));assertFalse(device.hasObject(By.text("Save video")))
+            assertNull(player())
+        } finally {
+            val sampled=after?:runCatching{state().getJSONArray("requests")}.getOrNull()
+            File(ui{a.getExternalFilesDir(null)!!},"youtube-player-initial-metadata-requests.json")
+                .writeText(JSONObject().put("before",before).put("after",sampled).toString(2))
+        }
     }
     @Test fun aSignedOutDirectActionOffersPairingWithoutSendingTheMutation() {
         create();ui{actions!!.rate(YouTubeRating.LIKE)}

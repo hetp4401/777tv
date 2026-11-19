@@ -15,11 +15,46 @@ import android.os.Looper
 import android.os.SystemClock
 import android.text.TextUtils
 import android.view.*
+import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.*
 import androidx.media3.common.C
 import androidx.media3.common.Player
 
 internal data class PlaybackTrack(val id: String, val label: String, val selected: Boolean,val language:String="")
+
+/** A tap is one time step. A held cursor integrates a bounded time-based speed,
+ * so remote repeat frequency and the length of the video cannot change travel. */
+internal class RemoteSeekMotion(private val tapMs:Long) {
+    var direction=0;private set
+    var downTime=Long.MIN_VALUE;private set
+    var targetMs=0L;private set
+    private var originMs=0L
+    private var beganAt=0L
+    private var sampledAt=0L
+    val active get()=direction!=0
+    fun matches(direction:Int,downTime:Long)=this.direction==direction && this.downTime==downTime
+    fun begin(direction:Int,downTime:Long,eventTime:Long,positionMs:Long,durationMs:Long):Long {
+        require(direction==-1 || direction==1)
+        this.direction=direction;this.downTime=downTime;originMs=positionMs
+        beganAt=eventTime;sampledAt=eventTime
+        return sample(eventTime,durationMs)
+    }
+    fun sample(time:Long,durationMs:Long,release:Boolean=false):Long {
+        if(!active)return targetMs
+        // Late repeats cannot rewind the preview. UP may be queued behind a
+        // slow frame: its real event time still defines the end of that hold.
+        sampledAt=if(release)maxOf(beganAt,time) else maxOf(sampledAt,time)
+        val heldSeconds=((sampledAt-beganAt-300).coerceAtLeast(0))/1000.0
+        val ramp=heldSeconds.coerceAtMost(5.0)
+        // Start at 20 media seconds/second, ramp continuously to 120 over five
+        // seconds, then keep that cap. There is no per-repeat jump or percentage.
+        val distance=(tapMs+1000*(20*ramp+10*ramp*ramp+120*(heldSeconds-ramp))).toLong().coerceAtLeast(0)
+        val end=durationMs.coerceAtLeast(0);val origin=originMs.coerceIn(0,end)
+        targetMs=if(direction>0)origin+distance.coerceAtMost(end-origin) else origin-distance.coerceAtMost(origin)
+        return targetMs
+    }
+    fun stop(){direction=0;downTime=Long.MIN_VALUE}
+}
 
 /** Source-specific controls: portrait Shorts, YouTube transport, and movie/episode transport. */
 internal class VodControls(
@@ -46,7 +81,22 @@ internal class VodControls(
     private val elapsed = a.text("0:00", if(isYouTube)12f else 10f).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END;if(isYouTube)setTextColor(Color.WHITE) }
     private val remaining = a.text("–:–", 10f, MUTED).apply{if(isYouTube)visibility=View.GONE}
     private val feedback = a.text("", 12f, MUTED).apply { visibility = View.GONE }
-    private val bar = SeekBar(a).apply {
+    private val bar:SeekBar = object:SeekBar(a) {
+        override fun onKeyDown(code:Int,event:KeyEvent):Boolean = timelineCode(code)?.let{timelineKey(it,event)}?:super.onKeyDown(code,event)
+        override fun onKeyUp(code:Int,event:KeyEvent):Boolean = timelineCode(code)?.let{timelineKey(it,event)}?:super.onKeyUp(code,event)
+        override fun performAccessibilityAction(action:Int,args:android.os.Bundle?):Boolean {
+            val direction=when(action){AccessibilityNodeInfo.ACTION_SCROLL_FORWARD->1;AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD->-1;else->0}
+            if(direction!=0){if(!canSeek())return false;skip(direction);return true}
+            if(action==AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id &&
+                args?.containsKey(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE)==true) {
+                if(!canSeek())return false
+                val progress=args.getFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE).toDouble()
+                if(!progress.isFinite())return false
+                seekAbsolute((progress.coerceIn(0.0,max.toDouble())/max*duration()).toLong());return true
+            }
+            return super.performAccessibilityAction(action,args)
+        }
+    }.apply {
         val accent=if(isYouTube)0xFFFF0033.toInt() else ACCENT
         tag = "vod-progress"; id = View.generateViewId(); max = 100000
         isFocusable = true; isFocusableInTouchMode = true
@@ -96,8 +146,21 @@ internal class VodControls(
     private var touchPosition: Long? = null
     private var queuedSeek: Long? = null
     private var seekAt = 0L
-    private var heldDirection = 0
-    private var heldSince = 0L
+    private val remoteSeek=RemoteSeekMotion(seekSeconds*1000L)
+    private var retiredRemoteDown=Long.MIN_VALUE
+    private var remoteFrameScheduled=false
+    private val remoteFrame:Runnable=object:Runnable {
+        override fun run() {
+            remoteFrameScheduled=false
+            if(closed || !remoteSeek.active)return
+            if(!view.isAttachedToWindow || !view.isShown || !view.hasWindowFocus()) {
+                if(isYouTube)finishYouTubeSeek(false) else finishHold()
+                return
+            }
+            applyRemotePosition(remoteSeek.sample(SystemClock.uptimeMillis(),duration()))
+            scheduleRemoteFrame()
+        }
+    }
     private val applySeek = Runnable { flushSeek() }
     private var interactedAt = SystemClock.uptimeMillis()
     private var dialog: AlertDialog? = null
@@ -239,7 +302,10 @@ internal class VodControls(
         if(!watch.short)bindTimeline()
         view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: View) { if (view.visibility == View.VISIBLE) { startTicker(); scheduleHide(); publishInset() } }
-            override fun onViewDetachedFromWindow(v: View) { main.removeCallbacks(ticker); main.removeCallbacks(hideLater); publishInset() }
+            override fun onViewDetachedFromWindow(v: View) {
+                if(isYouTube)finishYouTubeSeek(false) else finishHold()
+                main.removeCallbacks(ticker);main.removeCallbacks(hideLater);publishInset()
+            }
         })
         view.viewTreeObserver.addOnWindowFocusChangeListener(windowFocus)
         player.addListener(listener)
@@ -249,7 +315,7 @@ internal class VodControls(
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
                 if (fromUser && canSeek()) { touchPosition = (duration().toDouble() * progress / seekBar.max).toLong();if(isYouTube)showSeekPreview();interacted(); update() }
             }
-            override fun onStartTrackingTouch(seekBar: SeekBar) { if(isYouTube)beginYouTubeSeek() else {finishHold();touchPosition=position()};interacted() }
+            override fun onStartTrackingTouch(seekBar: SeekBar) { stopRemoteSeek(retire=true);if(isYouTube)beginYouTubeSeek() else {finishHold();touchPosition=position()};interacted() }
             override fun onStopTrackingTouch(seekBar: SeekBar) {
                 if(isYouTube){finishYouTubeSeek(true);return}
                 val at = touchPosition; touchPosition = null
@@ -257,7 +323,6 @@ internal class VodControls(
                 interacted(); update()
             }
         })
-        bar.setOnKeyListener { _,code,event->timelineKey(code,event) }
         bar.setOnFocusChangeListener { _, focused -> if (!focused) { if(isYouTube)finishYouTubeSeek(true) else touchPosition=null;finishHold() } }
         bar.setOnTouchListener { _, event -> if (event.actionMasked == MotionEvent.ACTION_CANCEL) { if(isYouTube)finishYouTubeSeek(false) else touchPosition=null;update();scheduleHide() };false }
     }
@@ -354,7 +419,7 @@ internal class VodControls(
     }
     private fun interacted() { interactedAt = SystemClock.uptimeMillis(); scheduleHide() }
     private fun startTicker() { main.removeCallbacks(ticker); main.post(ticker) }
-    private fun mayHide() = player.playWhenReady && player.playbackState != Player.STATE_ENDED && touchPosition == null && !loadingTracks && !youtubeActionBusy && dialog?.isShowing != true && view.hasWindowFocus()
+    private fun mayHide() = player.playWhenReady && player.playbackState != Player.STATE_ENDED && touchPosition == null && !remoteSeek.active && !loadingTracks && !youtubeActionBusy && dialog?.isShowing != true && view.hasWindowFocus()
     private fun scheduleHide() {
         main.removeCallbacks(hideLater)
         if (!closed && view.visibility == View.VISIBLE && mayHide()) main.postDelayed(hideLater, (5000 - (SystemClock.uptimeMillis() - interactedAt)).coerceAtLeast(50))
@@ -374,33 +439,78 @@ internal class VodControls(
         val at = queuedSeek ?: return
         queuedSeek = null; submitSeek(at)
     }
-    private fun finishHold() { if(youtubeSeeking)finishYouTubeSeek(true) else flushSeek();heldDirection=0;heldSince=0 }
-    private fun skip(direction: Int) { finishHold(); seekRelative(direction) }
-    private fun seekRelative(direction: Int, repeat: Boolean = false, multiplier: Int = 1) {
-        if (canSeek()) {
-            val now = SystemClock.uptimeMillis()
-            val actual = position()
-            val target = ((queuedSeek ?: actual) + direction * seekSeconds * 1000L * multiplier).coerceIn(0, duration())
-            main.removeCallbacks(applySeek); queuedSeek = null
-            if (repeat && now - seekAt < 150) { queuedSeek = target; main.postDelayed(applySeek, 150 - (now - seekAt)) }
-            else submitSeek(target)
+    private fun cursorPosition()=touchPosition?:remoteSeek.targetMs.takeIf{remoteSeek.active}?:queuedSeek?:position()
+    private fun stopRemoteSeek(retire:Boolean=false) {
+        if(retire && remoteSeek.active)retiredRemoteDown=remoteSeek.downTime
+        remoteSeek.stop();view.removeCallbacks(remoteFrame);remoteFrameScheduled=false
+    }
+    private fun scheduleRemoteFrame() {
+        if(!closed && remoteSeek.active && !remoteFrameScheduled) {
+            remoteFrameScheduled=true;view.postOnAnimation(remoteFrame)
+        }
+    }
+    private fun finishHold() {
+        if(youtubeSeeking)finishYouTubeSeek(true) else {stopRemoteSeek();flushSeek()}
+    }
+    private fun seekAbsolute(at:Long) {
+        if(!canSeek())return
+        if(youtubeSeeking){touchPosition=at.coerceIn(0,duration());finishYouTubeSeek(true)}
+        else {
+            stopRemoteSeek(retire=true);queuedSeek=null;touchPosition=null;main.removeCallbacks(applySeek)
+            submitSeek(at)
         }
         show(false)
     }
-    /** Shared by focused timeline keys and the first Left/Right from the video surface. */
-    private fun timelineKey(code:Int,event:KeyEvent):Boolean = if(isYouTube)youtubeTimelineKey(code,event) else when(code) {
-        KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT->{
-            val direction=if(code==KeyEvent.KEYCODE_DPAD_RIGHT)1 else -1
-            if(event.action==KeyEvent.ACTION_DOWN) {
-                if(event.repeatCount==0 || heldDirection!=direction){finishHold();heldDirection=direction;heldSince=event.eventTime}
-                val elapsed=(event.eventTime-heldSince).coerceAtLeast(0)
-                val multiplier=when{elapsed<180->1;elapsed<450->4;elapsed<850->8;elapsed<1400->16;elapsed<2200->32;elapsed<3200->64;else->128}
-                seekRelative(direction,event.repeatCount>0,multiplier)
-            }else if(event.action==KeyEvent.ACTION_UP && heldDirection==direction)finishHold()
-            true
+    private fun skip(direction:Int) {
+        if(canSeek())seekAbsolute((cursorPosition()+direction*seekSeconds*1000L).coerceIn(0,duration()))
+        else {finishHold();show(false)}
+    }
+    private fun applyRemotePosition(at:Long,immediate:Boolean=false) {
+        if(isYouTube){touchPosition=at;showSeekPreview()}
+        else {
+            queuedSeek=at;main.removeCallbacks(applySeek)
+            val wait=150-(SystemClock.uptimeMillis()-seekAt)
+            if(immediate || wait<=0)flushSeek() else main.postDelayed(applySeek,wait)
         }
+        interactedAt=SystemClock.uptimeMillis();update()
+    }
+    private fun timelineCode(code:Int):Int?=when(code) {
+        KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER->code
+        KeyEvent.KEYCODE_PLUS,KeyEvent.KEYCODE_EQUALS->KeyEvent.KEYCODE_DPAD_RIGHT
+        KeyEvent.KEYCODE_MINUS->KeyEvent.KEYCODE_DPAD_LEFT
+        else->null
+    }
+    private fun remoteTimelineKey(code:Int,event:KeyEvent):Boolean {
+        val direction=if(code==KeyEvent.KEYCODE_DPAD_RIGHT)1 else -1
+        if(event.action==KeyEvent.ACTION_DOWN && canSeek()) {
+            // A new phone/media command retired the old gesture. Later repeats
+            // and its UP must not resurrect that cursor or its pause intention.
+            if(retiredRemoteDown==event.downTime && event.repeatCount>0)return true
+            val fresh=!remoteSeek.matches(direction,event.downTime)
+            val origin=if(fresh && remoteSeek.active)remoteSeek.sample(event.eventTime,duration(),release=true) else cursorPosition()
+            show(false)
+            if(isYouTube)beginYouTubeSeek()
+            val at=if(fresh) {
+                retiredRemoteDown=Long.MIN_VALUE
+                remoteSeek.begin(direction,event.downTime,event.eventTime,origin,duration())
+            } else remoteSeek.sample(event.eventTime,duration())
+            applyRemotePosition(at,immediate=fresh && !isYouTube);scheduleRemoteFrame()
+        }else if(event.action==KeyEvent.ACTION_UP && remoteSeek.matches(direction,event.downTime)) {
+            if(!event.isCanceled)applyRemotePosition(remoteSeek.sample(event.eventTime,duration(),release=true))
+            if(isYouTube)finishYouTubeSeek(!event.isCanceled)
+            else {
+                stopRemoteSeek(retire=true)
+                if(event.isCanceled){queuedSeek=null;main.removeCallbacks(applySeek);update()}else flushSeek()
+                interacted();scheduleHide()
+            }
+        }
+        return true
+    }
+    /** Shared by focused timeline keys and the first Left/Right from the video surface. */
+    private fun timelineKey(code:Int,event:KeyEvent):Boolean = when(code) {
+        KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT->remoteTimelineKey(code,event)
         KeyEvent.KEYCODE_DPAD_CENTER,KeyEvent.KEYCODE_ENTER->{
-            if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0){finishHold();togglePlayback()};true
+            if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0){if(youtubeSeeking)finishYouTubeSeek(true) else {finishHold();togglePlayback()}};true
         }
         else->false
     }
@@ -416,7 +526,7 @@ internal class VodControls(
     private fun finishYouTubeSeek(commit:Boolean) {
         if(!youtubeSeeking)return
         val at=touchPosition;val resume=youtubeSeekResume
-        youtubeSeeking=false;touchPosition=null;heldDirection=0;heldSince=0;seekPreview?.hide()
+        stopRemoteSeek(retire=true);youtubeSeeking=false;touchPosition=null;seekPreview?.hide()
         if(commit && at!=null && canSeek() && at!=position())submitSeek(at)
         player.playWhenReady=resume
         if(!closed){interacted();update();startTicker()}
@@ -426,7 +536,7 @@ internal class VodControls(
     fun reconcileExternalSeek(playIntent:Boolean?,atMs:Long?):Boolean {
         if(closed || !isYouTube || !youtubeSeeking)return false
         val resume=playIntent?:youtubeSeekResume
-        touchPosition=null;heldDirection=0;heldSince=0;queuedSeek=null
+        stopRemoteSeek(retire=true);touchPosition=null;queuedSeek=null
         main.removeCallbacks(applySeek);seekPreview?.hide()
         // Apply a phone position before resuming: an old ended position must not
         // trigger autoplay while the replacement seek is still pending.
@@ -435,25 +545,6 @@ internal class VodControls(
         interacted();update();startTicker()
         return true
     }
-    private fun youtubeTimelineKey(code:Int,event:KeyEvent):Boolean {
-        if(code==KeyEvent.KEYCODE_DPAD_LEFT || code==KeyEvent.KEYCODE_DPAD_RIGHT) {
-            val direction=if(code==KeyEvent.KEYCODE_DPAD_RIGHT)1 else -1
-            if(event.action==KeyEvent.ACTION_DOWN && canSeek()) {
-                if(event.repeatCount==0 || heldDirection!=direction){heldDirection=direction;heldSince=event.eventTime}
-                beginYouTubeSeek()
-                val elapsed=(event.eventTime-heldSince).coerceAtLeast(0)
-                val multiplier=when{elapsed<180->1;elapsed<450->4;elapsed<850->8;elapsed<1400->16;elapsed<2200->32;elapsed<3200->64;else->128}
-                touchPosition=((touchPosition?:position())+direction*seekSeconds*1000L*multiplier).coerceIn(0,duration())
-                show(false);showSeekPreview()
-            }else if(event.action==KeyEvent.ACTION_UP && heldDirection==direction)finishYouTubeSeek(!event.isCanceled)
-            return true
-        }
-        if(code==KeyEvent.KEYCODE_DPAD_CENTER || code==KeyEvent.KEYCODE_ENTER) {
-            if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0){if(youtubeSeeking)finishYouTubeSeek(true) else togglePlayback()}
-            return true
-        }
-        return false
-    }
     private fun togglePlayback() {
         if (player.playbackState == Player.STATE_ENDED) startPlayback()
         else if (player.playWhenReady) player.pause() else player.play()
@@ -461,13 +552,13 @@ internal class VodControls(
     }
     private fun startPlayback() {
         if (player.playbackState == Player.STATE_ENDED && canSeek()) {
-            queuedSeek = null; heldDirection = 0; heldSince = 0; main.removeCallbacks(applySeek); player.seekTo(0)
+            stopRemoteSeek(retire=true);queuedSeek = null;main.removeCallbacks(applySeek); player.seekTo(0)
         }
         player.play()
     }
     private fun update() {
         if (closed || view.visibility != View.VISIBLE) return
-        val total = duration(); val at = (touchPosition ?: queuedSeek ?: position()).let { if (total > 0) it.coerceAtMost(total) else it }
+        val total = duration(); val at = cursorPosition().let { if (total > 0) it.coerceAtMost(total) else it }
         heatmap?.duration(total)
         val seekable = canSeek();val seekabilityChanged=bar.isEnabled!=seekable;bar.isEnabled=seekable
         if(isYouTube && !seekable && bar.hasFocus())play.requestFocus()
@@ -549,7 +640,7 @@ internal class VodControls(
         // first DOWN and every repeat/UP through the same accelerated timeline handler.
         if(!watch.short && horizontal && !consumedKeys.containsKey(code) && canSeek() &&
             (bar.hasFocus() || view.visibility!=View.VISIBLE || !view.hasFocus()) &&
-            (event.action==KeyEvent.ACTION_DOWN || event.action==KeyEvent.ACTION_UP && heldDirection!=0)) {
+            (event.action==KeyEvent.ACTION_DOWN || event.action==KeyEvent.ACTION_UP && remoteSeek.active)) {
             if(event.action==KeyEvent.ACTION_DOWN && (view.visibility!=View.VISIBLE || !bar.hasFocus())){show(false);bar.requestFocus()}
             return timelineKey(code,event)
         }
@@ -706,7 +797,7 @@ internal class VodControls(
     fun close() {
         if (closed) return
         closed=true;finishYouTubeSeek(false);youtubeActions?.close();youtubeActions=null;seekPreview?.close();seekPreview=null;youtubeChrome?.close(view);youtubeChrome=null
-        trackRequest++; queuedSeek = null; touchPosition = null; heldDirection = 0; heldSince = 0
+        stopRemoteSeek(retire=true);trackRequest++;queuedSeek = null;touchPosition = null
         player.removeListener(listener); main.removeCallbacksAndMessages(null);chapterMarkers=emptyList()
         if (view.viewTreeObserver.isAlive) view.viewTreeObserver.removeOnWindowFocusChangeListener(windowFocus)
         dialog?.dismiss(); dialog = null;videoActions?.close();videoActions=null; consumedKeys.clear(); view.visibility = View.GONE

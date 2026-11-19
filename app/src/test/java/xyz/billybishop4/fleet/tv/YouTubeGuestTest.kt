@@ -17,58 +17,63 @@ class YouTubeGuestTest {
         .put("title",JSONObject().put("simpleText","Video $id")).put("thumbnail",JSONObject().put("thumbnails",
             JSONArray().put(JSONObject().put("url","https://i.ytimg.com/$id.jpg").put("width",320)))))
     private fun page(vararg ids:String)=YouTubeHttpResponse(200,JSONObject().put("contents",JSONArray(ids.map(::card))).toString())
-    private fun topicReply(r:FixtureYouTubeTransport.Recorded)=when(r.body?.optString("browseId")) {
-        "FEtopics_music"->page("M0000000001","M0000000002")
-        "FEtopics_gaming"->page("G0000000001","G0000000002")
-        "FEtopics_news"->page("N0000000001","N0000000002")
-        "default"->YouTubeHttpResponse(200,"""{"feedNudgeRenderer":{"title":"Make YouTube your own","subtitle":"Sign in or search"}}""")
-        else->page("R0000000001","R0000000002")
+    private fun nudge()=YouTubeHttpResponse(200,"""{"feedNudgeRenderer":{"title":"Make YouTube your own","subtitle":{"runs":[{"text":"Search while signed-out, or sign in for recommendations."}]}}}""")
+    @Test fun actualGuestHomeUsesOnlyTheTvFeedWithoutLocalSeedsOrTopicSubstitution()=runBlocking {
+        val watched=Progress(Title("W0000000001","A watched video","youtube"),null,45000,120000,10)
+        val transport=FixtureYouTubeTransport();transport.respond={page(watched.title.id,"R0000000001")}
+        val store=MemoryYouTubeCredentials()
+        val home=YouTubeClient(store,transport,localHistory={listOf(watched)}).page(YouTubeFeed.HOME)
+        assertEquals(listOf(watched.title.id,"R0000000001"),home.videos.map{it.id})
+        assertTrue(home.shelves.none{it.name.startsWith("Because you watched")});assertNull(home.continuation)
+        val calls=transport.requests.filter{it.body!=null};assertEquals(1,calls.size)
+        assertEquals("default",calls.single().body!!.getString("browseId"));assertNull(calls.single().authorization)
+        assertEquals(0,store.writes);assertFalse(transport.requests.any{it.path.endsWith("/next") || it.path.endsWith("/token")})
     }
-    @Test fun emptyActualGuestHomeFallsBackToPublicShelvesWithoutCreatingAnAccount()=runBlocking {
-        val transport=FixtureYouTubeTransport();transport.respond={topicReply(it)};val store=MemoryYouTubeCredentials()
-        val client=YouTubeClient(store,transport);val home=client.page(YouTubeFeed.HOME)
-        assertEquals(listOf("Music","Gaming","News"),home.shelves.map{it.name})
-        assertEquals(listOf("M0000000001","M0000000002"),home.shelves.first().videos.map{it.id})
-        assertEquals(6,home.videos.size);assertNull(home.continuation);assertNull(client.account());assertEquals(0,store.writes)
-        assertTrue(transport.requests.all{it.authorization==null})
-        assertEquals(4,transport.requests.count{it.path.endsWith("/browse")})
-        assertEquals("default",transport.requests.first{it.path.endsWith("/browse")}.body!!.getString("browseId"))
-        assertFalse(transport.requests.any{it.path.endsWith("/token")})
-    }
-    @Test fun guestSuggestionsUseARecentlyWatchedVideoAndExcludeAlreadyWatchedItems()=runBlocking {
-        val seed=Progress(Title("W0000000001","A watched video","youtube"),null,45_000,120_000,10)
-        val transport=FixtureYouTubeTransport();transport.respond={r->if(r.path.endsWith("/next"))page(seed.title.id,"R0000000001") else topicReply(r)}
-        val home=YouTubeClient(MemoryYouTubeCredentials(),transport,localHistory={listOf(seed)}).page(YouTubeFeed.HOME)
-        assertEquals("Because you watched A watched video",home.shelves.first().name)
-        assertEquals(listOf("R0000000001"),home.shelves.first().videos.map{it.id})
-        assertTrue(home.videos.none{it.id==seed.title.id})
-        assertEquals(seed.title.id,transport.requests.single{it.path.endsWith("/next")}.body!!.getString("videoId"))
-        assertTrue(transport.requests.all{it.authorization==null})
-    }
-    @Test fun briefPlaybackDoesNotBecomeARecommendationSeed()=runBlocking {
-        val transport=FixtureYouTubeTransport();transport.respond={topicReply(it)}
-        val brief=Progress(Title("W0000000001","Brief click","youtube"),null,2_000,120_000,1)
-        YouTubeClient(MemoryYouTubeCredentials(),transport,localHistory={listOf(brief)}).page(YouTubeFeed.HOME)
-        assertFalse(transport.requests.any{it.path.endsWith("/next")})
-    }
-    @Test fun oneUnavailableTopicDoesNotBlockTheOtherRecommendations()=runBlocking {
-        val transport=FixtureYouTubeTransport();transport.respond={if(it.body?.optString("browseId")=="FEtopics_music")YouTubeHttpResponse(503,"{}") else topicReply(it)}
+    @Test fun emptyHomeKeepsTheUpstreamNudgeWithoutInventingRecommendations()=runBlocking {
+        val transport=FixtureYouTubeTransport();transport.respond={nudge()}
         val home=YouTubeClient(MemoryYouTubeCredentials(),transport).page(YouTubeFeed.HOME)
-        assertEquals(listOf("Gaming","News"),home.shelves.map{it.name});assertEquals(4,home.videos.size)
+        assertTrue(home.videos.isEmpty());assertTrue(home.shelves.isEmpty());assertNull(home.continuation)
+        assertEquals("Search while signed-out, or sign in for recommendations.",home.message)
+        assertEquals(1,transport.requests.count{it.path.endsWith("/browse")})
     }
-    @Test fun allFailedTopicsProduceARetryableFailureInsteadOfASignInRequirement()=runBlocking {
+    @Test fun refreshCanReceiveRealHomeImmediatelyAfterAnEmptySession()=runBlocking {
+        val transport=FixtureYouTubeTransport();var calls=0
+        transport.respond={if(calls++==0)nudge() else page("R0000000001")}
+        val client=YouTubeClient(MemoryYouTubeCredentials(),transport)
+        assertTrue(client.page(YouTubeFeed.HOME).videos.isEmpty())
+        assertEquals(listOf("R0000000001"),client.page(YouTubeFeed.HOME).videos.map{it.id})
+        assertEquals(2,transport.requests.count{it.body?.optString("browseId")=="default"})
+    }
+    @Test fun upstreamFailuresRemainRetryableRatherThanBecomingTopicRows()=runBlocking {
         val transport=FixtureYouTubeTransport();transport.respond={YouTubeHttpResponse(503,"{}")}
-        try{YouTubeClient(MemoryYouTubeCredentials(),transport).page(YouTubeFeed.HOME);fail("Expected failure")}
-        catch(e:UserMessage){assertTrue(e.message!!.contains("Recommendations"));assertFalse(e.message!!.contains("Sign in"))}
+        val client=YouTubeClient(MemoryYouTubeCredentials(),transport)
+        try{client.page(YouTubeFeed.HOME);fail("Expected the actual Home failure")}
+        catch(error:HttpFailure){assertEquals(503,error.status)}
+        transport.respond={page("R0000000001")}
+        assertEquals(1,client.page(YouTubeFeed.HOME).videos.size)
+        assertTrue(transport.requests.filter{it.body!=null}.all{it.body!!.optString("browseId")=="default"})
     }
-    @Test fun publicRequestsAreBoundedAndCancelWhenTheViewerLeaves()=runBlocking {
-        val active=AtomicInteger();val maximum=AtomicInteger();val transport=FixtureYouTubeTransport()
-        transport.respond={val n=active.incrementAndGet();maximum.updateAndGet{maxOf(it,n)};try{delay(35);topicReply(it)}finally{active.decrementAndGet()}}
-        YouTubeClient(MemoryYouTubeCredentials(),transport).page(YouTubeFeed.HOME)
-        assertEquals(2,maximum.get());assertEquals(0,active.get())
-        transport.respond={delay(60_000);topicReply(it)}
+    @Test fun apiErrorBodiesAreNotMisreportedAsAnEmptySuccessfulHome()=runBlocking {
+        val transport=FixtureYouTubeTransport();transport.respond={YouTubeHttpResponse(200,"""{"error":{"code":503,"message":"Generated upstream failure"}}""")}
+        try{YouTubeClient(MemoryYouTubeCredentials(),transport).page(YouTubeFeed.HOME);fail("Expected error-body failure")}
+        catch(error:HttpFailure){assertEquals(503,error.status)}
+        assertEquals(1,transport.requests.count{it.path.endsWith("/browse")})
+    }
+    @Test fun homeDeadlineCancelsItsUnderlyingRequestAndRemainsRetryable()=runBlocking {
+        val active=AtomicInteger();val transport=FixtureYouTubeTransport()
+        transport.respond={active.incrementAndGet();try{delay(60000);page("R0000000001")}finally{active.decrementAndGet()}}
+        val client=YouTubeClient(MemoryYouTubeCredentials(),transport,guestRequestTimeoutMs=100)
+        try{withTimeout(2000){client.page(YouTubeFeed.HOME)};fail("Expected bounded Home timeout")}
+        catch(error:UserMessage){assertTrue(error.message!!.contains("Recommendations"))}
+        assertEquals(0,active.get());transport.respond={page("R0000000001")}
+        assertEquals(1,client.page(YouTubeFeed.HOME).videos.size)
+    }
+    @Test fun leavingHomeCancelsWithoutPublishingAFabricatedSuccess()=runBlocking {
+        val active=AtomicInteger();val transport=FixtureYouTubeTransport()
+        transport.respond={active.incrementAndGet();try{delay(60000);nudge()}finally{active.decrementAndGet()}}
         val pending=async(start=CoroutineStart.UNDISPATCHED){YouTubeClient(MemoryYouTubeCredentials(),transport).page(YouTubeFeed.HOME)}
-        withTimeout(2000){pending.cancelAndJoin()};assertTrue(pending.isCancelled)
+        withTimeout(2000){while(active.get()==0)delay(1);pending.cancelAndJoin()}
+        assertTrue(pending.isCancelled);assertEquals(0,active.get())
     }
     @Test fun unsignedHistoryIsLocalAndAccountOnlyFeedsNeverMakeAnonymousPrivateRequests()=runBlocking {
         val transport=FixtureYouTubeTransport()
@@ -92,26 +97,5 @@ class YouTubeGuestTest {
         client.page(YouTubeFeed.SUBSCRIPTIONS,continuation="next-subscriptions")
         assertEquals("next-subscriptions",transport.requests.last().body!!.getString("continuation"))
         assertFalse(transport.requests.last().body!!.has("browseId"))
-    }
-    @Test fun oneStalledPublicTopicCannotHoldCompletedRecommendationShelves()=runBlocking {
-        val transport=FixtureYouTubeTransport();val cancelled=AtomicInteger()
-        transport.respond={r->if(r.body?.optString("browseId")=="FEtopics_music") {
-            try{delay(60_000);topicReply(r)}finally{cancelled.incrementAndGet()}
-        } else topicReply(r)}
-        val home=withTimeout(2_000){YouTubeClient(MemoryYouTubeCredentials(),transport,guestRequestTimeoutMs=120).page(YouTubeFeed.HOME)}
-        assertEquals(listOf("Gaming","News"),home.shelves.map{it.name});assertEquals(4,home.videos.size)
-        assertEquals(1,cancelled.get())
-    }
-    @Test fun stalledActualGuestHomeIsNotCachedAndAllStalledTopicsCancelWithARetryableFailure()=runBlocking {
-        val transport=FixtureYouTubeTransport();val active=AtomicInteger();var allTopicsStall=false
-        transport.respond={r->if(r.body?.optString("browseId")=="default" || allTopicsStall) {
-            active.incrementAndGet();try{delay(60_000);topicReply(r)}finally{active.decrementAndGet()}
-        } else topicReply(r)}
-        val client=YouTubeClient(MemoryYouTubeCredentials(),transport,guestRequestTimeoutMs=100)
-        assertEquals(6,withTimeout(2_000){client.page(YouTubeFeed.HOME)}.videos.size)
-        assertEquals(0,active.get());allTopicsStall=true
-        try{withTimeout(2_000){client.page(YouTubeFeed.HOME)};fail("All timed-out topics must be retryable")}
-        catch(e:UserMessage){assertTrue(e.message!!.contains("Recommendations"))}
-        assertEquals(0,active.get());assertEquals(2,transport.requests.count{it.body?.optString("browseId")=="default"})
     }
 }

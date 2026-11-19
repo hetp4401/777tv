@@ -59,7 +59,7 @@ class YouTubeNavigationTest:NativeTestBase() {
         val bounds=ui{listOf("Live TV","On-Demand","YouTube").map{a.window.decorView.findTag("navigation:$it")!!.let{v->android.graphics.Rect().apply{v.getGlobalVisibleRect(this)}}}}
         assertTrue(bounds[0].right<=bounds[1].left);assertTrue(bounds[1].right<=bounds[2].left)
         assertEquals("On-Demand",ui{Preferences().startSection});assertTrue(videos().isNotEmpty())
-        assertNull(ui{a.model.youtube.account});assertEquals("Music",ui{a.model.youtube.homeShelves.first().name})
+        assertNull(ui{a.model.youtube.account});assertEquals("Recommended",ui{a.model.youtube.homeShelves.first().name})
         assertNotNull(tagged("field:Search YouTube"));assertNull(player())
         assertFalse(ui{descendants(a.window.decorView).any{it is android.webkit.WebView}})
         assertTrue(audit().getJSONArray("resolved").length()==0)
@@ -161,7 +161,7 @@ class YouTubeNavigationTest:NativeTestBase() {
     @Test fun signOutKeepsOnDemandDataAndClearsPersonalRecommendations() {
         signIn();val title=Title("fixture-saved-title","Saved fixture");ui{a.model.toggle(title)}
         click("YouTube account");click("Sign out");click("Sign out")
-        await{ui{a.model.youtube.account==null && !a.model.youtube.busy && a.model.youtube.videos.isNotEmpty() && a.model.youtube.videos.all{it.id.startsWith("G")}}}
+        await{ui{a.model.youtube.account==null && !a.model.youtube.busy && a.model.youtube.videos.isNotEmpty() && a.model.youtube.homeShelves.firstOrNull()?.name=="Recommended"}}
         assertTrue(ui{a.model.saved.any{it.id==title.id}});assertNull(ui{a.model.store.youTubeCredentials().read()})
         ui{a.model.toggle(title)}
     }

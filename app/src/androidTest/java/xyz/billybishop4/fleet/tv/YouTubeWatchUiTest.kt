@@ -93,9 +93,12 @@ class YouTubeWatchUiTest:NativeTestBase() {
     }
     @Test fun downFromNextAndSettingsReachesRelatedWithoutChangingPlayback() {
         play();val original=player()
-        await{tagged("youtube-next")?.isEnabled==true}
+        // Optional watch-next can finish after the initial HUD auto-hides.
+        // Require model readiness, then inspect controls only while visible.
+        await{ui{(a.model.route as? Route.Player)?.watch?.let{a.playback?.watch===it && a.canStepYouTube(it,1)}==true}}
         for(tag in listOf("youtube-next","youtube-settings")) {
             ui{tagged("native-player")!!.performClick()};await{tagged("vod-controls")?.isShown==true}
+            await{tagged("youtube-next")?.let{it.isShown && it.isEnabled}==true}
             ui{tagged(tag)!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
             await{panel()?.isShown==true && tagged("youtube-video:V0000000040")?.isShown==true}
             assertSame(original,player());assertTrue(ui{a.player!!.playWhenReady})

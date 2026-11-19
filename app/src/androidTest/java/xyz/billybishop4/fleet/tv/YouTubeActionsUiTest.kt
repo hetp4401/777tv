@@ -2,20 +2,29 @@
 package xyz.billybishop4.fleet.tv
 
 import android.os.SystemClock
+import android.os.Build
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewTreeObserver
+import android.view.WindowManager
+import android.view.inspector.WindowInspector
 import android.widget.EditText
 import android.widget.TextView
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.test.filters.SdkSuppress
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
 import kotlinx.coroutines.runBlocking
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /** Native account/creator flows use generated JSON and media; never a real account or physical TV. */
 class YouTubeActionsUiTest:NativeTestBase() {
@@ -42,6 +51,62 @@ class YouTubeActionsUiTest:NativeTestBase() {
     private fun completed(label:String,tag:String)=await{ui{this.label(tag)==label && row(tag)?.isEnabled==true}}
     private fun paths()=state().getJSONArray("requests").objects().map{it.optString("path")}
     private fun play(){ui{a.model.youtube.play(video)};playing();await{tagged("vod-controls")?.isShown==true}}
+
+    /** Observe actual window/native focus without requesting it. Failure evidence
+     * is written before @After retires the dialog and changes the destination. */
+    private inner class ActionFocusTrace(private val name:String) {
+        private val events=JSONArray()
+        private val observed=linkedMapOf<View,Pair<ViewTreeObserver.OnGlobalFocusChangeListener,ViewTreeObserver.OnWindowFocusChangeListener>>()
+        fun mark(phase:String,key:Int?=null):Unit=ui {
+            if(Build.VERSION.SDK_INT<29)return@ui
+            val roots=WindowInspector.getGlobalWindowViews()
+            for(root in roots)if(root !in observed && observed.size<12) {
+                val focus=ViewTreeObserver.OnGlobalFocusChangeListener { _,_->mark("native-focus") }
+                val window=ViewTreeObserver.OnWindowFocusChangeListener { value->mark("window-focus:$value") }
+                observed[root]=focus to window
+                root.viewTreeObserver.addOnGlobalFocusChangeListener(focus)
+                root.viewTreeObserver.addOnWindowFocusChangeListener(window)
+            }
+            if(events.length()<256 || phase.startsWith("failure") || phase=="before-cleanup")events.put(JSONObject()
+                .put("phase",phase).put("atMs",SystemClock.uptimeMillis()).put("keyCode",key)
+                .put("activityWindowFocus",a.hasWindowFocus()).put("inputGeneration",a.focusInputGeneration)
+                .put("feed",a.model.youtube.feed.name).put("accountPresent",a.model.youtube.account!=null)
+                .put("windows",JSONArray(roots.map { root->
+                    val focus=root.findFocus()
+                    val params=root.layoutParams as? WindowManager.LayoutParams
+                    JSONObject().put("activity",root===a.window.decorView).put("attached",root.isAttachedToWindow)
+                        .put("windowFocus",root.hasWindowFocus()).put("flags",params?.flags)
+                        .put("focusTag",focus?.tag?.toString()).put("focusText",(focus as? TextView)?.text?.toString())
+                        .put("actionRows",JSONArray(descendants(root).filter { it.tag?.toString()?.startsWith("youtube-actions-")==true }.map { row->
+                            JSONObject().put("tag",row.tag.toString()).put("text",(row as? TextView)?.text?.toString())
+                                .put("shown",row.isShown).put("enabled",row.isEnabled).put("focused",row.hasFocus())
+                                .put("windowFocus",row.hasWindowFocus()).put("width",row.width).put("height",row.height)
+                        }.toList()))
+                })))
+        }
+        fun key(code:Int) { mark("key-before",code);sendRemoteKey(code);mark("key-after",code) }
+        fun failure() {
+            mark("failure-before-cleanup")
+            runCatching {
+                device.dumpWindowHierarchy(File(ui{a.getExternalFilesDir(null)!!},"$name-before-cleanup.xml"))
+                screenshot("$name-before-cleanup")
+            }
+        }
+        fun close() {
+            try {
+                mark("before-cleanup")
+                File(ui{a.getExternalFilesDir(null)!!},"$name.json").writeText(ui{events.toString(2)})
+            } finally {
+                ui {
+                    for((root,listeners) in observed)if(root.viewTreeObserver.isAlive) {
+                        root.viewTreeObserver.removeOnGlobalFocusChangeListener(listeners.first)
+                        root.viewTreeObserver.removeOnWindowFocusChangeListener(listeners.second)
+                    }
+                    observed.clear()
+                }
+            }
+        }
+    }
 
     @Test fun liveYouTubeOffersDirectAccountActionsWithoutPausingTheStream() {
         ui{a.model.open(Route.Player(Watch(video.title(),Stream("Fixture live","$base/hls/fixture/orig.m3u8"),live=true)))}
@@ -130,36 +195,126 @@ class YouTubeActionsUiTest:NativeTestBase() {
         assertNull(player());screenshot("youtube-save-playlists")
     }
     @Test fun menuOnACardBrowsesTheCreatorAndTabsWithoutResolvingMediaAndBackRestoresTheSearchCard() {
-        ui{a.model.youtube.editQuery("fixture");a.model.youtube.submitSearch()}
-        await{ui{a.model.youtube.feed==YouTubeFeed.SEARCH && a.model.youtube.query=="fixture" && !a.model.youtube.busy && a.model.youtube.videos.size==32}}
-        val selected=ui{a.model.youtube.videos[5]}
-        await{ui{((tagged("youtube-search-results") as? RecyclerView)?.getChildAt(0) as? YouTubeShelfView)?.let {
-            it.stateKey=="SEARCH/fixture/search/videos" && it.list.adapter?.itemCount==32 && it.firstVideo()?.tag=="youtube-video:V0000000001"
-        }==true}}
-        ui{tagged("youtube-video:V0000000001")!!.requestFocusFromTouch()}
-        await{ui{a.currentFocus?.tag=="youtube-video:V0000000001" && a.hasWindowFocus()}}
-        repeat(5){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)}
-        await{ui{a.currentFocus?.tag=="youtube-video:${selected.id}"} && tagged("youtube-video:${selected.id}")?.isShown==true}
-        sendRemoteKey(KeyEvent.KEYCODE_MENU)
-        assertTrue(device.wait(Until.hasObject(By.text("Video actions")),5000))
-        assertTrue(device.wait(Until.hasObject(By.text("Like").enabled(true)),10000))
-        assertTrue(device.wait(Until.hasObject(By.text("Sign in for account actions").focused(true)),10000))
-        sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
-        assertTrue("Creator action must receive remote focus",device.wait(Until.hasObject(By.text("Fixture creator").focused(true)),5000))
-        sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
-        await{ui{a.model.youtube.feed==YouTubeFeed.CHANNEL && !a.model.youtube.busy} && tagged("youtube-channel-name")?.isShown==true}
-        assertEquals("Fixture creator",ui{(tagged("youtube-channel-name") as TextView).text.toString()})
-        remote("Videos channel videos");await{ui{a.model.youtube.channelPage?.selectedTab=="videos" && !a.model.youtube.busy}}
-        val list=tagged("youtube-results") as RecyclerView
-        ui{list.scrollToPosition(18)};await{ui{a.model.youtube.videos.size>=40 && !a.model.youtube.busy}}
-        remote("Shorts channel videos");await{ui{a.model.youtube.channelPage?.selectedTab=="shorts" && !a.model.youtube.busy}}
-        assertTrue(ui{a.model.youtube.videos.all{it.isShort}})
-        assertEquals(5,ui{(list.layoutManager as GridLayoutManager).spanCount})
-        assertNull(player());assertEquals(0,state().getJSONArray("resolved").length())
-        ui{a.onBackPressedDispatcher.onBackPressed()}
-        await{ui{a.model.youtube.feed==YouTubeFeed.SEARCH && a.model.youtube.query=="fixture" && !a.model.youtube.busy}}
-        await{ui{a.currentFocus?.tag=="youtube-video:${selected.id}"}}
-        screenshot("youtube-channel-back")
+        val trace=ActionFocusTrace("youtube-actions-creator-focus")
+        try {
+            trace.mark("search-start")
+            ui{a.model.youtube.editQuery("fixture");a.model.youtube.submitSearch()}
+            await{ui{a.model.youtube.feed==YouTubeFeed.SEARCH && a.model.youtube.query=="fixture" && !a.model.youtube.busy && a.model.youtube.videos.size==32}}
+            val selected=ui{a.model.youtube.videos[5]}
+            await{ui{((tagged("youtube-search-results") as? RecyclerView)?.getChildAt(0) as? YouTubeShelfView)?.let {
+                it.stateKey=="SEARCH/fixture/search/videos" && it.list.adapter?.itemCount==32 && it.firstVideo()?.tag=="youtube-video:V0000000001"
+            }==true}}
+            ui{tagged("youtube-video:V0000000001")!!.requestFocusFromTouch()}
+            await{ui{a.currentFocus?.tag=="youtube-video:V0000000001" && a.hasWindowFocus()}}
+            repeat(5){trace.key(KeyEvent.KEYCODE_DPAD_RIGHT)}
+            await{ui{a.currentFocus?.tag=="youtube-video:${selected.id}"} && tagged("youtube-video:${selected.id}")?.isShown==true}
+            trace.key(KeyEvent.KEYCODE_MENU)
+            trace.mark("menu-dispatched")
+            assertTrue(device.wait(Until.hasObject(By.text("Video actions")),5000))
+            assertTrue(device.wait(Until.hasObject(By.text("Like").enabled(true)),10000))
+            trace.mark("actions-ready")
+            assertTrue(device.wait(Until.hasObject(By.text("Sign in for account actions").focused(true)),10000))
+            trace.mark("initial-signin-focused")
+            trace.key(KeyEvent.KEYCODE_DPAD_DOWN)
+            assertTrue("Creator action must receive remote focus",device.wait(Until.hasObject(By.text("Fixture creator").focused(true)),5000))
+            trace.key(KeyEvent.KEYCODE_DPAD_CENTER)
+            await{ui{a.model.youtube.feed==YouTubeFeed.CHANNEL && !a.model.youtube.busy && a.model.youtube.channelPage?.channel?.name=="Fixture creator"} &&
+                ui{(tagged("youtube-channel-name") as? TextView)?.let{it.isShown && it.text.toString()=="Fixture creator"}==true}}
+            assertEquals("Fixture creator",ui{(tagged("youtube-channel-name") as TextView).text.toString()})
+            remote("Videos channel videos");await{ui{a.model.youtube.channelPage?.selectedTab=="videos" && !a.model.youtube.busy}}
+            val list=tagged("youtube-results") as RecyclerView
+            ui{list.scrollToPosition(18)};await{ui{a.model.youtube.videos.size>=40 && !a.model.youtube.busy}}
+            remote("Shorts channel videos");await{ui{a.model.youtube.channelPage?.selectedTab=="shorts" && !a.model.youtube.busy}}
+            assertTrue(ui{a.model.youtube.videos.all{it.isShort}})
+            assertEquals(5,ui{(list.layoutManager as GridLayoutManager).spanCount})
+            assertNull(player());assertEquals(0,state().getJSONArray("resolved").length())
+            ui{a.onBackPressedDispatcher.onBackPressed()}
+            await{ui{a.model.youtube.feed==YouTubeFeed.SEARCH && a.model.youtube.query=="fixture" && !a.model.youtube.busy}}
+            await{ui{a.currentFocus?.tag=="youtube-video:${selected.id}"}}
+            screenshot("youtube-channel-back")
+        } catch(error:Throwable) { trace.failure();throw error }
+        finally { trace.close() }
+    }
+    @SdkSuppress(minSdkVersion=29)
+    @Test fun readyActionsRecoverTheirInitialFocusAfterTheDialogWindowBecomesFocusable() {
+        control("slow_next=1")
+        val trace=ActionFocusTrace("youtube-actions-delayed-window-focus")
+        var root:View?=null
+        var original:WindowManager.LayoutParams?=null
+        try {
+            ui{sheet=YouTubeVideoActions(a,video).also{it.show()}}
+            await{ui{sheet?.visible==true && status()=="Loading video actions…" && row("youtube-actions-like")?.isEnabled==false}}
+            ui {
+                val rows=sheet!!.view.findTag("youtube-video-actions")!!
+                root=WindowInspector.getGlobalWindowViews().single { it.findTag("youtube-video-actions")===rows }
+                original=WindowManager.LayoutParams().apply{copyFrom(root!!.layoutParams as WindowManager.LayoutParams)}
+                val blocked=WindowManager.LayoutParams().apply { copyFrom(original!!);flags=flags or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE }
+                assertFalse("Details completed before the window could be blocked",row("youtube-actions-like")!!.isEnabled)
+                a.windowManager.updateViewLayout(root,blocked)
+            }
+            await{ui{root!!.isAttachedToWindow && !root!!.hasWindowFocus() && a.hasWindowFocus()}}
+            trace.mark("dialog-window-blocked")
+            await{ui{row("youtube-actions-like")?.isEnabled==true && status().isBlank() && !root!!.hasWindowFocus()}}
+            // Give the original ready-row focus callback two actual frame
+            // opportunities while the native window still cannot take focus.
+            val frames=CountDownLatch(1)
+            ui{root!!.postOnAnimation { root!!.postOnAnimation { frames.countDown() } }}
+            assertTrue("Unfocused dialog did not receive frame callbacks",frames.await(5,TimeUnit.SECONDS))
+            trace.mark("ready-rows-without-window-focus")
+            assertFalse(ui{root!!.hasWindowFocus()})
+            ui{a.windowManager.updateViewLayout(root,original!!)}
+            await{ui{root!!.hasWindowFocus()}}
+            trace.mark("dialog-window-restored")
+            await(5000){ui{row("youtube-actions-signin")?.let{it.isShown && it.isEnabled && it.hasFocus() && it.hasWindowFocus()}==true}}
+            trace.mark("initial-signin-focused")
+            assertNull(player());assertEquals(0,state().getJSONArray("resolved").length())
+        } catch(error:Throwable) { trace.failure();throw error }
+        finally {
+            try { trace.close() } finally {
+                try {
+                    ui {
+                        if(root?.isAttachedToWindow==true && original!=null)a.windowManager.updateViewLayout(root,original!!)
+                        sheet?.close();sheet=null
+                    }
+                } finally { control("slow_next=0") }
+            }
+        }
+    }
+    @SdkSuppress(minSdkVersion=29)
+    @Test fun readyMetadataPreservesTheUsersNewerRemoteSelection() {
+        if(Build.VERSION.SDK_INT<29)return
+        control("slow_next=1")
+        val trace=ActionFocusTrace("youtube-actions-newer-input-focus")
+        fun root()=if(Build.VERSION.SDK_INT>=29)WindowInspector.getGlobalWindowViews().firstOrNull{it.findTag("youtube-video-actions")!=null} else null
+        fun action(tag:String)=root()?.findTag(tag)
+        try {
+            ui{a.model.youtube.editQuery("fixture");a.model.youtube.submitSearch()}
+            await{ui{a.model.youtube.feed==YouTubeFeed.SEARCH && !a.model.youtube.busy && a.model.youtube.videos.size==32} &&
+                tagged("youtube-video:V0000000001")?.isShown==true}
+            ui{tagged("youtube-video:V0000000001")!!.requestFocusFromTouch()}
+            await{ui{a.currentFocus?.tag=="youtube-video:V0000000001" && a.hasWindowFocus()}}
+            trace.key(KeyEvent.KEYCODE_MENU)
+            await{ui{root()?.let{it.hasWindowFocus() && (it.findFocus() as? TextView)?.text?.toString()=="Done"}==true &&
+                (action("youtube-actions-status") as? TextView)?.text?.toString()=="Loading video actions…" &&
+                action("youtube-actions-like")?.isEnabled==false}}
+            trace.mark("loading-with-default-done-focus")
+            // One actual remote gesture must choose the final enabled action
+            // while metadata is pending; no focus is forced after that input.
+            trace.key(KeyEvent.KEYCODE_DPAD_UP)
+            val chosen="youtube-actions-phone"
+            await{ui{action(chosen)?.let{it.hasFocus() && it.hasWindowFocus()}==true}}
+            assertEquals("Loading video actions…",ui{(action("youtube-actions-status") as TextView).text.toString()})
+            trace.mark("newer-remote-selection-before-metadata")
+            await{ui{action("youtube-actions-like")?.isEnabled==true &&
+                (action("youtube-actions-status") as? TextView)?.text?.isBlank()==true}}
+            val frames=CountDownLatch(1)
+            ui{root()!!.postOnAnimation { root()!!.postOnAnimation { frames.countDown() } }}
+            assertTrue("Ready dialog did not render",frames.await(5,TimeUnit.SECONDS))
+            trace.mark("ready-after-newer-remote-input")
+            assertTrue("Metadata stole the user's newer selection",ui{action(chosen)?.let{it.isShown && it.isEnabled && it.hasFocus() && it.hasWindowFocus()}==true})
+            assertNull(player());assertEquals(0,state().getJSONArray("resolved").length())
+        } catch(error:Throwable) { trace.failure();throw error }
+        finally { try{trace.close()}finally{control("slow_next=0")} }
     }
     @Test fun closingALoadingActionsSheetCancelsItsUiAndReopeningStillWorks() {
         play();val player=player();control("slow=1")

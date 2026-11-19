@@ -1,5 +1,35 @@
 # 777tv Android TV workflow (formerly Fleet)
 
+- 0.26.0/code 34 is now installed in place on the TCL. The pulled installed APK
+  matches `1929cda7260dc9e3722153fb1f73b5ee09d287a207470048f1783086f53b6082`.
+  UID, foreground and standby were preserved. No launch/wake, configuration or
+  profile edit, test package or interactive TV playback/performance probe ran.
+  Preserve the user's current session/data. See `releases/0.26.0/verification.json`.
+- 0.26 QA verifies 257 unique selected native scenarios, 260 JVM passes/3 opt-in
+  skips and lint zero errors/108 warnings. All 70 production/app-build and three
+  root configuration hashes match. Two closed failed jobs contribute only
+  complete passing current-source class scopes; their changed failed classes
+  were excluded and separately rerun. Keep failed statuses and original traces
+  explicit. See `docs/qa-review-0.26.md`; private evidence is `.tools/youtube026/`.
+  Preserve the runtime-confirmed pending-source Back cancellation and scoped
+  ready-dialog focus fix. A newer remote selection must override initial focus.
+- The YouTube rail is transparent with individually rounded selected/focus pills.
+  Its premeasured reveal translates the stable body beside it. Continuous shelf
+  movement retains logical input/ownership guards. Seeking uses fixed seconds
+  and a frame-driven hold; YouTube commits one decoder seek on release. Quiet
+  loading and portrait Shorts artwork retain bounded resources. Vertical Shorts
+  transitions release the old decoder first and retain one outgoing surface;
+  emulator visuals do not prove physical TCL frame pacing or all OEM behavior.
+- Signed-out Home now preserves the actual TV Home response, order and pagination,
+  with real bootstrap context, visitor continuity and a bounded memory-only jar
+  of six allowlisted anonymous cookie names. Local-history/topic fallback shelves
+  and empty-response suppression are removed. Fresh reference sessions received
+  Google's sign-in/search nudge; do not promise identical rankings or guaranteed
+  guest recommendations. Media/tracking/suggestions do not share the cookie jar.
+  Native tests allow legitimate Home prefetch only with exact ordered server data
+  and actual anonymous continuation requests. Establish real remote mode before
+  measured input after synthetic touch, and wait for committed native focus before
+  activating a playlist. Never hide an undispatched DOWN with a measured retry.
 - Het subsequently requested "Now push to tcl" after whole-app QA. The verified
   0.25.0/code 33 APK is installed in place on the TCL; the pulled installed APK
   matches SHA-256 `83f3effac99f942acf0632ce144138d122c0888da2cb40ecb96fdd3b39f769c6`.

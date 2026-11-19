@@ -267,6 +267,17 @@ def handle_post(handler,path):
             start={'FEtopics_music':100,'FEtopics_gaming':200,'FEtopics_news':300}.get(identifier,400)
             return handler.send({'contents':[] if empty_guest else [video(start+n,prefix='G') for n in range(1,13)]})
         if not handler.headers.get('Authorization'):
+            continuation=body.get('continuation','')
+            if identifier in ['default','FEwhat_to_watch'] or continuation.startswith('fixture-guest-home-'):
+                with _lock:guest_fail=_state['guest_fail'];empty_guest=_state['empty_guest']
+                if guest_fail:return handler.send({'error':'generated guest Home failure'},status=503)
+                if empty_guest:
+                    return handler.send({'contents':{'feedNudgeRenderer':{'subtitle':{'simpleText':'Sign in for recommendations, or search.'}}}})
+                offset=36 if continuation else 0
+                rows=[shelf(name,[video(n,short) for n in range(start+offset,start+offset+12)])
+                    for name,start,short in [('Recommended',1,False),('New to you',13,False),('Shorts',25,True)]]
+                return handler.send({'contents':{'sectionListRenderer':{'contents':rows,
+                    **({'continuations':[{'nextContinuationData':{'continuation':'fixture-guest-home-2'}}]} if not continuation else {})}}})
             return handler.send({'contents':{'feedNudgeRenderer':{'subtitle':{'simpleText':'Sign in for recommendations, or search.'}}}})
         if identifier=='FEplaylist_aggregation':
             with _lock:playlists=json.loads(json.dumps(_state['playlists']))

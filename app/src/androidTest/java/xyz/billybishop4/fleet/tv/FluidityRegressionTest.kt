@@ -63,29 +63,43 @@ class FluidityRegressionTest:NativeTestBase() {
         fun hidden(id:String)=attached(id) && ui{a.hasWindowFocus() && tagged("native-player")?.hasFocus()==true &&
             tagged("shorts-actions")?.isShown==false}
         val callback=ui{a.window.callback!!}
+        var dispatchPhase="remote-mode-preparation"
         try {
             ui{a.model.youtube.play(first)}
             // A model route can precede its rendered Playback by a frame. Do not
             // apply pressure or keys to the previous source during that handoff.
             await{attached(first.id) && tagged("shorts-actions")?.isShown==true}
             val original=player()!!;ui{a.playback!!.dismissControls()};await{hidden(first.id)}
-            record("before-trim")
-            ui{a.onTrimMemory(android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW)}
-            assertSame("Memory pressure replaced the active decoder",original,player())
-            assertTrue(ui{a.model.youtube.videos.any{it.id==first.id}})
-            await{hidden(first.id)};record("after-trim")
             ui {
                 a.window.callback=object:android.view.Window.Callback by callback {
                     override fun dispatchKeyEvent(event:KeyEvent):Boolean {
-                        if(event.keyCode!=KeyEvent.KEYCODE_DPAD_DOWN)return callback.dispatchKeyEvent(event)
-                        val key=org.json.JSONObject().put("action",event.action).put("downTime",event.downTime)
+                        if(event.keyCode!=KeyEvent.KEYCODE_DPAD_DOWN && event.keyCode!=KeyEvent.KEYCODE_DPAD_UP)return callback.dispatchKeyEvent(event)
+                        val key=org.json.JSONObject().put("phase",dispatchPhase).put("code",event.keyCode)
+                            .put("action",event.action).put("downTime",event.downTime).put("eventTime",event.eventTime)
                             .put("repeat",event.repeatCount).put("before",state())
                         val handled=callback.dispatchKeyEvent(event)
                         keys.add(key.put("handled",handled).put("after",state()));return handled
                     }
                 }
             }
+            record("before-remote-mode-preparation")
+            // Model-driven setup can leave Android in touch mode, where the
+            // first navigation DOWN is consumed before the app's window. UP at
+            // the queue's first clip is a benign real input, never a Next retry.
+            sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP)
+            await{hidden(first.id) && ui{!a.window.decorView.isInTouchMode && !a.model.youtube.resolving}}
+            assertSame("Remote-mode preparation replaced the first decoder",original,player())
+            record("remote-mode-ready")
+            record("before-trim")
+            ui{a.onTrimMemory(android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW)}
+            assertSame("Memory pressure replaced the active decoder",original,player())
+            assertTrue(ui{a.model.youtube.videos.any{it.id==first.id}})
+            await{hidden(first.id) && ui{!a.window.decorView.isInTouchMode}};record("after-trim")
+            ui{dispatchPhase="measured-next"}
             sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN);record("after-down")
+            val measured=ui{keys.filter{it.optString("phase")=="measured-next"}.map{it.getInt("action") to it.getLong("downTime")}}
+            assertEquals("Measured Next never reached the native window as a complete gesture",listOf(KeyEvent.ACTION_DOWN,KeyEvent.ACTION_UP),measured.map{it.first})
+            assertEquals("Measured Next changed its gesture identity",1,measured.map{it.second}.distinct().size)
             await{attached(next.id) && tagged("shorts-actions")?.isShown==true}
             assertNotSame("The next Short kept the previous decoder",original,player())
             ui{a.playback!!.dismissControls()};await{hidden(next.id)};record("before-back")

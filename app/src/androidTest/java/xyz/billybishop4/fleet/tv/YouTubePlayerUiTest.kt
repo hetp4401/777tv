@@ -61,7 +61,9 @@ class YouTubePlayerUiTest:NativeTestBase() {
     private fun holdEvent(code:Int,action:Int,down:Long,offset:Long=0,repeats:Int=0) {
         val at=down+offset;val delay=at-SystemClock.uptimeMillis()
         if(delay>0)SystemClock.sleep(delay)
-        InstrumentationRegistry.getInstrumentation().sendKeySync(KeyEvent(down,maxOf(at,SystemClock.uptimeMillis()),action,code,repeats))
+        // Preserve the intended gesture duration when assertions/injection are
+        // delayed by software rendering; elapsed test work is not held time.
+        InstrumentationRegistry.getInstrumentation().sendKeySync(KeyEvent(down,at,action,code,repeats))
     }
     private fun signIn() {
         control("approve=1");ui{a.model.youtube.startSignIn()}
@@ -155,9 +157,9 @@ class YouTubePlayerUiTest:NativeTestBase() {
                 await{tagged("youtube-seek-preview")?.isShown==true}
                 assertEquals("Preview issued a decoder seek",0,seeks.get())
                 assertTrue(ui{original.currentPosition in 19000L..23000L})
-                assertTrue(ui{(tagged("youtube-seek-preview-time") as TextView).text.toString().contains("0:00")})
+                assertTrue(ui{(tagged("youtube-seek-preview-time") as TextView).text.toString().matches(Regex("0:0[0-9]"))})
                 holdEvent(KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.ACTION_UP,down,500)
-                await{seeks.get()==1 && ui{original.currentPosition<6000 && original.playWhenReady==wasPlaying} && tagged("youtube-seek-preview")?.isShown!=true}
+                await{seeks.get()==1 && ui{original.currentPosition in 5000L..8500L && original.playWhenReady==wasPlaying} && tagged("youtube-seek-preview")?.isShown!=true}
                 assertSame(original,player());ui{original.removeListener(listener)}
             }
         }finally{ui{original.removeListener(listener)}}

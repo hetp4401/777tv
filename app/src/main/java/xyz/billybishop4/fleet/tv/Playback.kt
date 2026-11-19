@@ -38,6 +38,7 @@ internal fun playbackStartPosition(watch:Watch,resumeEnabled:Boolean,localPositi
 /** One hardware-decoded player per visible attachment; direct add-on URLs. */
 internal class NativePlayback(private val a: MainActivity, private val m: FleetModel, private val original: Watch, private var fullscreen: Boolean = true, private val exit: () -> Unit) {
     internal val watch:Watch get()=original
+    internal val canRetireShortFrame:Boolean get()=original.short && historyFrameReady && playerView!=null
     // Video and letterbox areas remain neutral; themes only color interface surfaces.
     val view = FrameLayout(a).apply { setBackgroundColor(0xFF080808.toInt()) }
     var player: ExoPlayer? = null; private set
@@ -62,6 +63,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     private var replayRequested=false
     private var bufferBudgetBytes=0
     private var buffering: View? = null
+    private var youtubeLoading:YouTubeLoading?=null
     private var exoDecoder=""
     private val requestedAtMs=original.playRequestedAtMs.takeIf{it>0}?:playbackNowMs()
     private var firstFrameMs=0L
@@ -104,9 +106,21 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
     fun start() { if (running || closed) return; if(original.live && original.title.type!="youtube")playIntent=true;running=true; connect(false) }
     fun stop() { running=false; resolution?.cancel(); resolution=null; detach() }
     fun close() { stop(); closed=true;view.removeAllViews() }
+    /** Release all playback work before the next decoder starts, retaining only
+     * the outgoing SurfaceView's last buffer for the brief Shorts translation. */
+    internal fun retireShortFrame():View {
+        val surface=playerView
+        stop();closed=true
+        for(index in view.childCount-1 downTo 0)if(view.getChildAt(index)!==surface)view.removeViewAt(index)
+        return view
+    }
     private fun message(text:String) { view.removeAllViews();view.addView(a.text(text,20f),FrameLayout.LayoutParams(-2,-2,Gravity.CENTER)) }
     private fun connect(refresh:Boolean,fallback:Boolean=false) {
-        resolution?.cancel();detach();message("Connecting…")
+        resolution?.cancel();detach()
+        if(original.title.type=="youtube") {
+            view.removeAllViews()
+            youtubeLoading=YouTubeLoading(a,sourceWatch).also { view.addView(it,FrameLayout.LayoutParams(-1,-1)) }
+        } else message("Connecting…")
         resolution=a.lifecycleScope.launch {
             try {
                 if(retries>0)delay((retries*1000L).coerceAtMost(3000))
@@ -168,6 +182,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
                 override fun onRenderedFirstFrame(eventTime:AnalyticsListener.EventTime,output:Any,renderTimeMs:Long) {
                     if(player===exo && firstFrameMs==0L)firstFrameMs=(playbackNowMs()-requestedAtMs).coerceAtLeast(1L)
                     if(player===exo && w.title.type=="youtube") {
+                        youtubeLoading?.firstFrame()
                         // Optional account work begins after a real frame, then waits
                         // for watched time. Nothing is requested by focus or source loading.
                         historyFrameReady=true;mediaPlayer?.let{sampleHistory(w,it)}
@@ -195,6 +210,9 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
             val pv=(LayoutInflater.from(a).inflate(R.layout.live_player,null) as PlayerView).apply{
                 player=p;useController=false;resizeMode=if(w.short)AspectRatioFrameLayout.RESIZE_MODE_FIT else when(prefs.videoFit){"Fill"->AspectRatioFrameLayout.RESIZE_MODE_FILL;"Zoom"->AspectRatioFrameLayout.RESIZE_MODE_ZOOM;else->AspectRatioFrameLayout.RESIZE_MODE_FIT}
                 setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
+                // Seeking/rebuffering retains the current picture, and a retired
+                // Shorts surface can finish its short compositor transition.
+                if(w.title.type=="youtube")setKeepContentOnPlayerReset(true)
                 isFocusable=true;isFocusableInTouchMode=true;tag="native-player"
             };playerView=pv
             view.removeAllViews();view.addView(pv,FrameLayout.LayoutParams(-1,-1));if(fullscreen)pv.requestFocus()
@@ -213,7 +231,9 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         if(w.short)p.repeatMode=Player.REPEAT_MODE_ONE
         p.setPlaybackParameters(savedPlaybackParameters?:PlaybackParameters(if(w.short)1f else if(w.title.type=="youtube")prefs.youtubeSpeed else if(w.live)1f else prefs.speed));p.prepare();p.playWhenReady=playIntent
         view.tag="playback-mode:${w.playbackMode.name.lowercase()}"
-        buffering=a.column().apply {
+        if(w.title.type=="youtube") {
+            youtubeLoading?.let { view.addView(it,FrameLayout.LayoutParams(-1,-1)) }
+        } else buffering=a.column().apply {
             tag="playback-buffering";gravity=Gravity.CENTER;pad(12);background=a.round(a.panelOverlay(176))
             add(ProgressBar(a).themeTint(),width=a.dp(32),height=a.dp(32));gap(8)
             add(a.text("Buffering…",13f),width=-2)
@@ -244,6 +264,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         p.addListener(object:Player.Listener{
             override fun onPlaybackStateChanged(state:Int){
                 if(mediaPlayer!==p)return
+                youtubeLoading?.buffering(state==Player.STATE_BUFFERING)
                 buffering?.visibility=if(state==Player.STATE_BUFFERING)View.VISIBLE else View.GONE
                 keepAwake(p)
                 if(state==Player.STATE_READY && w.live && !liveAnnounced){liveAnnounced=true;if(fullscreen)liveInfo?.show()}
@@ -448,6 +469,7 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         controls?.close();controls=null
         liveInfo?.close();liveInfo=null;liveAnnounced=false
         buffering=null
+        youtubeLoading?.close();youtubeLoading=null
         val p=mediaPlayer;mediaPlayer=null;player=null;exoDecoder=""
         a.youTubePhonePlaybackChanged()
         if(p!=null)historyPlayback?.sample(p.currentPosition,p.duration,false)

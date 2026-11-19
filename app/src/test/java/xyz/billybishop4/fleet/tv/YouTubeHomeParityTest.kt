@@ -25,16 +25,13 @@ class YouTubeHomeParityTest {
         assertEquals("default",calls.first().body!!.getString("browseId"));assertEquals("home-next",calls.last().body!!.getString("continuation"))
         assertTrue(calls.none{it.body!!.optString("browseId").startsWith("FEtopics_")})
     }
-    @Test fun successfulEmptyGuestHomeIsCachedBrieflyWhileActualTopicShelvesStayFresh()=runBlocking {
-        var now=1000L;val t=FixtureYouTubeTransport()
-        t.respond={r->if(r.body!!.optString("browseId")=="default")YouTubeHttpResponse(200,"""{"feedNudgeRenderer":{"title":"Make YouTube your own"}}""")
-            else response(shelf(when(r.body.optString("browseId")){"FEtopics_music"->"Music videos";"FEtopics_gaming"->"Game highlights";else->"Latest headlines"},
-                when(r.body.optString("browseId")){"FEtopics_music"->"M0000000001";"FEtopics_gaming"->"G0000000001";else->"N0000000001"}))}
-        val client=YouTubeClient(MemoryYouTubeCredentials(),t,now={now})
-        assertEquals(listOf("Music videos","Game highlights","Latest headlines"),client.page(YouTubeFeed.HOME).shelves.map{it.name})
-        client.page(YouTubeFeed.HOME);assertEquals(1,t.requests.count{it.body?.optString("browseId")=="default"})
-        now+=300_001;client.page(YouTubeFeed.HOME);assertEquals(2,t.requests.count{it.body?.optString("browseId")=="default"})
-        assertEquals(9,t.requests.count{it.body?.optString("browseId")?.startsWith("FEtopics_")==true})
+    @Test fun signedOutHomeKeepsServerOrderEvenWhenLocalHistoryWouldFavorAnotherRow()=runBlocking {
+        val t=FixtureYouTubeTransport();t.respond={response(shelf("Recommended by YouTube","V0000000002"),shelf("From your TV session","V0000000001"))}
+        val watched=Progress(Title("V0000000001","Local watched title","youtube"),null,45000,120000,10)
+        val home=YouTubeClient(MemoryYouTubeCredentials(),t,localHistory={listOf(watched)}).page(YouTubeFeed.HOME)
+        assertEquals(listOf("Recommended by YouTube","From your TV session"),home.shelves.map{it.name})
+        assertEquals(listOf("V0000000002","V0000000001"),home.videos.map{it.id})
+        assertEquals(1,t.requests.count{it.body!=null});assertFalse(t.requests.any{it.path.endsWith("/next")})
     }
     @Test fun signedInHomePreservesPersonalizedServerLabelsAndNeverSubstitutesPublicTopics()=runBlocking {
         val t=FixtureYouTubeTransport();t.respond={response(shelf("Your real server recommendations"),shelf("Your subscriptions","V0000000002"))}
