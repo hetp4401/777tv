@@ -93,8 +93,8 @@ class YouTubeProductionProbeTest {
                 }
                 val currentPlayer=ui{activity.player!!}
                 val decoderInitializations=ui{currentPlayer.videoDecoderCounters!!.decoderInitCount}
-                await{ui{activity.window.decorView.findTag("button:Video comments")?.isShown==true}}
-                ui{activity.window.decorView.findTag("button:Video comments")!!.performClick()}
+                await{ui{activity.window.decorView.findTag("youtube-comments")?.isShown==true}}
+                ui{activity.window.decorView.findTag("youtube-comments")!!.performClick()}
                 await{ui{activity.window.decorView.findTag("youtube-watch-panel")?.let{it.isShown && it.width>0}==true}}
                 val side=ui{activity.window.decorView.findTag("youtube-watch-panel")!!}
                 report.put("rightCommentsPanel",ui{side.height==(side.parent as android.view.View).height && side.width<(side.parent as android.view.View).width/2})

@@ -42,7 +42,7 @@ data class Watch(val title: Title, val stream: Stream, val episode: Episode? = n
     val provider: Provider? = null, val channel: Channel? = null,
     val audioUrl:String="", val videoMimeType:String="", val audioMimeType:String="", val resolvedAtMs:Long=0L,
     val short:Boolean=false, val captions:List<VideoCaption> = emptyList(), val playRequestedAtMs:Long=0L,
-    val remoteResumePositionMs:Long?=null, val requestedPositionMs:Long?=null)
+    val remoteResumePositionMs:Long?=null, val requestedPositionMs:Long?=null,val youtubeStoryboard:YouTubeStoryboard?=null)
 internal fun playbackNowMs()=System.nanoTime()/1_000_000L
 data class VideoCaption(val url:String,val language:String,val mimeType:String)
 internal enum class PlaybackMode { SHORTS, YOUTUBE, ON_DEMAND, LIVE }

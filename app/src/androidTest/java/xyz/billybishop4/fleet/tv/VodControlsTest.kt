@@ -289,16 +289,23 @@ class VodControlsTest : NativeTestBase() {
             key(KeyEvent.KEYCODE_BACK);await{tagged("vod-controls")?.isShown==false && tagged("native-player")?.hasFocus()==true}
             observeSeeks();val down=SystemClock.uptimeMillis()
             event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down,0)
-            focusedTimeline();await{seekCount()==1 && kotlin.math.abs(info().optLong("positionMs")-5000)<300}
+            focusedTimeline()
+            if(youtube) {
+                await{ui{(tagged("youtube-seek-preview-time") as? TextView)?.text=="0:05"}}
+                assertEquals("YouTube previews must not seek the decoder before release",0,seekCount())
+            } else await{seekCount()==1 && kotlin.math.abs(info().optLong("positionMs")-5000)<300}
             event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down+600,1)
-            await{kotlin.math.abs(info().optLong("positionMs")-45000)<300}
+            if(youtube) {
+                await{ui{(tagged("youtube-seek-preview-time") as? TextView)?.text=="0:45"}}
+                assertEquals(0,seekCount())
+            } else await{kotlin.math.abs(info().optLong("positionMs")-45000)<300}
             event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_DOWN,down,down+800,2)
             event(KeyEvent.KEYCODE_DPAD_RIGHT,KeyEvent.ACTION_UP,down,SystemClock.uptimeMillis(),0)
             val duration=ui{a.activePlayer!!.duration}
-            await{seekCount()==3 && kotlin.math.abs(info().optLong("positionMs")-duration)<300}
+            await{seekCount()==(if(youtube)1 else 3) && kotlin.math.abs(info().optLong("positionMs")-duration)<300}
             val released=seekCount();SystemClock.sleep(250);assertEquals("Held seeking continued after UP",released,seekCount())
             key(KeyEvent.KEYCODE_DPAD_LEFT)
-            await{seekCount()==4 && kotlin.math.abs(info().optLong("positionMs")-(duration-5000))<300}
+            await{seekCount()==(if(youtube)2 else 4) && kotlin.math.abs(info().optLong("positionMs")-(duration-5000))<300}
             assertFalse("Held directional seeking resumed paused playback",ui{a.activePlayer!!.playWhenReady})
             assertTrue(tagged("vod-progress")?.hasFocus()==true)
         }

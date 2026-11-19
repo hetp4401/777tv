@@ -204,7 +204,7 @@ class TclDeviceExperienceProbe {
                     ui{m.youtube.play(YouTubeVideo("aqz-KE-bpKQ","Big Buck Bunny"))};playerReady("aqz-KE-bpKQ")
                     r.put("startup",startup());shot("youtube-video");r.put("steady",steady(30))
                     val p=ui{a.player!!};val decoderCount=ui{p.videoDecoderCounters!!.decoderInitCount}
-                    key(KeyEvent.KEYCODE_DPAD_UP);await{tagged("vod-controls")?.isShown==true};press("button:Video comments")
+                    key(KeyEvent.KEYCODE_DPAD_UP);await{tagged("vod-controls")?.isShown==true};press("youtube-comments")
                     await(45000){tagged("youtube-watch-panel")?.isShown==true};SystemClock.sleep(1500);shot("youtube-comments")
                     r.put("commentsSameDecoder",ui{a.player===p && p.videoDecoderCounters!!.decoderInitCount==decoderCount})
                     await{ui{(tagged("youtube-panel-list") as? RecyclerView)?.adapter?.itemCount?.let{it>0}==true}}

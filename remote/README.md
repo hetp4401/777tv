@@ -84,8 +84,12 @@ rebuilt automatically. No persistent source backup depends on a worker.
 
 ## Recorded verification
 
-The installed TCL release is now 0.23.0; its exact source and native/device scopes
-are in [`0.23.0 verification`](../releases/0.23.0/verification.json). The original
+The installed TCL release is now 0.24.0; its exact source, scoped native reruns and
+background device installation are in
+[`0.24.0 verification`](../releases/0.24.0/verification.json). No interactive TCL
+playback probe was run for that release, to preserve the foreground session.
+The previous device playback measurements remain in
+[`0.23.0 verification`](../releases/0.23.0/verification.json). The original
 production import was 777tv 0.14.1 using ExoPlayer only. That snapshot's source/APK
 checksums and focused regression results are in
 [`releases/0.14.1/production.json`](../releases/0.14.1/production.json).

@@ -85,11 +85,12 @@ class PlaybackModesTest:NativeTestBase() {
     }
     @Test fun regularYouTubeHasQualityCommentsAndItsOwnThinSeekControls() {
         ui{a.model.youtube.play(YouTubeVideo("V0000000001","A YouTube fixture",channel="Fixture creator"))};playing()
-        await{tagged("vod-controls")?.isShown==true && tagged("youtube-quality")?.isShown==true}
+        await{tagged("vod-controls")?.isShown==true && tagged("youtube-settings")?.isShown==true}
         assertNotNull(tagged("playback-mode:youtube"));assertTrue(ui{(tagged("vod-progress") as SeekBar).isFocusable})
         assertNotNull(find("Related videos"));assertNotNull(find("Video comments"));assertNull(tagged("shorts-actions"))
         assertNull(tagged("vod-options"));assertNull(find("Picture controls"))
-        val player=player();click("Video quality");assertTrue(device.wait(Until.hasObject(By.text("Auto")),5000))
+        val player=player();ui{tagged("youtube-settings")!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
+        click("Video quality");assertTrue(device.wait(Until.hasObject(By.text("Auto")),5000))
         click("Auto");await{ui{a.hasWindowFocus()}};assertSame(player,player());assertTrue(ui{a.player!!.isPlaying})
         assertNull(ui{tagged("vod-panel")!!.background});screenshot("player-mode-youtube")
     }

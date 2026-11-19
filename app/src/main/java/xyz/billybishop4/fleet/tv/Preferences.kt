@@ -26,6 +26,9 @@ data class Preferences(
     val liveSort: String = "Provider",
     val defaultProfileId: String = "",
     val youtubeAutoplay: Boolean = true,
+    val youtubeSpeed:Float=1f,
+    val youtubeCaptions:Boolean=false,
+    val youtubeSubtitleLanguage:String="en",
 ) {
     fun json() = JSONObject().apply {
         put("startupScreen", startSection); put("largePosters", largePosters)
@@ -38,6 +41,7 @@ data class Preferences(
         put("videoFit", videoFit); put("liveBufferSeconds", liveBufferSeconds); put("liveRetries", liveRetries); put("liveSort", liveSort)
         put("defaultProfileId", defaultProfileId)
         put("youtubeAutoplay",youtubeAutoplay)
+        put("youtubeSpeed",youtubeSpeed);put("youtubeCaptions",youtubeCaptions);put("youtubeSubtitleLanguage",youtubeSubtitleLanguage)
     }
     fun themeFor(section:Section):String {
         val selected=when(section) {
@@ -70,6 +74,9 @@ data class Preferences(
             liveRetries = j.optInt("liveRetries", 2).coerceIn(0, 3), liveSort = j.optString("liveSort").takeIf { it in listOf("Provider", "A–Z") } ?: "Provider",
             defaultProfileId = j.optString("defaultProfileId").take(256),
             youtubeAutoplay = j.optBoolean("youtubeAutoplay",true),
+            youtubeSpeed=j.optDouble("youtubeSpeed",1.0).toFloat().takeIf{it in listOf(.25f,.5f,.75f,1f,1.25f,1.5f,1.75f,2f)}?:1f,
+            youtubeCaptions=j.optBoolean("youtubeCaptions",false),
+            youtubeSubtitleLanguage=j.optString("youtubeSubtitleLanguage","en").takeIf{it.length<=64 && (it.isEmpty() || Regex("[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8}){0,3}").matches(it))}?:"",
         )
         private fun language(value: String) = value.takeIf { it.isEmpty() || Regex("[a-zA-Z]{2,3}(?:-[a-zA-Z]{2,4})?").matches(it) } ?: ""
     }

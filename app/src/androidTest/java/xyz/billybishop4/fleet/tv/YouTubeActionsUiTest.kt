@@ -43,17 +43,26 @@ class YouTubeActionsUiTest:NativeTestBase() {
     private fun paths()=state().getJSONArray("requests").objects().map{it.optString("path")}
     private fun play(){ui{a.model.youtube.play(video)};playing();await{tagged("vod-controls")?.isShown==true}}
 
-    @Test fun liveYouTubeHasAccountActionsWithoutAddingTransportOrPausingTheStream() {
+    @Test fun liveYouTubeOffersDirectAccountActionsWithoutPausingTheStream() {
         ui{a.model.open(Route.Player(Watch(video.title(),Stream("Fixture live","$base/hls/fixture/orig.m3u8"),live=true)))}
-        playing();val original=player();sendRemoteKey(KeyEvent.KEYCODE_MENU);click("Video actions")
-        assertFalse(device.hasObject(By.text("Picture controls")))
-        assertTrue(device.wait(Until.hasObject(By.text("Like").enabled(true)),10000));assertSame(original,player())
-        assertTrue(ui{a.player!!.isPlaying});assertNull(tagged("vod-progress"))
-        assertTrue(device.wait(Until.hasObject(By.text("Sign in for account actions").focused(true)),10000))
-        repeat(2){sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)}
-        assertTrue(device.hasObject(By.text("Like").focused(true)));sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
-        assertTrue(device.wait(Until.hasObject(By.text("TV-FIXTURE")),10000))
+        playing();val original=player()
+        await{tagged("youtube-like")?.isShown==true && tagged("vod-play-pause")?.hasFocus()==true}
+        // Accessibility-idle waits can exceed the playing HUD's auto-hide timer.
+        // Inspect native views here so OK targets the visible action, not a hidden
+        // child whose first Center would only reveal the controls.
+        assertNull(find("Picture controls"))
+        ui{tagged("youtube-like")!!.requestFocusFromTouch()}
+        await{ui{tagged("youtube-like")?.let{it.isShown && it.hasFocus()}==true && a.hasWindowFocus()}}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
+        val pairing=device.wait(Until.hasObject(By.text("TV-FIXTURE")),10000)
+        if(!pairing)screenshot("youtube-live-action-before-cleanup")
+        assertTrue("Pairing missing: "+ui{JSONObject().put("account",a.model.youtube.account!=null)
+            .put("epoch",a.model.youtube.client.historyAccountEpoch()).put("busy",a.model.youtube.signInBusy)
+            .put("code",a.model.youtube.signInCode?.userCode).put("error",a.model.youtube.signInError)
+            .put("focus",a.currentFocus?.tag?.toString()).put("windowFocus",a.hasWindowFocus())
+            .put("text",descendants(a.window.decorView).filterIsInstance<TextView>().map{it.text.toString()}.filter{it.isNotBlank()}.joinToString(" | ")).toString()}+"; requests="+paths(),pairing)
         assertSame(original,player());assertTrue(ui{a.player!!.playWhenReady})
+        assertFalse(paths().any{it.contains("/like/")})
     }
 
     @Test fun signedOutActionsOfferRealSignInWithoutChangingTheAccountOrPausingPlayback() {

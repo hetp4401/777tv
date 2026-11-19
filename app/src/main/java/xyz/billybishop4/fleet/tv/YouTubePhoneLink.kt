@@ -159,12 +159,24 @@ internal class YouTubePhoneLink(private val a:MainActivity,private val client:Yo
             "updatePlaylist"->queue.replace(data)
             "next"->next(1)
             "previous"->next(-1)
-            "play"->{val transfer=handoff;if(transfer!=null)transfer.play=true else observed?.play()}
-            "pause"->{val transfer=handoff;if(transfer!=null)transfer.play=false else observed?.pause()}
+            "play"->{
+                val transfer=handoff
+                if(transfer!=null)transfer.play=true else observed?.let { player->
+                    if(a.playback?.reconcileYouTubeScrub(player,play=true)!=true)player.play()
+                }
+            }
+            "pause"->{
+                val transfer=handoff
+                if(transfer!=null)transfer.play=false else observed?.let { player->
+                    if(a.playback?.reconcileYouTubeScrub(player,play=false)!=true)player.pause()
+                }
+            }
             "stopVideo"->{a.model.youtube.cancelRemotePlayback();handoff=null;if(observed!=null)a.model.top(Section.YOUTUBE);queue.clear()}
             "seekTo"->{
                 val at=YouTubeRemoteQueue.position(data);val transfer=handoff
-                if(transfer!=null)transfer.seekMs=at else observed?.takeIf{it.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)}?.let{player->player.seekTo(if(player.duration>0)at.coerceAtMost(player.duration) else at)}
+                if(transfer!=null)transfer.seekMs=at else observed?.takeIf{it.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM)}?.let { player->
+                    if(a.playback?.reconcileYouTubeScrub(player,seekMs=at)!=true)player.seekTo(if(player.duration>0)at.coerceAtMost(player.duration) else at)
+                }
             }
             "setVolume"->{
                 val volume=data.optDouble("volume",phoneVolume*100.0).takeIf{it.isFinite()}?.coerceIn(0.0,100.0)

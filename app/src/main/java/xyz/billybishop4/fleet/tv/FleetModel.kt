@@ -53,7 +53,8 @@ class FleetModel(application: Application) : AndroidViewModel(application) {
                 val suffix=if(fallback)"?fallback=1" else ""
                 val result=org.json.JSONObject(Http().text("$base/youtube/resolve/${video.id}$suffix"))
                 return Watch(video.title(),Stream("YouTube fixture",result.getString("url")),short=video.isShort,live=video.live,resolvedAtMs=System.currentTimeMillis(),
-                    audioUrl=result.optString("audioUrl"),videoMimeType=result.optString("videoMimeType"),audioMimeType=result.optString("audioMimeType"))
+                    audioUrl=result.optString("audioUrl"),videoMimeType=result.optString("videoMimeType"),audioMimeType=result.optString("audioMimeType"),
+                    youtubeStoryboard=YouTubeStoryboard.decode(result.optString("storyboardSpec"),result.optLong("durationMs"),"$base/youtube"))
             }
         })
     }

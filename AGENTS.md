@@ -1,6 +1,29 @@
 # 777tv Android TV workflow (formerly Fleet)
 
-- 0.23.0/code 31 is installed on the TCL with its UID/data, two add-ons, zero
+- 0.24.0/code 32 is installed in place on the TCL. The installed APK was pulled
+  and matched to the signed candidate; its UID and the user's foreground Stremio
+  session were preserved. No app launch, interactive playback test, preference/
+  profile edit, data clear or instrumentation installation was performed on the
+  TV for 0.24.0. Preserve the current foreground session. This release changes
+  only YouTube playback: full-width timeline, three control groups, direct
+  account/CC/settings/Description actions and optional storyboard seeking.
+  On-Demand and IPTV retain their controls; Shorts retains its portrait UI.
+  Keep deferred seek commit/cancel intent, explicit media/phone reconciliation,
+  close-at-EOF guards, account-scope notification idempotence and ACK precedence.
+  YouTube speed/captions are separate from movie preferences. Canvas icons need
+  explicit cached ColorFilters for dark glyphs on white focus; Drawable's default
+  setTintList does not tint these custom drawables. Sprite requests are lazy,
+  debounced and canceled/cleared on hide/close; use the shared bounded cache.
+  `releases/0.24.0/verification.json` records 245 JVM passes/3 opt-in skips,
+  lint zero errors/113 warnings and 112 unique native passes with scoped reruns.
+  All 67 production hashes match the selected test snapshots and release inputs.
+  The record explicitly retains superseded combined-run action failures; the
+  final complete account suite passed. Avoid slow accessibility absence checks
+  before activating an auto-hiding HUD: use native inspection and require shown
+  focus. Clear the sprite cache before tests that require a first network fetch.
+  Private evidence stays in `.tools/youtube024/`. The player guide and generated
+  screenshots are in `docs/youtube-player-0.24.md` and `releases/0.24.0/`.
+- Prior 0.23.0/code 31 was installed on the TCL with its UID/data, two add-ons, zero
   profiles and black/violet On-Demand Cinema preference preserved. Three agents
   improved YouTube suggestions, watched-thumbnail progress, chapters, Previous,
   replies, guest deadlines and rejected-source recovery. Keep the current-shelf

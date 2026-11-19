@@ -5,7 +5,7 @@ import org.json.JSONObject
 internal data class YouTubeHeatMarker(val startMs:Long,val durationMs:Long,val intensity:Float)
 internal data class YouTubeChapter(val title:String,val startMs:Long)
 internal data class YouTubeWatchDetails(val related:YouTubePage,val commentsToken:String?,val commentsLabel:String="Comments",
-    val channel:YouTubeChannel?=null,val rating:YouTubeRating?=null,val chapters:List<YouTubeChapter> = emptyList())
+    val channel:YouTubeChannel?=null,val rating:YouTubeRating?=null,val chapters:List<YouTubeChapter> = emptyList(),val description:String="")
 internal data class YouTubeComment(
     val id:String,val author:String,val body:String,val metadata:String,
     val repliesLabel:String="",val repliesToken:String?=null,
@@ -31,7 +31,13 @@ internal object YouTubeWatchDecode {
         val pivot=j.optJSONObject("contents")?.optJSONObject("singleColumnWatchNextResults")?.opt("pivot")
         val page=YouTubeDecode.page(if(pivot is JSONObject)pivot else j)
         return YouTubeWatchDetails(page.copy(videos=page.videos.filter { it.id!=videoId }.take(40)),comments,label,
-            YouTubeSocialDecode.watchChannel(j),YouTubeSocialDecode.rating(j),chapters(j,videoId))
+            YouTubeSocialDecode.watchChannel(j),YouTubeSocialDecode.rating(j),chapters(j,videoId),description(j))
+    }
+    private fun description(j:JSONObject):String {
+        val body=YouTubeDecode.find(j.opt("engagementPanels")?:j,setOf("videoDescriptionBodyRenderer"),3)
+            .filterIsInstance<JSONObject>().firstOrNull()?:return ""
+        return YouTubeDecode.text(body.opt("attributedDescriptionBodyText")?:body.opt("descriptionBodyText")?:body.opt("description"))
+            .trim().take(6000)
     }
     /** Real chapter timestamps from the existing watch-next response. Chapter
      * artwork/commands are discarded, and an unrelated watch endpoint is rejected. */

@@ -131,11 +131,15 @@ internal fun playerWatch(video:YouTubeVideo,response:JsonObject):Watch? {
             if(caption!=null)VideoCaption(caption,track.getString("languageCode").orEmpty(),"text/vtt")else null
         }
     val details=response.getObject("videoDetails")
+    val live=status.containsKey("liveStreamability")
+    val storyboard=if(!live && !video.isShort)YouTubeStoryboard.decode(response.getObject("storyboards")
+        .getObject("playerStoryboardSpecRenderer").getString("spec").orEmpty(),
+        details.getString("lengthSeconds").orEmpty().toLongOrNull()?.takeIf{it in 1..604_800}?.times(1000)?:0) else null
     return Watch(playbackTitle(video,details.getString("title"),details.getString("author")),Stream("YouTube",url),headers=mapOf("User-Agent" to
         "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36",
         "Referer" to "https://www.youtube.com/","Origin" to "https://www.youtube.com"),
-        live=status.containsKey("liveStreamability"),videoMimeType="application/x-mpegURL",
-        resolvedAtMs=System.currentTimeMillis(),short=video.isShort,captions=captions)
+        live=live,videoMimeType="application/x-mpegURL",
+        resolvedAtMs=System.currentTimeMillis(),short=video.isShort,captions=captions,youtubeStoryboard=storyboard)
 }
 
 /** A cast sender may provide only an ID. Reuse the already fetched player

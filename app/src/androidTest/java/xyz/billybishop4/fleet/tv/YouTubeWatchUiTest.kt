@@ -91,10 +91,10 @@ class YouTubeWatchUiTest:NativeTestBase() {
         assertEquals(View.GONE,ui{tagged("vod-controls")!!.visibility});assertSame(player,player())
         ui{a.onBackPressedDispatcher.onBackPressed()};await{ui{a.model.route==Route.Browse(Section.YOUTUBE)}}
     }
-    @Test fun downFromNextAndQualityReachesRelatedWithoutChangingPlayback() {
+    @Test fun downFromNextAndSettingsReachesRelatedWithoutChangingPlayback() {
         play();val original=player()
         await{tagged("youtube-next")?.isEnabled==true}
-        for(tag in listOf("youtube-next","youtube-quality")) {
+        for(tag in listOf("youtube-next","youtube-settings")) {
             ui{tagged("native-player")!!.performClick()};await{tagged("vod-controls")?.isShown==true}
             ui{tagged(tag)!!.requestFocusFromTouch()};sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
             await{panel()?.isShown==true && tagged("youtube-video:V0000000040")?.isShown==true}
@@ -148,9 +148,9 @@ class YouTubeWatchUiTest:NativeTestBase() {
         assertTrue(ui{generateSequence(a.currentFocus){it.parent as? View}.any{it===panel()}})
         assertTrue(ui{a.player!!.isPlaying})
     }
-    @Test fun bothHeaderActionsCanBeReachedWithTheRemote() {
-        play();ui{tagged("vod-progress")!!.requestFocus()}
-        sendRemoteKey(KeyEvent.KEYCODE_DPAD_UP);await{ui{a.currentFocus?.contentDescription=="Related videos"}}
+    @Test fun commentsAreReachableFromTheEngagementActionsWithTheRemote() {
+        play();ui{tagged("youtube-like")!!.requestFocus()}
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT);await{tagged("youtube-dislike")?.hasFocus()==true}
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT);await{ui{a.currentFocus?.contentDescription=="Video comments"}}
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER);await{tagged("youtube-comment:comment-1")?.isShown==true}
         assertTrue(ui{a.player!!.isPlaying})

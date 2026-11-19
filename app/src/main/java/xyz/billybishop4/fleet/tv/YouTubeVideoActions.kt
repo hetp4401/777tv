@@ -5,6 +5,7 @@ import android.text.InputFilter
 import android.text.TextUtils
 import android.view.Gravity
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.CancellationException
@@ -12,7 +13,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /** Account work is lazy and explicit. A successful request, never a click, changes selected state. */
-internal class YouTubeVideoActions(private val a:MainActivity,private val video:YouTubeVideo) {
+internal class YouTubeVideoActions(private val a:MainActivity,private val video:YouTubeVideo,
+    private val playerChanged:((YouTubePlayerActionState)->Unit)?=null,
+) {
     private enum class Page { ACTIONS,PLAYLISTS,CREATE }
     private val m=a.model.youtube
     private var dialog:AlertDialog?=null
@@ -33,15 +36,22 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
     private var nextFocus:String?=null
     private var requestInput=0
     private var inputGeneration=0
-    private val rows=a.column().apply { tag="youtube-video-actions";setPadding(a.dp(16),a.dp(4),a.dp(16),a.dp(4)) }
-    private val content=ScrollView(a).apply { isFillViewport=false;addView(rows) }
+    private var disposed=false
+    private var saveEntry=false
+    private var observedEpoch=m.client.historyAccountEpoch()
+    private val rows by lazy { a.column().apply { tag="youtube-video-actions";setPadding(a.dp(16),a.dp(4),a.dp(16),a.dp(4)) } }
+    private val content by lazy { ScrollView(a).apply { isFillViewport=false;addView(rows) } }
     internal val view:View get()=content
     val visible get()=dialog?.isShowing==true
+    private val active get()=!disposed && (playerChanged!=null || visible)
 
-    fun show() {
-        if(visible)return
+    fun show()=showSheet(false)
+    private fun showSheet(save:Boolean) {
+        if(disposed || visible || busy)return
+        saveEntry=save;page=if(save)Page.PLAYLISTS else Page.ACTIONS
         val anchor=a.currentFocus
-        val sheet=AlertDialog.Builder(a).setTitle("Video actions").setView(content).setNegativeButton("Done",null).create()
+        (content.parent as? ViewGroup)?.removeView(content)
+        val sheet=AlertDialog.Builder(a).setTitle(if(save)"Save video" else "Video actions").setView(content).setNegativeButton("Done",null).create()
         dialog=sheet;a.ownDialog(sheet)
         sheet.setOnKeyListener { _,_,event->if(event.action==android.view.KeyEvent.ACTION_DOWN)inputGeneration++;false }
         sheet.setOnShowListener {
@@ -52,23 +62,83 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
             }
             content.layoutParams=content.layoutParams.apply { height=minOf(a.dp(310),a.resources.displayMetrics.heightPixels-a.dp(160)).coerceAtLeast(a.dp(170)) }
             sheet.getButton(AlertDialog.BUTTON_NEGATIVE).quiet().apply { isAllCaps=false;requestFocusFromTouch() }
-            loadDetails()
+            if(save)loadPlaylists() else loadDetails()
         }
         sheet.setOnDismissListener {
             if(dialog===sheet)dialog=null
-            generation++;request?.cancel();request=null;signIn?.close();signIn=null;a.releaseDialog(sheet)
+            generation++;request?.cancel();request=null;busy=false;notice="";signIn?.close();signIn=null;a.releaseDialog(sheet);publishPlayerState()
             val input=a.focusInputGeneration
             anchor?.postOnAnimation { if(input==a.focusInputGeneration && anchor.isAttachedToWindow && anchor.isShown && anchor.hasWindowFocus())anchor.requestFocus() }
         }
         sheet.show()
     }
+    private fun publishPlayerState() {
+        val changed=playerChanged?:return
+        if(disposed)return
+        val signedIn=m.client.historyAccountEpoch()!=null && !requireSignIn
+        val channel=details?.channel?:video.channelId.takeIf(YouTubeSocialDecode::validChannelId)?.let {
+            YouTubeChannel(it,video.channel.ifBlank{"View channel"})
+        }
+        changed(YouTubePlayerActionState(channel=if(signedIn)channel else channel?.copy(subscribed=null),
+            rating=details?.rating?.takeIf{signedIn},signedIn=signedIn,busy=busy,pending=notice.takeIf{busy && it.isNotBlank()},error=error))
+    }
+    fun playerMetadata(value:YouTubeWatchDetails?) {
+        if(disposed)return
+        if(observedEpoch!=m.client.historyAccountEpoch())playerAccountChanged()
+        // Acknowledged/fresh action state wins over an older watch-next snapshot.
+        if(!scopeKnown && !busy)details=value
+        publishPlayerState()
+    }
+    fun playerAccountChanged() {
+        if(disposed)return
+        val epoch=m.client.historyAccountEpoch()
+        if(epoch==observedEpoch)return
+        generation++;request?.cancel();request=null;busy=false;notice="";error=null;requireSignIn=false
+        observedEpoch=epoch;forgetAccount();if(saveEntry)page=Page.PLAYLISTS
+        render()
+    }
+    fun playerRate(rating:YouTubeRating) {
+        val epoch=m.client.historyAccountEpoch()
+        signedIn(action={
+            run("Updating rating…",bound=false,action={scope->
+                val current=m.client.interaction(video.id,expectedScope=playerScope(scope,epoch))
+                val next=if(current.rating==rating)YouTubeRating.NONE else rating
+                m.client.rate(video.id,next,current.rating,expectedScope=scope)
+                current.copy(rating=next)
+            }) { details=it;notice="";m.accountMutated(YouTubeAccountMutation.RATING) }
+        },afterSignIn={playerRate(rating)})
+    }
+    fun playerSubscribe() {
+        val epoch=m.client.historyAccountEpoch()
+        signedIn(action={
+            run("Updating subscription…",bound=false,action={scope->
+                val current=m.client.interaction(video.id,expectedScope=playerScope(scope,epoch))
+                val channel=current.channel?:throw UserMessage("This channel isn't available right now.")
+                val subscribed=channel.subscribed!=true
+                m.client.subscribe(channel,subscribed,expectedScope=scope)
+                current.copy(channel=channel.copy(subscribed=subscribed))
+            }) { details=it;notice="";m.accountMutated(YouTubeAccountMutation.SUBSCRIPTION,it.channel?.id) }
+        },afterSignIn=::playerSubscribe)
+    }
+    private fun playerScope(scope:YouTubeAccountScope?,epoch:Int?):YouTubeAccountScope {
+        if(scope==null)throw YouTubeAuthError("unauthorized")
+        if(scope.epoch!=epoch)throw UserMessage("Your account changed. Choose the action again.")
+        return scope
+    }
+    fun playerSave(){signedIn(action={showSheet(true)},afterSignIn=::playerSave)}
+    fun playerChannel() {
+        if(disposed)return
+        val id=details?.channel?.id?.takeIf(YouTubeSocialDecode::validChannelId)
+            ?:video.channelId.takeIf(YouTubeSocialDecode::validChannelId)?:return
+        dialog?.dismiss();openYouTubeChannel(a,id)
+    }
     private fun failure(e:Exception):String = if(e is UserMessage)e.message.orEmpty() else "YouTube couldn't complete that action. Try again."
     private fun forgetAccount(){details=null;playlists=emptyList();page=Page.ACTIONS;scopeKnown=false;loadedScope=null}
     private fun <T> run(message:String,bound:Boolean=true,action:suspend (YouTubeAccountScope?)->T,complete:(T)->Unit) {
-        if(busy || !visible)return
+        if(busy || !active)return
         val key=++generation
         requestInput=inputGeneration
-        (rows.findFocus()?.tag as? String)?.let{actionAnchor=it to inputGeneration}
+        if(visible)(rows.findFocus()?.tag as? String)?.let{actionAnchor=it to inputGeneration}
         busy=true;error=null;notice=message;render()
         request=a.lifecycleScope.launch {
             try {
@@ -79,35 +149,55 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
                     throw UserMessage("Your account changed. Reload video actions before making changes.")
                 }
                 if(!bound && scopeKnown && scope!=loadedScope)forgetAccount()
+                // An explicit action may observe restored credentials before the player's
+                // first metadata/account notification. That later notice belongs to this
+                // same scope and must not cancel a write already bound to it.
+                if(playerChanged!=null)observedEpoch=scope?.epoch
                 val value=action(scope)
-                if(key!=generation || !visible)return@launch
+                if(key!=generation || !active)return@launch
                 if(if(scope==null)m.client.accountScope()!=null else !m.client.accountScopeCurrent(scope)) {
                     forgetAccount()
                     throw UserMessage("Your account changed. Reopen video actions before making changes.")
                 }
-                if(!bound){loadedScope=scope;scopeKnown=true}
+                if(!bound){loadedScope=scope;scopeKnown=true;observedEpoch=m.client.historyAccountEpoch()}
                 complete(value)
             } catch(e:CancellationException){
-                if(key==generation && visible){forgetAccount();requireSignIn=true;error="Your account changed. Sign in again to make changes.";notice=""}
+                if(key==generation && active){forgetAccount();requireSignIn=true;error="Your account changed. Sign in again to make changes.";notice=""}
                 throw e
             }
             catch(e:Exception) {
-                if(key==generation && visible) {
+                if(key==generation && active) {
                     error=failure(e);notice=""
                     if(e is YouTubeAuthError || e is HttpFailure && e.status==401){forgetAccount();requireSignIn=true;m.syncAccount()}
                 }
-            } finally { if(key==generation){busy=false;request=null;if(visible)render()} }
+            } finally { if(key==generation){busy=false;request=null;if(active)render()} }
         }
     }
     private fun loadDetails()=run("Loading video actions…",bound=false,action={m.client.interaction(video.id,expectedScope=it)}) {
         details=it;notice=""
         if(actionAnchor==null)nextFocus=when{m.account==null->"youtube-actions-signin";it.channel!=null || video.channelId.isNotBlank()->"youtube-actions-channel";else->"youtube-actions-like"}
     }
-    private fun signedIn(action:()->Unit) {
-        if(busy)return
-        if(m.account!=null && !requireSignIn){action();return}
+    private fun signedIn(afterSignIn:(()->Unit)?=null,accountChecked:Boolean=false,action:()->Unit) {
+        if(!active || busy)return
+        if(playerChanged!=null && !accountChecked && !requireSignIn && m.client.historyAccountEpoch()==null) {
+            // A restored/phone player may receive input before its post-frame account load.
+            // Check saved credentials only on this explicit action, using the same owner guards.
+            run("Checking account…",bound=false,action={it!=null}) { savedAccount->
+                val owner=generation;scopeKnown=false;loadedScope=null
+                a.window.decorView.post {
+                    if(owner==generation && active) {
+                        if(savedAccount)(afterSignIn?:action)()
+                        else signedIn(afterSignIn=afterSignIn,accountChecked=true,action=action)
+                    }
+                }
+            }
+            return
+        }
+        val signedIn=if(playerChanged!=null)m.client.historyAccountEpoch()!=null else m.account!=null
+        if(signedIn && !requireSignIn){action();return}
+        if(signIn?.visible==true)return
         signIn=YouTubeSignIn(a).also { sheet->sheet.show(forceSignIn=requireSignIn) {
-            if(visible){requireSignIn=false;loadDetails()}
+            if(active){requireSignIn=false;if(afterSignIn!=null)afterSignIn() else if(saveEntry)loadPlaylists() else loadDetails()}
         } }
     }
     private fun row(label:String,tag:String,enabled:Boolean=!busy,selected:Boolean=false,action:()->Unit):Button = a.action(label,label,click=action).quiet().apply {
@@ -116,6 +206,8 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
         rows.add(this,height=a.dp(38))
     }
     private fun render() {
+        publishPlayerState()
+        if(!visible)return
         val input=if(nextFocus!=null)requestInput else inputGeneration
         val focused=nextFocus?:(rows.findFocus()?.tag as? String)?:actionAnchor?.takeIf{it.second==inputGeneration}?.first
         nextFocus=null
@@ -188,7 +280,7 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
         playlists=it.filter{p->p.editable}.take(40);page=Page.PLAYLISTS;notice="";nextFocus=playlists.firstOrNull()?.let{p->"youtube-playlist:${p.id}"}?:"youtube-actions-new-playlist"
     }
     private fun renderPlaylists() {
-        row("‹ Video actions","youtube-actions-back",enabled=!busy){page=Page.ACTIONS;error=null;notice="";render()}
+        if(!saveEntry)row("‹ Video actions","youtube-actions-back",enabled=!busy){page=Page.ACTIONS;error=null;notice="";render()}
         if(playlists.isEmpty() && !busy)rows.add(a.text("No editable playlists",13f,MUTED))
         for(playlist in playlists)row((if(playlist.containsVideo)"✓  " else "    ")+playlist.name,"youtube-playlist:${playlist.id}",selected=playlist.containsVideo) {
             signedIn { val saved=!playlist.containsVideo
@@ -216,7 +308,11 @@ internal class YouTubeVideoActions(private val a:MainActivity,private val video:
             }
         } }
     }
-    fun close(){dialog?.dismiss()}
+    fun close(){
+        if(disposed)return
+        disposed=true;dialog?.dismiss();generation++;request?.cancel();request=null;busy=false;signIn?.close();signIn=null
+        details=null;playlists=emptyList()
+    }
 }
 
 /** Leaving playback removes its one route, rather than stacking a hidden decoder under a channel. */

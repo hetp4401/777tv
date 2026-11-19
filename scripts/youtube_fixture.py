@@ -5,6 +5,8 @@ import json
 import subprocess
 import threading
 import time
+import struct
+import zlib
 import performance_fixture
 
 _lock=threading.Lock()
@@ -16,7 +18,8 @@ CHANNEL_ID='UC'+'1'*22
 def reset():
     with _lock:
         _state.clear()
-        _state.update(requests=[],resolved=[],fallbackResolved=[],approve=False,deny=False,slow=False,fail=False,fail_playback=False,split_media=False,rejected_media=False,rejected_fallback=False,
+        _state.update(requests=[],resolved=[],fallbackResolved=[],storyboardRequests=[],no_storyboard=False,slow_storyboard=False,broken_storyboard=False,
+            approve=False,deny=False,slow=False,fail=False,fail_playback=False,split_media=False,rejected_media=False,rejected_fallback=False,
             no_heatmap=False,no_comments=False,no_chapters=False,fail_details=False,guest_fail=False,empty_guest=False,
             history_paused=False,fail_actions=False,slow_actions=False,slow_remote=False,slow_next=False,slow_suggestions=False,grouped_search=False,stateful_account=False,ratings={},subscribed=False,
             playlists={'WL':{'name':'Watch later','videos':[]},'PLfixture':{'name':'Fixture playlist','videos':[]}},phone_events=[],phone_aid=4,phone_screen=0,slow_phone=False)
@@ -67,6 +70,20 @@ def reel(index):
         'replacementEndpoint':{'reelWatchEndpoint':endpoint(index)},'sequenceContinuation':'shorts-1'}
 
 
+def storyboard_png(sheet):
+    """Small generated contact sheet; no real video frames or external artwork."""
+    width,height=400,135
+    def chunk(name,data):return struct.pack('!I',len(data))+name+data+struct.pack('!I',zlib.crc32(name+data))
+    pixels=bytearray()
+    for y in range(height):
+        pixels.append(0)
+        for x in range(width):
+            frame=sheet*15+(y//45)*5+x//80
+            color=(40+frame*37%180,40+frame*59%180,40+frame*83%180)
+            pixels.extend((230,230,230) if x%80<2 or y%45<2 else color)
+    return b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('!2I5B',width,height,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(pixels))+chunk(b'IEND',b'')
+
+
 def handle_get(handler,path,query,root):
     if path=='/youtube/complete/search':
         text=parse_qs(query).get('q',[''])[0].strip()[:200]
@@ -87,7 +104,7 @@ def handle_get(handler,path,query,root):
         q=parse_qs(query)
         if q.get('reset')==['1']:reset()
         with _lock:
-            for name in ['approve','deny','slow','fail','fail_playback','split_media','rejected_media','rejected_fallback','no_heatmap','no_comments','no_chapters','fail_details','guest_fail','empty_guest','history_paused','fail_actions','slow_actions','slow_phone','slow_remote','slow_next','slow_suggestions','grouped_search','stateful_account']:
+            for name in ['approve','deny','slow','fail','fail_playback','split_media','rejected_media','rejected_fallback','no_heatmap','no_comments','no_chapters','no_storyboard','slow_storyboard','broken_storyboard','fail_details','guest_fail','empty_guest','history_paused','fail_actions','slow_actions','slow_phone','slow_remote','slow_next','slow_suggestions','grouped_search','stateful_account']:
                 if name in q:_state[name]=q[name]==['1']
         return handler.send({'ok':True})
     if path=='/youtube/state':return handler.send(snapshot())
@@ -97,6 +114,13 @@ def handle_get(handler,path,query,root):
         return handler.send(b'{"INNERTUBE_CLIENT_VERSION":"2.fixture","VISITOR_DATA":"fixture-web"}','text/html')
     if path=='/youtube/base.js':
         return handler.send(b'clientId:"fixture.apps.googleusercontent.com",secret:"fixtureSecret"','application/javascript')
+    if path.startswith('/youtube/storyboard/'):
+        name=path.rsplit('/',1)[-1]
+        if name not in ['M0.png','M1.png']:return handler.send(b'',status=404)
+        with _lock:
+            _state['storyboardRequests'].append(name);slow=_state['slow_storyboard'];broken=_state['broken_storyboard']
+        if slow:time.sleep(.8)
+        return handler.send(b'',status=404) if broken else handler.send(storyboard_png(int(name[1])),'image/png')
     if path.startswith('/youtube/resolve/'):
         identifier=path.rsplit('/',1)[-1]
         if identifier=='B0000000009':
@@ -105,15 +129,17 @@ def handle_get(handler,path,query,root):
         with _lock:
             _state['resolved'].append(identifier)
             if fallback:_state['fallbackResolved'].append(identifier)
-            fail=_state['fail_playback'];slow=_state['slow'];split=_state['split_media'];slow_remote=_state['slow_remote'];rejected=_state['rejected_media'];rejected_fallback=_state['rejected_fallback']
+            fail=_state['fail_playback'];slow=_state['slow'];split=_state['split_media'];slow_remote=_state['slow_remote'];rejected=_state['rejected_media'];rejected_fallback=_state['rejected_fallback'];no_storyboard=_state['no_storyboard']
         if slow_remote:time.sleep(3)
         if slow:time.sleep(1)
         if fail:return handler.send({'error':'fixture unavailable'},status=503)
         if (rejected and not fallback) or (fallback and rejected_fallback):return handler.send({'url':'http://10.0.2.2:8878/youtube/media/rejected.m3u8'})
+        storyboard={} if no_storyboard or identifier.startswith('S') else {'durationMs':60000,
+            'storyboardSpec':'http://10.0.2.2:8878/youtube/storyboard/$N.png|80#45#30#5#3#2000#M$M#fixture'}
         if split:return handler.send({'url':'http://10.0.2.2:8878/youtube/media-split/video.mp4',
-            'audioUrl':'http://10.0.2.2:8878/youtube/media-split/audio.m4a','videoMimeType':'video/mp4','audioMimeType':'audio/mp4'})
+            'audioUrl':'http://10.0.2.2:8878/youtube/media-split/audio.m4a','videoMimeType':'video/mp4','audioMimeType':'audio/mp4',**storyboard})
         address='http://10.0.2.2:8878/youtube/media-short/index.m3u8' if identifier.startswith('S') else 'http://10.0.2.2:8878/hls/fixture/orig.m3u8'
-        return handler.send({'url':address+'?video='+identifier})
+        return handler.send({'url':address+'?video='+identifier,**storyboard})
     if path.startswith('/youtube/media-split/'):
         directory=root/'youtube-split';directory.mkdir(exist_ok=True)
         with _lock:
@@ -323,7 +349,9 @@ def handle_post(handler,path):
                 'dislikeButton':{'toggleButtonRenderer':{'isToggled':rating=='DISLIKE'}}},
             'engagementPanels':[{'engagementPanelSectionListRenderer':{'panelIdentifier':'comment-item-section',
                 'header':{'engagementPanelTitleHeaderRenderer':{'title':{'simpleText':'Comments'}}},
-                'content':{} if no_comments else {'reloadContinuationData':{'continuation':'fixture-comments-1'}}}}]})
+                'content':{} if no_comments else {'reloadContinuationData':{'continuation':'fixture-comments-1'}}}},
+                {'engagementPanelSectionListRenderer':{'panelIdentifier':'engagement-panel-description','content':{
+                    'videoDescriptionBodyRenderer':{'descriptionBodyText':{'simpleText':'A generated video description for the native YouTube watch page.\n\nChapter navigation, captions and playback continue with the same decoder.'}}}}}]})
     return handler.send({'error':'unknown fixture'},status=404)
 
 

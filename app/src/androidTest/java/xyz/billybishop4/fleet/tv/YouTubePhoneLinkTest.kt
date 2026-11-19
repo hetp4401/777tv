@@ -2,6 +2,8 @@
 package xyz.billybishop4.fleet.tv
 
 import android.os.SystemClock
+import android.view.KeyEvent
+import androidx.media3.common.Player
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
@@ -47,6 +49,26 @@ class YouTubePhoneLinkTest:NativeTestBase() {
         command("setPlaylist",JSONObject().put("videoId",id).put("videoIds",ids).put("currentTime",at))
         await{attachedAndPlaying(id)}
     }
+    private fun beginTvScrub(wasPlaying:Boolean):Long {
+        // A positive-duration receiver status confirms the phone handoff has
+        // completed; these cases exercise commands for the observed player.
+        await{audit().getJSONArray("requests").objects().any {
+            it.optString("phoneCommand")=="nowPlaying" && (it.optJSONObject("fields")?.optDouble("req0_duration",0.0)?:0.0)>0
+        }}
+        ui{a.activePlayer!!.pause();a.activePlayer!!.seekTo(20000)}
+        await{ui{a.activePlayer!!.currentPosition in 19500L..20500L && a.activePlayer!!.playbackState==Player.STATE_READY}}
+        if(wasPlaying){ui{a.activePlayer!!.play()};playing()}
+        await{tagged("vod-progress")?.isShown==true && tagged("vod-progress")?.isEnabled==true}
+        ui{tagged("vod-progress")!!.requestFocusFromTouch()}
+        val down=SystemClock.uptimeMillis()
+        InstrumentationRegistry.getInstrumentation().sendKeySync(KeyEvent(down,down,KeyEvent.ACTION_DOWN,KeyEvent.KEYCODE_DPAD_LEFT,0))
+        await{tagged("youtube-seek-preview")?.isShown==true && ui{a.activePlayer!!.playWhenReady==false}}
+        return down
+    }
+    private fun releaseTvScrub(down:Long) {
+        InstrumentationRegistry.getInstrumentation().sendKeySync(KeyEvent(down,SystemClock.uptimeMillis(),KeyEvent.ACTION_UP,KeyEvent.KEYCODE_DPAD_LEFT,0))
+        SystemClock.sleep(150)
+    }
     @Test fun tvCodeIsReachableFromSettingsAndNoGoogleAccountIsRequired() {
         click("Settings");await{tagged("settings-list")?.isShown==true};click("YouTube settings");click("Link phone with TV code")
         assertTrue(device.wait(Until.hasObject(By.text("123 456 789 012")),10000))
@@ -65,6 +87,36 @@ class YouTubePhoneLinkTest:NativeTestBase() {
         await{audit().getJSONArray("requests").objects().any{it.optString("phoneCommand")=="nowPlaying"}}
         assertTrue(audit().getJSONArray("requests").objects().filter{it.optString("path").contains("/lounge/")}.none{it.optBoolean("authenticated")})
         screenshot("youtube-phone-native-playback")
+    }
+    @Test fun phonePauseDuringAPlayingTvScrubSurvivesTheArrowRelease() {
+        ui{a.model.updatePreferences(Preferences(resume=false,youtubeAutoplay=false))};connect();play()
+        val original=player()!!;val down=beginTvScrub(wasPlaying=true)
+        command("pause")
+        await{tagged("youtube-seek-preview")?.isShown!=true && ui{!original.playWhenReady}}
+        releaseTvScrub(down)
+        assertFalse(ui{original.playWhenReady});assertTrue("The obsolete local cursor was committed",ui{original.currentPosition>19000})
+        assertSame(original,player())
+    }
+    @Test fun phonePlayDuringAPausedTvScrubSurvivesTheArrowRelease() {
+        ui{a.model.updatePreferences(Preferences(resume=false,youtubeAutoplay=false))};connect();play()
+        val original=player()!!;val down=beginTvScrub(wasPlaying=false)
+        command("play")
+        await{tagged("youtube-seek-preview")?.isShown!=true && ui{original.playWhenReady}}
+        releaseTvScrub(down)
+        assertTrue(ui{original.playWhenReady});assertTrue("The obsolete local cursor was committed",ui{original.currentPosition>19000})
+        assertSame(original,player())
+    }
+    @Test fun aPhoneSeekDiscardsTheLocalCursorAndPreservesEitherPlayIntent() {
+        ui{a.model.updatePreferences(Preferences(resume=false,youtubeAutoplay=false))};connect();play()
+        val original=player()!!
+        for(wasPlaying in listOf(false,true)) {
+            val down=beginTvScrub(wasPlaying)
+            command("seekTo",JSONObject().put("newTime",35))
+            await{tagged("youtube-seek-preview")?.isShown!=true && ui{original.currentPosition in 34000L..41000L && original.playWhenReady==wasPlaying}}
+            releaseTvScrub(down)
+            assertEquals(wasPlaying,ui{original.playWhenReady});assertTrue(ui{original.currentPosition in 34000L..42000L})
+            assertSame(original,player())
+        }
     }
     @Test fun phoneQueueNextPreviousAndBackNeverStackOldPlayers() {
         connect();play(ids="V0000000001,V0000000002")

@@ -19,7 +19,7 @@ import android.widget.*
 import androidx.media3.common.C
 import androidx.media3.common.Player
 
-internal data class PlaybackTrack(val id: String, val label: String, val selected: Boolean)
+internal data class PlaybackTrack(val id: String, val label: String, val selected: Boolean,val language:String="")
 
 /** Source-specific controls: portrait Shorts, YouTube transport, and movie/episode transport. */
 internal class VodControls(
@@ -34,33 +34,37 @@ internal class VodControls(
     private val controlsInset: (Int) -> Unit = {},
     private val pictureControls: () -> Unit = {},
     private val youtubePanel: ((Boolean) -> Unit)? = null,
+    private val youtubeDescription:(()->Unit)?=null,
 ) {
+    private val isYouTube=watch.title.type=="youtube" && !watch.short
     val view = FrameLayout(a).apply { tag = "vod-controls"; visibility = View.GONE; isFocusable = false }
     private val main = Handler(Looper.getMainLooper())
     private val panel = a.column().apply {
         tag = "vod-panel"; setPadding(0, a.dp(2), 0, a.dp(2))
         isClickable = true; isFocusable = false
     }
-    private val elapsed = a.text("0:00", 10f).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END }
-    private val remaining = a.text("–:–", 10f, MUTED)
+    private val elapsed = a.text("0:00", if(isYouTube)12f else 10f).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END;if(isYouTube)setTextColor(Color.WHITE) }
+    private val remaining = a.text("–:–", 10f, MUTED).apply{if(isYouTube)visibility=View.GONE}
     private val feedback = a.text("", 12f, MUTED).apply { visibility = View.GONE }
     private val bar = SeekBar(a).apply {
+        val accent=if(isYouTube)0xFFFF0033.toInt() else ACCENT
         tag = "vod-progress"; id = View.generateViewId(); max = 100000
         isFocusable = true; isFocusableInTouchMode = true
-        progressTintList = ColorStateList.valueOf(ACCENT)
-        secondaryProgressTintList = ColorStateList.valueOf((ACCENT and 0x00FFFFFF) or 0x66000000)
-        progressBackgroundTintList = ColorStateList.valueOf((ACCENT and 0x00FFFFFF) or 0x33000000)
-        thumbTintList = ColorStateList.valueOf(ACCENT)
+        progressTintList = ColorStateList.valueOf(accent)
+        secondaryProgressTintList = ColorStateList.valueOf(if(isYouTube)0x99FFFFFF.toInt() else (accent and 0x00FFFFFF) or 0x66000000)
+        progressBackgroundTintList = ColorStateList.valueOf(if(isYouTube)0x55FFFFFF else (accent and 0x00FFFFFF) or 0x33000000)
+        thumbTintList = ColorStateList.valueOf(accent)
         minimumHeight = a.dp(44); contentDescription = "Playback position"
         background = null
+        if(isYouTube && android.os.Build.VERSION.SDK_INT>=26)defaultFocusHighlightEnabled=false
         fun line(color: Int) = GradientDrawable().apply { setColor(color); cornerRadius = a.dp(1).toFloat() }
-        progressDrawable = LayerDrawable(arrayOf(line((ACCENT and 0x00FFFFFF) or 0x33000000),
-            ClipDrawable(line((ACCENT and 0x00FFFFFF) or 0x66000000), Gravity.LEFT, ClipDrawable.HORIZONTAL),
-            ClipDrawable(line(ACCENT), Gravity.LEFT, ClipDrawable.HORIZONTAL))).apply {
+        progressDrawable = LayerDrawable(arrayOf(line(if(isYouTube)0x55FFFFFF else (accent and 0x00FFFFFF) or 0x33000000),
+            ClipDrawable(line(if(isYouTube)0x99FFFFFF.toInt() else (accent and 0x00FFFFFF) or 0x66000000), Gravity.LEFT, ClipDrawable.HORIZONTAL),
+            ClipDrawable(line(accent), Gravity.LEFT, ClipDrawable.HORIZONTAL))).apply {
             setId(0, android.R.id.background); setId(1, android.R.id.secondaryProgress); setId(2, android.R.id.progress)
             for (index in 0..2) { setLayerHeight(index, a.dp(2)); setLayerGravity(index, Gravity.CENTER_VERTICAL) }
         }
-        fun dot(size: Int) = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(ACCENT); setSize(a.dp(size), a.dp(size)) }
+        fun dot(size: Int) = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(accent); setSize(a.dp(size), a.dp(size)) }
         thumb = StateListDrawable().apply {
             addState(intArrayOf(android.R.attr.state_focused), dot(10))
             addState(intArrayOf(android.R.attr.state_pressed), dot(10))
@@ -77,16 +81,16 @@ internal class VodControls(
     private val play = iconButton("Pause", "vod-play-pause", playIcon) { togglePlayback() }
     private val rewind = iconButton("Back $seekSeconds seconds", "vod-rewind", ControlIcon(ControlIcon.REWIND, seekSeconds)) { skip(-1) }
     private val forward = iconButton("Forward $seekSeconds seconds", "vod-forward", ControlIcon(ControlIcon.FORWARD, seekSeconds)) { skip(1) }
-    private val previousVideo=if(watch.playbackMode==PlaybackMode.YOUTUBE)iconButton("Previous video","youtube-previous",ControlIcon(ControlIcon.PREVIOUS)){stepVideo(-1)} else null
-    private val nextVideo=if(watch.playbackMode==PlaybackMode.YOUTUBE)iconButton("Next video","youtube-next",ControlIcon(ControlIcon.NEXT)){stepVideo(1)} else null
+    private val previousVideo=if(isYouTube)iconButton("Previous video","youtube-previous",ControlIcon(ControlIcon.PREVIOUS)){stepVideo(-1)} else null
+    private val nextVideo=if(isYouTube)iconButton("Next video","youtube-next",ControlIcon(ControlIcon.NEXT)){stepVideo(1)} else null
     private val trackButton = iconButton("Audio & subtitles", "vod-tracks", ControlIcon(ControlIcon.TRACKS)) { showTrackOptions() }
     private val quality=if(watch.playbackMode==PlaybackMode.YOUTUBE)iconButton("Video quality","youtube-quality",ControlIcon(ControlIcon.QUALITY)){chooseTrack(C.TRACK_TYPE_VIDEO)} else null
-    private val chapterButton=if(watch.playbackMode==PlaybackMode.YOUTUBE)iconButton("Chapters","youtube-chapters",ControlIcon(ControlIcon.CHAPTERS)){showChapters()}.apply{visibility=View.GONE} else null
+    private val chapterButton=if(isYouTube)iconButton("Chapters","youtube-chapters",ControlIcon(ControlIcon.CHAPTERS)){showChapters()}.apply{visibility=View.GONE} else null
     private val options = if(watch.title.type!="youtube")iconButton("Picture controls", "vod-options", ControlIcon(ControlIcon.SETTINGS)) { openPictureControls() } else null
     private val closeButton = iconButton(if(watch.title.type=="youtube")"Back to YouTube" else "Back to streams", "vod-close", ControlIcon(ControlIcon.CLOSE)) { exit() }
     private val relatedButton=if(youtubePanel!=null)a.action("Related","Related videos"){openYouTubePanel(false)}.quiet() else null
     private val commentsButton=if(youtubePanel!=null)a.action("Comments","Video comments"){openYouTubePanel(true)}.quiet() else null
-    private val videoActionsButton=if(watch.title.type=="youtube")a.action("•••","Video actions"){openVideoActions()}.quiet() else null
+    private val videoActionsButton=if(watch.title.type=="youtube" && !isYouTube)a.action("•••","Video actions"){openVideoActions()}.quiet() else null
     private var videoActions:YouTubeVideoActions?=null
     private var closed = false
     private var touchPosition: Long? = null
@@ -106,6 +110,15 @@ internal class VodControls(
     private var remainingSecond = Long.MIN_VALUE
     private var reportedInset = 0
     private var chapterMarkers:List<YouTubeChapter> = emptyList()
+    private var youtubeChrome:YouTubePlayerChrome?=null
+    private var youtubeActions:YouTubePlayerActions?=null
+    private var seekPreview:YouTubeSeekPreview?=null
+    private var youtubeSeeking=false
+    private var youtubeSeekResume=false
+    private var youtubeActionBusy=false
+    private var youtubeClockDuration=Long.MIN_VALUE
+    private var lastCaptionId:String?=null
+    internal val isScrubbing get()=youtubeSeeking
     private var focusRequest=0
     private val insetLayout = View.OnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> publishInset() }
     private val ticker = object : Runnable {
@@ -124,7 +137,7 @@ internal class VodControls(
     }
     private val windowFocus = ViewTreeObserver.OnWindowFocusChangeListener { focused ->
         if (focused && !closed && view.visibility == View.VISIBLE) { interactedAt = SystemClock.uptimeMillis(); scheduleHide() }
-        else { finishHold(); main.removeCallbacks(hideLater) }
+        else { if(isYouTube)finishYouTubeSeek(false) else finishHold();main.removeCallbacks(hideLater) }
     }
     private val listener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) = changed()
@@ -135,6 +148,7 @@ internal class VodControls(
             if(!closed && view.isShown)update()
         }
         override fun onPlaybackParametersChanged(playbackParameters: androidx.media3.common.PlaybackParameters) { if (!closed && view.isShown) update() }
+        override fun onTracksChanged(tracks:androidx.media3.common.Tracks) { if(!closed && isYouTube)updateCaptions() }
         private fun changed() {
             if (closed) return
             val paused = priorPlayIntent && !player.playWhenReady && player.playbackState != Player.STATE_IDLE
@@ -145,8 +159,8 @@ internal class VodControls(
         }
     }
     init {
-        require(!watch.live) { "Live TV does not have transport controls" }
-        if(watch.short)buildShorts() else {
+        require(!watch.live || isYouTube) { "Live TV does not have transport controls" }
+        if(watch.short)buildShorts() else if(isYouTube)buildYouTube() else {
         view.addView(View(a).apply {
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
             background = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
@@ -221,27 +235,58 @@ internal class VodControls(
         view.addOnLayoutChangeListener(insetLayout); panel.addOnLayoutChangeListener(insetLayout)
         view.setOnClickListener { dismiss() }
         panel.setOnTouchListener { _, event -> if (event.actionMasked == MotionEvent.ACTION_DOWN) interacted(); false }
-        bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                if (fromUser && canSeek()) { touchPosition = (duration().toDouble() * progress / seekBar.max).toLong(); interacted(); update() }
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar) { finishHold(); touchPosition = position(); interacted() }
-            override fun onStopTrackingTouch(seekBar: SeekBar) {
-                val at = touchPosition; touchPosition = null
-                if (at != null) { queuedSeek = null; main.removeCallbacks(applySeek); submitSeek(at) }
-                interacted(); update()
-            }
-        })
-        bar.setOnKeyListener { _,code,event->timelineKey(code,event) }
-        bar.setOnFocusChangeListener { _, focused -> if (!focused) { touchPosition = null; finishHold() } }
-        bar.setOnTouchListener { _, event -> if (event.actionMasked == MotionEvent.ACTION_CANCEL) { touchPosition = null; update(); scheduleHide() }; false }
         }
+        if(!watch.short)bindTimeline()
         view.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
             override fun onViewAttachedToWindow(v: View) { if (view.visibility == View.VISIBLE) { startTicker(); scheduleHide(); publishInset() } }
             override fun onViewDetachedFromWindow(v: View) { main.removeCallbacks(ticker); main.removeCallbacks(hideLater); publishInset() }
         })
         view.viewTreeObserver.addOnWindowFocusChangeListener(windowFocus)
         player.addListener(listener)
+    }
+    private fun bindTimeline() {
+        bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+                if (fromUser && canSeek()) { touchPosition = (duration().toDouble() * progress / seekBar.max).toLong();if(isYouTube)showSeekPreview();interacted(); update() }
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar) { if(isYouTube)beginYouTubeSeek() else {finishHold();touchPosition=position()};interacted() }
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                if(isYouTube){finishYouTubeSeek(true);return}
+                val at = touchPosition; touchPosition = null
+                if (at != null) { queuedSeek = null; main.removeCallbacks(applySeek); submitSeek(at) }
+                interacted(); update()
+            }
+        })
+        bar.setOnKeyListener { _,code,event->timelineKey(code,event) }
+        bar.setOnFocusChangeListener { _, focused -> if (!focused) { if(isYouTube)finishYouTubeSeek(true) else touchPosition=null;finishHold() } }
+        bar.setOnTouchListener { _, event -> if (event.actionMasked == MotionEvent.ACTION_CANCEL) { if(isYouTube)finishYouTubeSeek(false) else touchPosition=null;update();scheduleHide() };false }
+    }
+    private fun buildYouTube() {
+        feedback.setTextColor(Color.WHITE)
+        fun action(block:()->Unit){finishHold();interacted();block()}
+        youtubeChrome=YouTubePlayerChrome(a,watch,view,panel,bar,heatmap,elapsed,remaining,feedback,play,previousVideo,nextVideo,chapterButton,closeButton,relatedButton!!,
+            channel={action{youtubeActions?.channel()}},description={action{openYouTubeDescription()}},
+            subscribe={action{youtubeActions?.subscribe()}},like={action{youtubeActions?.rate(YouTubeRating.LIKE)}},
+            dislike={action{youtubeActions?.rate(YouTubeRating.DISLIKE)}},comments={action{openYouTubePanel(true)}},
+            save={action{youtubeActions?.save()}},captions={action{toggleCaptions()}},settings={action{showYouTubeSettings()}})
+        youtubeActions=YouTubePlayerActions(a,YouTubeVideo(watch.title.id,watch.title.name,watch.title.poster,live=watch.live)) { state ->
+            if(!closed) {
+                val completed=youtubeActionBusy && !state.busy;youtubeActionBusy=state.busy
+                youtubeChrome?.render(state);wireTransportFocus()
+                feedback.textIfChanged(state.error?:state.pending.orEmpty());feedback.visibility=if(feedback.text.isNotBlank())View.VISIBLE else View.GONE
+                if(completed)interacted() else scheduleHide()
+            }
+        }
+        youtubeActions?.metadata(a.model.youtube.preparedDetails(watch.title.id))
+        seekPreview=YouTubeSeekPreview(a,watch).also {
+            view.addView(it.view,FrameLayout.LayoutParams(a.dp(250),a.dp(180),Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply{bottomMargin=a.dp(154)})
+        }
+        bar.nextFocusUpId=closeButton.id;bar.nextFocusDownId=play.id
+        closeButton.nextFocusDownId=bar.id
+        wireTransportFocus();updateCaptions()
+        view.addOnLayoutChangeListener(insetLayout);panel.addOnLayoutChangeListener(insetLayout)
+        view.setOnClickListener{dismiss()}
+        panel.setOnTouchListener{_,event->if(event.actionMasked==MotionEvent.ACTION_DOWN)interacted();false}
     }
     private fun buildShorts() {
         val videoWidth=(a.resources.displayMetrics.heightPixels*9/16).coerceAtMost(a.resources.displayMetrics.widthPixels)
@@ -294,6 +339,7 @@ internal class VodControls(
     /** Back dismisses the overlay; a later Back may exit. */
     fun dismiss(): Boolean {
         if (closed || view.visibility != View.VISIBLE) return false
+        if(youtubeSeeking){finishYouTubeSeek(false);return true}
         hide(); return true
     }
     private fun hide() {
@@ -308,14 +354,14 @@ internal class VodControls(
     }
     private fun interacted() { interactedAt = SystemClock.uptimeMillis(); scheduleHide() }
     private fun startTicker() { main.removeCallbacks(ticker); main.post(ticker) }
-    private fun mayHide() = player.playWhenReady && player.playbackState != Player.STATE_ENDED && touchPosition == null && !loadingTracks && dialog?.isShowing != true && view.hasWindowFocus()
+    private fun mayHide() = player.playWhenReady && player.playbackState != Player.STATE_ENDED && touchPosition == null && !loadingTracks && !youtubeActionBusy && dialog?.isShowing != true && view.hasWindowFocus()
     private fun scheduleHide() {
         main.removeCallbacks(hideLater)
         if (!closed && view.visibility == View.VISIBLE && mayHide()) main.postDelayed(hideLater, (5000 - (SystemClock.uptimeMillis() - interactedAt)).coerceAtLeast(50))
     }
     private fun duration() = player.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0
     private fun position() = player.currentPosition.coerceAtLeast(0)
-    private fun canSeek() = !watch.short && player.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) && duration() > 0
+    private fun canSeek() = !watch.short && (!isYouTube || player.isCurrentMediaItemSeekable) && player.isCommandAvailable(Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM) && duration() > 0
     private fun submitSeek(at: Long) {
         if (closed || !canSeek()) return
         val target = at.coerceIn(0, duration())
@@ -328,7 +374,7 @@ internal class VodControls(
         val at = queuedSeek ?: return
         queuedSeek = null; submitSeek(at)
     }
-    private fun finishHold() { flushSeek(); heldDirection = 0; heldSince = 0 }
+    private fun finishHold() { if(youtubeSeeking)finishYouTubeSeek(true) else flushSeek();heldDirection=0;heldSince=0 }
     private fun skip(direction: Int) { finishHold(); seekRelative(direction) }
     private fun seekRelative(direction: Int, repeat: Boolean = false, multiplier: Int = 1) {
         if (canSeek()) {
@@ -342,7 +388,7 @@ internal class VodControls(
         show(false)
     }
     /** Shared by focused timeline keys and the first Left/Right from the video surface. */
-    private fun timelineKey(code:Int,event:KeyEvent):Boolean = when(code) {
+    private fun timelineKey(code:Int,event:KeyEvent):Boolean = if(isYouTube)youtubeTimelineKey(code,event) else when(code) {
         KeyEvent.KEYCODE_DPAD_LEFT,KeyEvent.KEYCODE_DPAD_RIGHT->{
             val direction=if(code==KeyEvent.KEYCODE_DPAD_RIGHT)1 else -1
             if(event.action==KeyEvent.ACTION_DOWN) {
@@ -357,6 +403,56 @@ internal class VodControls(
             if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0){finishHold();togglePlayback()};true
         }
         else->false
+    }
+    private fun beginYouTubeSeek() {
+        if(youtubeSeeking || !canSeek())return
+        youtubeSeeking=true;youtubeSeekResume=player.playWhenReady;touchPosition=position()
+        player.pause()
+    }
+    private fun showSeekPreview() {
+        val at=touchPosition?:return
+        seekPreview?.show(at,duration(),chapterMarkers.lastOrNull{it.startMs<=at}?.title.orEmpty())
+    }
+    private fun finishYouTubeSeek(commit:Boolean) {
+        if(!youtubeSeeking)return
+        val at=touchPosition;val resume=youtubeSeekResume
+        youtubeSeeking=false;touchPosition=null;heldDirection=0;heldSince=0;seekPreview?.hide()
+        if(commit && at!=null && canSeek() && at!=position())submitSeek(at)
+        player.playWhenReady=resume
+        if(!closed){interacted();update();startTicker()}
+    }
+    /** A newer phone command replaces an unfinished local preview, without
+     * committing its cursor or restoring an older play/pause intention. */
+    fun reconcileExternalSeek(playIntent:Boolean?,atMs:Long?):Boolean {
+        if(closed || !isYouTube || !youtubeSeeking)return false
+        val resume=playIntent?:youtubeSeekResume
+        touchPosition=null;heldDirection=0;heldSince=0;queuedSeek=null
+        main.removeCallbacks(applySeek);seekPreview?.hide()
+        // Apply a phone position before resuming: an old ended position must not
+        // trigger autoplay while the replacement seek is still pending.
+        if(atMs!=null && canSeek())player.seekTo(atMs.coerceIn(0,duration()))
+        youtubeSeeking=false;player.playWhenReady=resume
+        interacted();update();startTicker()
+        return true
+    }
+    private fun youtubeTimelineKey(code:Int,event:KeyEvent):Boolean {
+        if(code==KeyEvent.KEYCODE_DPAD_LEFT || code==KeyEvent.KEYCODE_DPAD_RIGHT) {
+            val direction=if(code==KeyEvent.KEYCODE_DPAD_RIGHT)1 else -1
+            if(event.action==KeyEvent.ACTION_DOWN && canSeek()) {
+                if(event.repeatCount==0 || heldDirection!=direction){heldDirection=direction;heldSince=event.eventTime}
+                beginYouTubeSeek()
+                val elapsed=(event.eventTime-heldSince).coerceAtLeast(0)
+                val multiplier=when{elapsed<180->1;elapsed<450->4;elapsed<850->8;elapsed<1400->16;elapsed<2200->32;elapsed<3200->64;else->128}
+                touchPosition=((touchPosition?:position())+direction*seekSeconds*1000L*multiplier).coerceIn(0,duration())
+                show(false);showSeekPreview()
+            }else if(event.action==KeyEvent.ACTION_UP && heldDirection==direction)finishYouTubeSeek(!event.isCanceled)
+            return true
+        }
+        if(code==KeyEvent.KEYCODE_DPAD_CENTER || code==KeyEvent.KEYCODE_ENTER) {
+            if(event.action==KeyEvent.ACTION_DOWN && event.repeatCount==0){if(youtubeSeeking)finishYouTubeSeek(true) else togglePlayback()}
+            return true
+        }
+        return false
     }
     private fun togglePlayback() {
         if (player.playbackState == Player.STATE_ENDED) startPlayback()
@@ -373,8 +469,9 @@ internal class VodControls(
         if (closed || view.visibility != View.VISIBLE) return
         val total = duration(); val at = (touchPosition ?: queuedSeek ?: position()).let { if (total > 0) it.coerceAtMost(total) else it }
         heatmap?.duration(total)
-        val seekable = canSeek();bar.isEnabled=seekable
-        var transportChanged=updateChapterVisibility(total)
+        val seekable = canSeek();val seekabilityChanged=bar.isEnabled!=seekable;bar.isEnabled=seekable
+        if(isYouTube && !seekable && bar.hasFocus())play.requestFocus()
+        var transportChanged=updateChapterVisibility(total) || seekabilityChanged
         val previousAvailable=previousVideo!=null && a.canStepYouTube(watch,-1)
         transportChanged=updateTransport(previousVideo,previousAvailable,previousAvailable) || transportChanged
         transportChanged=updateTransport(nextVideo,nextVideo!=null && a.canStepYouTube(watch,1)) || transportChanged
@@ -386,7 +483,13 @@ internal class VodControls(
         bar.progress = if (total > 0) (at.toDouble() / total * bar.max).toInt() else 0
         bar.secondaryProgress = if (total > 0) (player.bufferedPosition.coerceAtLeast(at).toDouble().coerceAtMost(total.toDouble()) / total * bar.max).toInt() else 0
         val second = at / 1000
-        if (!watch.short && elapsedSecond != second) {
+        if(isYouTube && (elapsedSecond!=second || youtubeClockDuration!=total)) {
+            elapsedSecond=second;youtubeClockDuration=total
+            val chapter=chapterMarkers.lastOrNull{it.startMs<=at}?.title
+            elapsed.text=if(watch.live) {
+                if(seekable)"−${format((total-at).coerceAtLeast(0))} · LIVE" else "● LIVE"
+            }else "${format(at)} / ${if(total>0)format(total) else "–:–"}"+(chapter?.let{" · $it"}?:"")
+        } else if (!isYouTube && !watch.short && elapsedSecond != second) {
             elapsedSecond = second
             val chapter=chapterMarkers.lastOrNull{it.startMs<=at}
             elapsed.text=if(chapter==null)format(at) else "${format(at)} · ${chapter.title}"
@@ -397,10 +500,12 @@ internal class VodControls(
         val paused = !player.playWhenReady || ended
         playIcon.mode = if (paused) ControlIcon.PLAY else ControlIcon.PAUSE
         play.contentDescription = if (ended) "Replay" else if (paused) "Play" else "Pause"
+        youtubeChrome?.playbackChanged()
     }
-    fun metadataChanged(){if(!closed && view.isShown)update()}
+    fun metadataChanged(){if(!closed){if(isYouTube)youtubeActions?.metadata(a.model.youtube.preparedDetails(watch.title.id));if(view.isShown)update()}}
+    fun accountChanged(){youtubeActions?.accountChanged()}
     private fun stepVideo(direction:Int){finishHold();a.stepYouTube(watch,direction)}
-    private fun relatedFromVideo()=view.visibility!=View.VISIBLE || !view.hasFocus() || play.hasFocus() ||
+    private fun relatedFromVideo()=if(isYouTube)view.visibility!=View.VISIBLE || !view.hasFocus() || youtubeChrome?.actions?.any{it.hasFocus()}==true else view.visibility!=View.VISIBLE || !view.hasFocus() || play.hasFocus() ||
         rewind.hasFocus() || forward.hasFocus() || previousVideo?.hasFocus()==true || nextVideo?.hasFocus()==true ||
         chapterButton?.hasFocus()==true || quality?.hasFocus()==true || trackButton.hasFocus() || options?.hasFocus()==true
     /** Only global transport/reveal keys are intercepted; visible widgets receive normal D-pad events. */
@@ -455,13 +560,13 @@ internal class VodControls(
         if (event.action != KeyEvent.ACTION_DOWN) return false
         fun consume(action: () -> Unit): Boolean { consumedKeys[code] = event.downTime; if (event.repeatCount == 0) action(); return true }
         when (code) {
-            KeyEvent.KEYCODE_MENU -> if(watch.title.type=="youtube")return consume { openVideoActions() }
-            KeyEvent.KEYCODE_MEDIA_PLAY -> return consume { startPlayback(); show(false) }
-            KeyEvent.KEYCODE_MEDIA_PAUSE -> return consume { player.pause(); show(false) }
-            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> return consume { togglePlayback() }
+            KeyEvent.KEYCODE_MENU -> if(watch.title.type=="youtube")return consume { if(isYouTube)showYouTubeSettings() else openVideoActions() }
+            KeyEvent.KEYCODE_MEDIA_PLAY -> return consume { if(youtubeSeeking){youtubeSeekResume=true;finishYouTubeSeek(true)}else startPlayback();show(false) }
+            KeyEvent.KEYCODE_MEDIA_PAUSE -> return consume { if(youtubeSeeking){youtubeSeekResume=false;finishYouTubeSeek(true)}else player.pause();show(false) }
+            KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> return consume { if(youtubeSeeking){youtubeSeekResume=!youtubeSeekResume;finishYouTubeSeek(true);show(false)}else togglePlayback() }
             KeyEvent.KEYCODE_MEDIA_REWIND, KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> return consume { skip(-1) }
             KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> return consume { skip(1) }
-            KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> return consume { if(watch.playbackMode==PlaybackMode.YOUTUBE)stepVideo(if(code==KeyEvent.KEYCODE_MEDIA_NEXT)1 else -1) }
+            KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_PREVIOUS -> return consume { if(isYouTube)stepVideo(if(code==KeyEvent.KEYCODE_MEDIA_NEXT)1 else -1) }
         }
         if(watch.short && center &&
             (view.visibility!=View.VISIBLE || !view.hasFocus() || play.hasFocus()))return consume{togglePlayback()}
@@ -473,6 +578,7 @@ internal class VodControls(
         return false
     }
     private fun openPictureControls() { if (!closed && watch.title.type!="youtube") { finishHold(); invalidateTrackRequest(); interacted(); pictureControls() } }
+    private fun openYouTubeDescription(){if(!closed){hide();youtubeDescription?.invoke()}}
     private fun openYouTubePanel(comments:Boolean) { if(!closed){hide();youtubePanel?.invoke(comments)} }
     private fun openVideoActions() {
         if(closed || videoActions?.visible==true)return
@@ -503,6 +609,18 @@ internal class VodControls(
         return changed
     }
     private fun wireTransportFocus() {
+        if(isYouTube) {
+            val all=youtubeChrome?.actions.orEmpty().filter{it.visibility==View.VISIBLE && it.isEnabled}
+            all.forEachIndexed { index,button ->
+                button.nextFocusLeftId=all[(index-1).coerceAtLeast(0)].id
+                button.nextFocusRightId=all[(index+1).coerceAtMost(all.lastIndex)].id
+                button.nextFocusUpId=if(bar.isEnabled)bar.id else closeButton.id;button.nextFocusDownId=button.id
+            }
+            bar.nextFocusDownId=play.id
+            bar.nextFocusUpId=chapterButton?.takeIf{it.visibility==View.VISIBLE && it.isEnabled}?.id?:closeButton.id
+            chapterButton?.let{it.nextFocusLeftId=bar.id;it.nextFocusRightId=bar.id;it.nextFocusUpId=closeButton.id;it.nextFocusDownId=bar.id}
+            return
+        }
         val bottom=listOfNotNull(previousVideo,rewind,play,forward,nextVideo,chapterButton,quality,trackButton,options)
             .filter{it.visibility==View.VISIBLE && it.isEnabled}
         bottom.forEachIndexed { index,button ->
@@ -523,6 +641,41 @@ internal class VodControls(
             }
         })
         dialog?.listView?.setSelection(current.coerceAtLeast(0))
+        dialog?.listView?.post{dialog?.takeIf{it.isShowing}?.listView?.setSelection(current.coerceAtLeast(0))}
+    }
+    private fun updateCaptions(){youtubeChrome?.captions(player.currentTracks.groups.any{it.type==C.TRACK_TYPE_TEXT && it.isSelected})}
+    private fun toggleCaptions() {
+        if(closed)return
+        finishHold();interacted();val request=++trackRequest
+        tracks(C.TRACK_TYPE_TEXT) { available -> main.post {
+            if(closed || request!=trackRequest || !view.isShown)return@post
+            val selected=available.firstOrNull{it.id!="off" && it.selected}
+            if(selected!=null){lastCaptionId=selected.id;selectTrack(C.TRACK_TYPE_TEXT,"off");a.model.updatePreferences(a.model.preferences.copy(youtubeCaptions=false))}
+            else {
+                val next=available.firstOrNull{it.id==lastCaptionId && it.id!="off"}?:available.firstOrNull{it.id!="off"}
+                if(next!=null){selectTrack(C.TRACK_TYPE_TEXT,next.id);a.model.updatePreferences(a.model.preferences.copy(youtubeCaptions=true,youtubeSubtitleLanguage=next.language.ifBlank{a.model.preferences.youtubeSubtitleLanguage}))}
+                else {feedback.text="No captions available for this video.";feedback.visibility=View.VISIBLE}
+            }
+            updateCaptions();interacted()
+        } }
+    }
+    private fun showYouTubeSettings() {
+        if(closed)return
+        finishHold();interacted()
+        dialog=a.showActions("Playback settings",listOf(
+            "Video quality" to {chooseTrack(C.TRACK_TYPE_VIDEO)},
+            "Audio track" to {chooseTrack(C.TRACK_TYPE_AUDIO)},
+            "Subtitles" to {chooseTrack(C.TRACK_TYPE_TEXT)},
+            "Playback speed" to {
+                val speeds=listOf(.25f,.5f,.75f,1f,1.25f,1.5f,1.75f,2f)
+                dialog=a.chooseOption("Playback speed",speeds.map{if(it==1f)"Normal" else "${it}×"},speeds.indexOf(player.playbackParameters.speed)) { index ->
+                    if(!closed){player.setPlaybackSpeed(speeds[index]);a.model.updatePreferences(a.model.preferences.copy(youtubeSpeed=speeds[index]));interacted()}
+                }
+            },
+            ("Autoplay: "+if(a.model.preferences.youtubeAutoplay)"On" else "Off") to {
+                a.model.updatePreferences(a.model.preferences.copy(youtubeAutoplay=!a.model.preferences.youtubeAutoplay));interacted()
+            },
+        ))
     }
     private fun showTrackOptions() {
         finishHold(); invalidateTrackRequest(); interacted()
@@ -542,13 +695,18 @@ internal class VodControls(
                 feedback.text = if (type == C.TRACK_TYPE_AUDIO) "No audio tracks available." else if(type==C.TRACK_TYPE_VIDEO)"No video qualities available." else "No subtitle tracks available."
                 feedback.visibility = View.VISIBLE; interacted()
             } else dialog = a.chooseOption(if (type == C.TRACK_TYPE_AUDIO) "Audio track" else if(type==C.TRACK_TYPE_VIDEO)"Video quality" else "Subtitles", available.map { it.label }, available.indexOfFirst { it.selected }) { index ->
-                if (!closed) { selectTrack(type, available[index].id); interacted() }
+                if (!closed) {
+                    val choice=available[index];selectTrack(type,choice.id)
+                    if(isYouTube && type==C.TRACK_TYPE_TEXT)a.model.updatePreferences(a.model.preferences.copy(youtubeCaptions=choice.id!="off",youtubeSubtitleLanguage=choice.language.ifBlank{a.model.preferences.youtubeSubtitleLanguage}))
+                    interacted()
+                }
             }
         } }
     }
     fun close() {
         if (closed) return
-        closed = true; trackRequest++; queuedSeek = null; touchPosition = null; heldDirection = 0; heldSince = 0
+        closed=true;finishYouTubeSeek(false);youtubeActions?.close();youtubeActions=null;seekPreview?.close();seekPreview=null;youtubeChrome?.close(view);youtubeChrome=null
+        trackRequest++; queuedSeek = null; touchPosition = null; heldDirection = 0; heldSince = 0
         player.removeListener(listener); main.removeCallbacksAndMessages(null);chapterMarkers=emptyList()
         if (view.viewTreeObserver.isAlive) view.viewTreeObserver.removeOnWindowFocusChangeListener(windowFocus)
         dialog?.dismiss(); dialog = null;videoActions?.close();videoActions=null; consumedKeys.clear(); view.visibility = View.GONE

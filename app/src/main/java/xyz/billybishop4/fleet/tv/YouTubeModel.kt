@@ -155,7 +155,7 @@ internal class YouTubeModel(
         catch(e:Exception){if(nextRequest===request){nextRequest=null;nextDetails=null};throw e}
     }
     fun prepareNext(watch:Watch,onReady:()->Unit={}) {
-        if(watch.short || watch.live || watch.title.type!="youtube" || !YouTubeDecode.validId(watch.title.id)){onReady();return}
+        if(watch.short || watch.title.type!="youtube" || !YouTubeDecode.validId(watch.title.id)){onReady();return}
         // Account changes discard account-bound choices, but the current
         // decoder keeps playing. A direct/restored player also bypasses resolve.
         // Adopt only an empty current slot; never overwrite a newer local item.
@@ -163,13 +163,15 @@ internal class YouTubeModel(
         else if(localQueue.currentId!=watch.title.id){onReady();return}
         prepareJob?.cancel();val generation=++prepareGeneration
         prepareJob=scope.launch {
-            try{watchDetails(watch.title.id)}catch(e:CancellationException){throw e}catch(_:Exception){/* Optional recommendations never interrupt video. */}
+            try{refreshAccountState();watchDetails(watch.title.id)}catch(e:CancellationException){throw e}catch(_:Exception){/* Optional recommendations never interrupt video. */}
             finally{if(generation==prepareGeneration){prepareJob=null;onReady()}}
         }
     }
     fun enqueue(video:YouTubeVideo):Boolean=localQueue.enqueue(video).also{if(it)changed()}
     internal fun chapters(videoId:String):List<YouTubeChapter> =
         nextDetails?.takeIf{nextId==videoId && nextScope?.epoch==client.historyAccountEpoch()}?.chapters.orEmpty()
+    internal fun preparedDetails(videoId:String):YouTubeWatchDetails?=
+        nextDetails?.takeIf{nextId==videoId && nextScope?.epoch==client.historyAccountEpoch()}
     fun queueStatus(video:YouTubeVideo):YouTubeQueueStatus=localQueue.status(video)
     fun canStepRegular(watch:Watch,direction:Int):Boolean = watch.title.type=="youtube" && !watch.short && !resolving && localQueue.peek(watch.title.id,direction)!=null
     fun stepRegular(watch:Watch,direction:Int):Boolean {

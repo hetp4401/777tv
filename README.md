@@ -6,19 +6,23 @@ and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
 ## Development candidate
 
-**0.23.0 · version code 31 · Android 7.0 / API 24 or later**
+**0.24.0 · version code 32 · Android 7.0 / API 24 or later**
 
 This branch contains the native YouTube integration and continuing TizenTube
-functional review, with independent app and section themes. Version 0.23.0 is
-installed on the TCL, with black Cinema selected for On-Demand and other settings/data preserved. The release
-record separates final-source native scenarios from signed-release device checks.
+functional review, with independent app and section themes. Version 0.24.0 adds
+a YouTube TV-style native player with direct actions and storyboard seeking.
+IPTV Live TV and On-Demand retain their existing players and controls. The release
+record separates final-source emulator scenarios from actual device verification.
+The candidate is installed in place on the TCL; its existing foreground session
+was preserved. This release was exercised on worker emulators without launching
+a physical-TV playback probe.
 Development also uses local checks and worker emulators.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Candidate verification](releases/0.23.0/verification.json) records the APK checksum,
+[Candidate verification](releases/0.24.0/verification.json) records the APK checksum,
 source/build checksums and validation scope.
-[SHA256SUMS](releases/0.23.0/SHA256SUMS) identifies the installed APK. The original
+[SHA256SUMS](releases/0.24.0/SHA256SUMS) identifies the candidate APK. The original
 production import remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
@@ -53,6 +57,13 @@ are excluded from Git.
   pause, seek, volume, captions and speed. Disconnect retires pending handoffs;
   a new local selection retires the old phone queue. This is a TV-code receiver,
   not certified Chromecast or outbound casting to another TV.
+- Regular YouTube has a full-width thin red timeline, centered playback controls,
+  channel/Description/Subscribe and direct Like/Dislike/Comments/Save/CC/Settings.
+  Held seeking accelerates a storyboard/time preview and commits one decoder seek
+  on release. Newer media/phone commands supersede the pending local gesture.
+  Caption and speed preferences are independent of On-Demand. YouTube live uses
+  actual DVR seekability; IPTV retains its transport-free presentation. See the
+  [player review](docs/youtube-player-0.24.md).
 - Regular YouTube supports Next, a conditional Previous control, chapter navigation,
   a bounded explicit queue and saved
   Autoplay preference. Actual watch-next metadata loads after a rendered frame
