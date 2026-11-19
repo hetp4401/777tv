@@ -205,7 +205,10 @@ internal class ArtworkLoader private constructor(context: Context) {
     }
     private val lowRam=(context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager).isLowRamDevice
     val loader = ImageLoader.Builder(context.applicationContext)
-        .memoryCache { ArtworkMemoryCache((if(lowRam)4 else 8)*1024*1024) }
+        // Retain adjacent shelves so reversing a remote gesture usually reuses
+        // decoded artwork. This is a pixel-accounted LRU, not an unbounded page
+        // cache, and normal memory-pressure callbacks still release it.
+        .memoryCache { ArtworkMemoryCache((if(lowRam)8 else 16)*1024*1024) }
         .diskCache { DiskCache.Builder().directory(File(context.cacheDir, "artwork")).maxSizeBytes(64L * 1024 * 1024).build() }
         .bitmapFactoryMaxParallelism(if(lowRam)1 else 2)
         .crossfade(false).allowHardware(true).build()

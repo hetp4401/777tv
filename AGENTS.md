@@ -1,5 +1,28 @@
 # 777tv Android TV workflow (formerly Fleet)
 
+- Current user hold during 0.25 navigation work: do not deploy/push any changes
+  to the TCL until Het explicitly asks. Continue on the Mac and worker emulators;
+  preserve the TV's foreground session and installed 0.24 data.
+- 0.25.0/code 33 is a signed local candidate, not installed on the TCL. Native
+  lists use 70–140 ms scrolling; nearby cards and pixel-accounted artwork stay
+  within bounded caches (8 MiB low-RAM / 16 MiB normal). Keep stream identity
+  indexes tied to the committed adapter until its async diff completes. Current
+  series/list presentation caches clear on close; cached Live holders refresh
+  preview/favorite state on reattach without tuning. YouTube retains a temporary
+  page-local focus owner during deferred shelf moves, plus matching-release and
+  scope/account/input/lifecycle guards for pending OK. The corrected ten-row
+  baseline reproduced focus escaping to top navigation; both candidate workers
+  reach all seven navigation destinations. Initial 10×24 Home fixtures exceeded
+  the production 120-video cap and yielded five rows; discard those vertical
+  results. Use 5×24 horizontally, 10×12 vertically, verify adapter capacity and
+  wait for the intended focus plus completed layout. Final scrolls animate even
+  with worker ValueAnimator scales disabled; discard the instant-scroll prototype.
+  `releases/0.25.0/verification.json` records 245 JVM passes/3 opt-in skips,
+  lint zero errors/107 warnings and 126 unique native passes. All 68 production
+  hashes and three root build-config hashes match selected snapshots/release
+  inputs. Paired worker PSS grew about 4.4 MiB; software frame timings do not
+  prove physical-TV smoothness. See `docs/navigation-performance-0.25.md`.
+  Private evidence stays in `.tools/navigation025/`; no TV actions were taken.
 - 0.24.0/code 32 is installed in place on the TCL. The installed APK was pulled
   and matched to the signed candidate; its UID and the user's foreground Stremio
   session were preserved. No app launch, interactive playback test, preference/

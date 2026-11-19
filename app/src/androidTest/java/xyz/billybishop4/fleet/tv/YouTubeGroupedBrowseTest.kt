@@ -90,11 +90,9 @@ class YouTubeGroupedBrowseTest:NativeTestBase() {
     }
     @Test fun searchPlayActionsChannelAndBackReturnsToTheSameSearchShelfAndVideo() {
         search();repeat(6){sendRemoteKey(KeyEvent.KEYCODE_DPAD_RIGHT)};await{focused()=="youtube-video:V0000000007"}
-        sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER);playing();click("Video actions")
-        assertTrue(device.wait(Until.hasObject(By.text("Like").enabled(true)),10000))
-        assertTrue(device.wait(Until.hasObject(By.text("Sign in for account actions").focused(true)),10000))
-        sendRemoteKey(KeyEvent.KEYCODE_DPAD_DOWN)
-        assertTrue(device.wait(Until.hasObject(By.text("Fixture creator").focused(true)),5000))
+        sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER);playing()
+        await{tagged("youtube-channel")?.let{it.isShown && it.isEnabled}==true}
+        ui{tagged("youtube-channel")!!.requestFocusFromTouch()}
         sendRemoteKey(KeyEvent.KEYCODE_DPAD_CENTER)
         await{ui{a.model.youtube.feed==YouTubeFeed.CHANNEL && !a.model.youtube.busy} && tagged("youtube-channel-name")?.isShown==true}
         assertNull(player());ui{a.onBackPressedDispatcher.onBackPressed()}

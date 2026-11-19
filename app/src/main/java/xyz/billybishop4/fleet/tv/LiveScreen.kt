@@ -17,8 +17,8 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
     private val m = a.model
     override val view = a.column()
     private val count = a.text("", 11f, MUTED)
-    private val grid = RecyclerView(a).apply { tag = "channels"; layoutManager = LinearLayoutManager(a); tune(cachedViews = 6) }
-    private val groups = RecyclerView(a).apply { tag = "groups"; layoutManager = LinearLayoutManager(a); tune() }
+    private val grid = TvRecyclerView(a).apply { tag = "channels"; layoutManager = LinearLayoutManager(a); tune(cachedViews = 6) }
+    private val groups = TvRecyclerView(a).apply { tag = "groups"; layoutManager = LinearLayoutManager(a); tune(cachedViews = 4) }
     private val options = a.action("Options", "Live TV options") { showOptions() }.quiet()
     private val preview = FrameLayout(a).apply {
         tag = "channel-preview"; background = a.round(PANEL); clipToOutline = true
@@ -56,6 +56,16 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
     private var shownGuideMessage = ""
     private var shownCurrentStart: Long? = null
     private var dialog: android.app.AlertDialog? = null
+    // Valid cached holders can reattach without onBindViewHolder. Selection and
+    // favorites live outside Channel/LiveGroup, so refresh just that small state.
+    private val channelAttach=object:RecyclerView.OnChildAttachStateChangeListener {
+        override fun onChildViewAttachedToWindow(child:View){if(!closed)updateChannelRow(child)}
+        override fun onChildViewDetachedFromWindow(child:View){}
+    }
+    private val groupAttach=object:RecyclerView.OnChildAttachStateChangeListener {
+        override fun onChildViewAttachedToWindow(child:View){if(!closed)updateGroupRow(child)}
+        override fun onChildViewDetachedFromWindow(child:View){}
+    }
     private val adapter = NativeAdapter<Channel>({ it.identity }, { _, _ ->
         LiveChannelRow(a, ::openChannel, { m.toggleFavorite(provider, it) })
     }, { v, c, _ ->
@@ -136,6 +146,8 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
             val height = ((r - l) * 9 / 16).coerceAtLeast(a.dp(100))
             if (preview.layoutParams.height != height) preview.layoutParams = preview.layoutParams.apply { this.height = height }
         }
+        grid.addOnChildAttachStateChangeListener(channelAttach)
+        groups.addOnChildAttachStateChangeListener(groupAttach)
     }
 
     private fun favoriteDescription() = if (m.onlyFavoriteChannels) "★ Favorites only" else "★ Favorites"
@@ -319,9 +331,21 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
         }
     }
     private fun updateSelectedRows() {
-        for (i in 0 until grid.childCount) (grid.getChildAt(i) as? LiveChannelRow)?.let { row ->
-            val c = adapter.currentList.getOrNull(grid.getChildAdapterPosition(row))
-            if (c != null) row.mark(hasPreview(c), favoriteKey(provider.id, c) in m.favorites, m.channelGroup == "All channels")
+        for (i in 0 until grid.childCount)updateChannelRow(grid.getChildAt(i))
+    }
+    private fun updateChannelRow(child:View) {
+        val row=child as? LiveChannelRow?:return
+        val channel=row.boundChannel?:return
+        row.mark(hasPreview(channel),favoriteKey(provider.id,channel) in m.favorites,m.channelGroup=="All channels")
+    }
+    private fun updateGroupRow(child:View) {
+        val row=child as? Button?:return
+        val favorite=row.tag=="category:favorites"
+        val selected=if(favorite)m.onlyFavoriteChannels else !m.onlyFavoriteChannels && row.tag=="button:${m.channelGroup}"
+        if(row.isSelected!=selected)row.isSelected=selected
+        if(favorite) {
+            val description=favoriteDescription()
+            if(row.contentDescription!=description)row.contentDescription=description
         }
     }
     private fun showEmpty(title: String, message: String = "", action: String? = null, busy: Boolean = false, run: () -> Unit = {}) {
@@ -337,10 +361,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
         val hidden = m.hiddenCategories[provider.id].orEmpty()
         if (m.channelGroup != "All channels" && m.channelGroup in hidden) m.channelGroup = "All channels"
         updateSelectedRows()
-        for (i in 0 until groups.childCount) (groups.getChildAt(i) as? Button)?.let { row ->
-            if (row.tag == "category:favorites") { row.isSelected = m.onlyFavoriteChannels; row.contentDescription = favoriteDescription() }
-            else row.isSelected = !m.onlyFavoriteChannels && row.tag == "button:${m.channelGroup}"
-        }
+        for (i in 0 until groups.childCount)updateGroupRow(groups.getChildAt(i))
         if (m.busy && m.channels.isEmpty()) showEmpty("Loading channels…", busy = true)
         else if (m.error != null && m.channels.isEmpty()) showEmpty("Couldn't load channels", m.error.orEmpty(), "Try again") { m.retry() }
         val key = listOf(listVersion, m.channelGroup, m.channelQuery, m.onlyFavoriteChannels, if (m.onlyFavoriteChannels) m.favorites else null, m.preferences.liveSort, hidden, m.busy, m.error)
@@ -396,5 +417,7 @@ internal class ChannelsScreen(private val a: MainActivity, private val provider:
     }
     override fun background() { cancelRowFocus(); guideJob?.cancel();filterJob?.cancel();filterKey=null }
     override fun foreground() { if(filterKey==null)update();selected?.takeIf { guideJob?.isActive != true }?.let(::loadGuide) }
-    override fun close() { closed = true; filterJob?.cancel(); cancelRowFocus(); guideJob?.cancel();dialog?.dismiss();dialog=null; grid.adapter = null; groups.adapter = null }
+    override fun close() { closed = true; filterJob?.cancel(); cancelRowFocus(); guideJob?.cancel();dialog?.dismiss();dialog=null
+        grid.removeOnChildAttachStateChangeListener(channelAttach);groups.removeOnChildAttachStateChangeListener(groupAttach)
+        grid.adapter = null; groups.adapter = null }
 }

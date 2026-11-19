@@ -73,7 +73,8 @@ class FluidityBenchmarkTest:NativeTestBase() {
             val frames=Collections.synchronizedList(ArrayList<LongArray>(160))
             val thread=HandlerThread("777tv-frame-benchmark").apply{start()}
             val callback=Window.OnFrameMetricsAvailableListener { _,f,_->frames.add(longArrayOf(f.getMetric(FrameMetrics.TOTAL_DURATION),
-                f.getMetric(FrameMetrics.LAYOUT_MEASURE_DURATION),f.getMetric(FrameMetrics.DRAW_DURATION))) }
+                f.getMetric(FrameMetrics.LAYOUT_MEASURE_DURATION),f.getMetric(FrameMetrics.DRAW_DURATION),
+                if(Build.VERSION.SDK_INT>=31)f.getMetric(FrameMetrics.DEADLINE) else -1L,f.getMetric(FrameMetrics.FIRST_DRAW_FRAME))) }
             val done=CountDownLatch(1);val gc=Debug.getRuntimeStats();val cpu=Process.getElapsedCpuTime();val start=SystemClock.elapsedRealtime()
             ui {
                 a.window.addOnFrameMetricsAvailableListener(callback,Handler(thread.looper))
@@ -92,6 +93,8 @@ class FluidityBenchmarkTest:NativeTestBase() {
             samples.put(JSONObject().put("trial",trial).put("scrollSteps",120).put("elapsedMs",SystemClock.elapsedRealtime()-start)
                 .put("processCpuMs",Process.getElapsedCpuTime()-cpu).put("frames",captured.size).put("frameP50Ms",p(0,.5)).put("frameP95Ms",p(0,.95))
                 .put("layoutP95Ms",p(1,.95)).put("drawP95Ms",p(2,.95)).put("gcBefore",JSONObject(gc)).put("gcAfter",JSONObject(Debug.getRuntimeStats())))
+            samples.getJSONObject(samples.length()-1).put("nonFirstDrawFrames",captured.count{it[4]==0L})
+                .put("framesOverActualDeadline",captured.count{it[4]==0L && it[3]>0 && it[0]>it[3]})
         }
         val afterScroll=memory();val input=JSONArray()
         for(held in listOf(false,true)) {

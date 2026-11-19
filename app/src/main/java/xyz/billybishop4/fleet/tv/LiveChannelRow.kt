@@ -27,6 +27,7 @@ internal class LiveChannelRow(private val a: MainActivity,
     private val numberPaint=TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color=MUTED;textSize=11*a.resources.displayMetrics.scaledDensity }
     private val starPaint=TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color=ACCENT;textSize=15*a.resources.displayMetrics.scaledDensity }
     private var channel:Channel?=null
+    internal val boundChannel:Channel? get()=channel
     private var favorite=false
     private var showGroup=true
     private var nameLayout:Layout?=null
@@ -69,14 +70,17 @@ internal class LiveChannelRow(private val a: MainActivity,
         invalidate()
     }
     fun mark(selected:Boolean,saved:Boolean,displayGroup:Boolean=showGroup) {
-        isSelected=selected
+        if(isSelected!=selected)isSelected=selected
         if(showGroup!=displayGroup) { showGroup=displayGroup;shapeText();invalidate() }
         if(favorite!=saved) { favorite=saved;invalidate() }
-        if(Build.VERSION.SDK_INT>=30)stateDescription=when {
-            selected && saved -> "Selected preview, favorite"
-            selected -> "Selected preview"
-            saved -> "Favorite"
-            else -> null
+        if(Build.VERSION.SDK_INT>=30) {
+            val description=when {
+                selected && saved -> "Selected preview, favorite"
+                selected -> "Selected preview"
+                saved -> "Favorite"
+                else -> null
+            }
+            if(stateDescription!=description)stateDescription=description
         }
     }
     private fun shapeText() {

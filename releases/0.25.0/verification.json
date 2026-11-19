@@ -1,0 +1,815 @@
+{
+  "application": "777tv",
+  "versionName": "0.25.0",
+  "versionCode": 33,
+  "verifiedAt": "2026-11-19T01:40:39.660912+00:00",
+  "change": "Short native scrolls, bounded adjacent-card/artwork retention, prepared episode/stream presentation, and safe YouTube pending focus/activation.",
+  "apk": {
+    "file": "777tv-0.25.0-preview.apk",
+    "bytes": 8437932,
+    "sha256": "5d618ecafd7cdf23f4dfa7abc3ba260ec65ae2fbd99639639c45bfd8c683a717",
+    "signatureV2": true,
+    "certificateSha256": "c906793c72e69055a73004ea97bff7ce8059ac511c9a692e785db810d3f3ff02",
+    "alignment16KiB": true,
+    "nativeLibraries": [],
+    "debuggable": false,
+    "versionName": "0.25.0",
+    "versionCode": 33
+  },
+  "productionSourceSha256": {
+    "app/build.gradle.kts": "476c0a9f2bb95cd98b84cc3c875cef1e3a1fef2ff0f4bc48e54bfefffd179192",
+    "app/src/main/AndroidManifest.xml": "1bbfdf5ae2fc10badeea46083d24ef1a992798bad7a633c86c8a1f64cf0c9347",
+    "app/src/main/assets/THIRD_PARTY_NOTICES.md": "38af7247d1b3b937b0eb1b4eceafbe79737c433f98383293fbedb0f16e229217",
+    "app/src/main/assets/licenses/NewPipeExtractor-LICENSE.txt": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+    "app/src/main/assets/licenses/Rhino-LICENSE.txt": "ada0787f27b581e024972a18b51db92c8e8508d0f05017d104a1c70a61b59951",
+    "app/src/main/assets/licenses/jsoup-LICENSE.txt": "f5d724c5818010c61bff2e177f5b6452434bc054807522bf241940bca8b1d6b1",
+    "app/src/main/assets/licenses/nanojson-LICENSE.txt": "2794f8db476aea7b3da16caba160038f57bc8ee63750361c64e7d5ab501141ab",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/AddonSettingsScreen.kt": "e702e12108be6956887a6def5627fa7ee56a859c5dd405db8d4c6a1d49d8cb80",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Addons.kt": "8ce012ae17e02e39dc24adab4151893378e77156cdcce8895b803c9e171cf6bb",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ArtworkMemoryCache.kt": "e00692abfff8a6753866a5038c53084f08a6c9d012091d665108d486f6d0c7bc",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/FleetModel.kt": "a00c93353153e70f87567b905f0e564500f787d0c28cbd69b8cabaa47a399118",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Guide.kt": "e4afb9f80a40f1aca03e12e75a2e8a1f8823d0ca7d899cb4842e7b7ad51c0d46",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Http.kt": "24b5e8a90d77c368c303e67329992a2614792f1cb79a26b81f510c828f34334b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveChannelRow.kt": "18ffe762c0dd80892da5a16f8df3eb483687df434fa8a34a246296312477bce6",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveInfoOverlay.kt": "277f5a84dd5e004938565838ba4623f00772604433361abfbe7db0735605a32c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/LiveScreen.kt": "8878aab436224cc143a00a4f4959f1e58a62763bdd04f9d2e1029bb1ca91cbd3",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/MainActivity.kt": "5cbc4ead1a17fd246ffd3fa6c461449ae077ba06da90a15931d86a3f489f4829",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Models.kt": "7b1cf7abdb817623be34f57865471d5dbf2b9659cbc8be98f5bc24f5cbc93c2b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeAdapters.kt": "6c889b68534df1de8e3ee22b80dbeab6c3c7450c3e231a50e31adfac3dbcc548",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeBrowse.kt": "c25532bbed3d06be3c859d282a6ff1324973bcbc1767b5ad20c65654bca6a04a",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/NativeUi.kt": "161c2336bc2ac9505f3b4fbfdfa616f85bf86851137f213a19310151c149ab59",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Navigation.kt": "1c86e06b1dd16bc3e22bce77efa7882ee0734b7e252c7a30a06aeb5bc616f1fb",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/PictureControls.kt": "7e90b5044c05749e9287d72617a4067d6c5e9f21c30ca7b4c31e20fbb2128be2",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Playback.kt": "bd99d359ae30773b6975c06660afd957642eb52c6e740c44df241e401222d498",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Preferences.kt": "d98c3d91734c1dc8eb8af4d2d4bd7bcf01908adcd2a66766768faffa4152c9d9",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ProviderForm.kt": "ed953e8bb1ebe5754011e78d249fde1219d05640b940747903357e9bfd162aa4",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Repository.kt": "3ca9e8ca1d0515f29619806c189e31ed9a43f23b58da63ec5fff51f7f381746c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SearchScreen.kt": "45b85709f99ae2f06be1ae413154797879f398e016ff3642d9f0295871fe12ec",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/SettingsScreen.kt": "e01583664b08262bd3152629ca9dba1a9aa9aefa6b09ea237d01c7398c845297",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Stalker.kt": "0e245be28f87b071f5cb2867fb13fcfda1efd1b4a09d417a2188fb5ac07ff832",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Store.kt": "93a302e07375682737ee29bb33f7b2d2c3aad4857ba47993729c298f32234e9c",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ThemePicker.kt": "04b92d20d73fed104b38677c6d20aa6cc9af91626e233e7c4bfc839e5d72cf4b",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/ThemeUi.kt": "e12b15d7dd32deea4910615ac6be42891021763bad3162db00766e50302e7441",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/Themes.kt": "c56141deade3b3e689f21a00a521b15e60bf31635bdcce2a5f26126d92fcdbcc",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VideoPicture.kt": "61e99faabd02f03e60f179bcb48c9ec62f77b64b797e79328ae8a44b0044e3e0",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/VodControls.kt": "dd56d902da99d72f676b6663bc379945e21ab8fe892e0e4f41ac81dcbc220f57",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeClient.kt": "f4b4a1bb26fd843e35243388e4960594c9a100bc526a3605567a830a0a17318e",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeData.kt": "b77f475c382194e750fbb2d8d5086a412892861f0babf9f376814e823aa5e255",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeHeatmapView.kt": "97c6f41c3407675814658b7e1ae98692de105090a82faf6127974faf93e90f41",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeHistory.kt": "96912a83456be32f84162b4cc3a6e955dc102406d1b3af4301ffa37004995e90",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLibraryData.kt": "597ff676032ca02a6f78372a4898aa4c56680ace8cc6fd3f9475f1cba8e48351",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLocalQueue.kt": "4fd85b0e47c7a55d42b14178ff24856b01d37ec389487476f5805da4cd2a1d99",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeLounge.kt": "7151b3985be7f6aac8d4f5ec973c35ac21224cb45949c39a43081a0b031aba76",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeModel.kt": "cdb9273a5fd82d3296a8577a3816d5052334a5a431acd2fa12745257ef336f45",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubePhoneLink.kt": "983dcc1bd475405d9464bfeb93cc5e7bb9017294008960e06cec39051cdb7620",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubePlayerActions.kt": "93eecd5728d6174ffc85184d9f19a15e5c0033ad93a1ee557f4e4f32bc042eba",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubePlayerChrome.kt": "ab422d14e4c2413d5bd50c63afaea595cda45bc929ce4ab8a5379b14f6f9352e",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeResolver.kt": "92206083093081aebf29d49b31b589e970c8579bd816acabafb6931ea1956d23",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeScreen.kt": "2fb1c73a5c8840daa00e1537508417c3ea9ae3af6424a074dd9a4e379685cddc",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSearchData.kt": "577bb1de2a3e2565323711e66a2b83a4cdaf7a2e3d6a6067c84886389d4b3c2d",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSeekPreview.kt": "e070d0ce55bb595f72df780d181c8bcdef6083fe411821a9e2e7db78ac142eaa",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSignIn.kt": "4fc45fce90cf228b11f472c58013d9e6ae335ed9dd5ab7b9c6ce8af968a4fe66",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeSocialData.kt": "16a6862a89729ca0e75fb0fb7d8db1612f31a96d467fc48126595c8768ef70f2",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeStoryboard.kt": "7d66ee375e3379e56b7b99633a57a636ee56b9843700ff8c0157e2831e93d955",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTransport.kt": "d6c36a24f617ac3125d303ab8b534d114b61ef96a65670f925ceb41fc23e773e",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeTvViews.kt": "fe31131650a68770f985427a7a87ab149b0f3a7cdddece7f8f95213068f6d321",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeVideoActions.kt": "483caf746402df887172a00d648e1a9688f19bb3f6b808d79aeee6793c9858b2",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeVoice.kt": "afbce73f2346a050d1cb67d130a469f6f6f01a1c6517f5f6566e0aa85786e10e",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchData.kt": "7a6345e401fd5b8a96520b0074255762fff4adc74078b92e97cb36879d212a91",
+    "app/src/main/java/xyz/billybishop4/fleet/tv/YouTubeWatchPanel.kt": "6f1708947c6f9d3702644ea3618488d7335383c99b8c11213102895824a1283a",
+    "app/src/main/res/drawable/fleet_icon.xml": "7ee412788f6f077cc84c61259207d56834047c53047395582ac0b81b571a05b3",
+    "app/src/main/res/drawable/ic_search.xml": "cbad918ba86c29515012c5b56976fdd423b9bf58e955b03de5f81610b1d3b19f",
+    "app/src/main/res/drawable/tv_banner.xml": "14983758b8949f645eee6dfb5796d35dc44ad0b3e8d1c56b38f181979da48116",
+    "app/src/main/res/layout/live_player.xml": "424758bc787f01863866ecae626f2775dedba88fbe97052bad908de60eb9ea39",
+    "app/src/main/res/layout/live_player_content.xml": "23c97249640061e9b6d66103b7895838e0ec6eed00d8e304b348fbb5b8203730",
+    "app/src/main/res/values/ids.xml": "247b141256795c4c4b720a4cf3257b46dbac70fde6f202a10231953d8db044ba",
+    "app/src/main/res/values/styles.xml": "eda8d33d4cd76ce9dd84e5b3f6ad57691f67f1c4f8933c77ae1c4e251043ef08",
+    "app/src/main/res/xml/data_extraction_rules.xml": "4c6f140d42cbf35e21ef83cd909993da77c8cdc67a7c0c5a31536ddcc438f7b0"
+  },
+  "buildConfigSha256": {
+    "build.gradle.kts": "5b59a737f79aff3069b158e3716c6c89df8d01d1f43a9b369058d20e564f4dce",
+    "settings.gradle.kts": "2d600fd9c90eacec2ae626038b469e99d477280764a2c8dcffb488698dc122e0",
+    "gradle.properties": "b2e84e0cb850407244f1120080aad6162dc92a2fbd29787a69ae3a8ac0a680f7"
+  },
+  "validation": {
+    "localBuildTasks": [
+      "testDebugUnitTest",
+      "lintDebug",
+      "assembleRelease",
+      "assembleDebugAndroidTest"
+    ],
+    "localBuildLogSha256": "7bcef97205c52bf5bbdd3405ad2922801c2afbea729226017c055336181b0f2d",
+    "unitCases": 248,
+    "unitPassed": 245,
+    "unitSkipped": 3,
+    "unitFailures": 0,
+    "unitSuites": [
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.AddonClientTest.xml",
+        "sha256": "da93939edf2987add513015d33a2869c0e1c9c481f1dbf3d4219a22201554e2c"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.GuideTest.xml",
+        "sha256": "f844f9f58f5c9edfe200b9165e4dfedfed85888d111d1801dce37651b99e815f"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.LiveInfoTest.xml",
+        "sha256": "fa0fe628f2d7b66b9171d3e837c49c4926ecc71a5bc150a1dc44c8bd0f15d345"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.PlaybackStartPositionTest.xml",
+        "sha256": "20a20ffa0d2e35d24e28ee10aaef32363a1261c0d8011625daf7f639bb48f43f"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.PlaybackTransportTest.xml",
+        "sha256": "3a9d65b36c80af8478ade95243165607358b7c6db213323b7fcfeb3e37750c8b"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.ProtocolTest.xml",
+        "sha256": "f4609e7691b43a057fad5990142aea78cb0c1da9ae302852ad39399d86d1515f"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.RobustnessTest.xml",
+        "sha256": "3c437bb61b833e49cd7522eedf46f9accdc6b6b64b1aff137d4d65a74a867880"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.StalkerTest.xml",
+        "sha256": "3b3b9d516af339d52c98f229734fbfccb54133af5d032fe812c0770309416883"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.ThemeTest.xml",
+        "sha256": "c37035f5ee2d776c744d85423913f6765a5e8cd84a7b3dc585a2b78bf31ca8f8"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.VideoPictureTest.xml",
+        "sha256": "83f2618aad2574e05ff2fc8f785406ad447e9dc4328932fe0cb08dbeeddb5645"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeChannelTest.xml",
+        "sha256": "3f6aa4b16a28b539b808bdce1bc7cb17d6392a85dcaa7162f3ecaae9009f3eb0"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeChaptersTest.xml",
+        "sha256": "cb672c49abc40096bdc3cbfabaee552dd8ec4d941607521a0ef42aabaa4cb70b"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeGuestTest.xml",
+        "sha256": "829df1c9c26493b768f9236acdb86b4f77ebbb854af78665e4e36cfb80ab6cf9"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeHistoryTest.xml",
+        "sha256": "4947e076020570571161b0c367f176f9b77d534cf2c50d15c3994db9ff6812d5"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeHomeParityTest.xml",
+        "sha256": "be4fd8769532ad88d47730ed872bab288144e50a6faf4852275eac88e72e7959"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeLibraryModelTest.xml",
+        "sha256": "59af8f0bca3eee87600c749fa66f7de5f8ebf03490c77c7d72b2a5be314cd246"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeLiveProbeTest.xml",
+        "sha256": "cd96682393bfd0aba44e48c504667fc00753501b5df5699a31ecc9e2cd3dd3d9"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeLocalQueueTest.xml",
+        "sha256": "28af9d8bc5a00aa0d1bb7c2fa2380270cca96a5757a948a2b16c7e42fb09835c"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeLoungeTest.xml",
+        "sha256": "d54855a825a339b5182836d5f49d914417b3b7e354e31cfa83da8a43fd65054b"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubePlaybackResponseTest.xml",
+        "sha256": "1db21edbce41e3cf6ee8ab1ab69e4cd8ab7b26398efa96866e17fd99a0e48542"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubePlayerPreferencesTest.xml",
+        "sha256": "0384ee44259b56e075c2de9277b6e562d8ddfc4074b0de0fa0a349236770d269"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubePreloadTest.xml",
+        "sha256": "f0984919b6d0f6669fd9a1bd0ed440842a070e0725f3f510bf31057640728897"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeProtocolTest.xml",
+        "sha256": "53b5b683e30256e57ba75190a60714f2070418b2e58b8216570838bd8a82091f"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeSearchModelTest.xml",
+        "sha256": "be046f1480f30ef82efff6ac1addae8b4efd0bb3316dcfd40aa38ded261ee66e"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeSearchShelvesTest.xml",
+        "sha256": "bbfeaae6af3f5524a1ed88e52a98e2848b6b0d2cfa9c18a4115ddcb8b02ca6cb"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeSocialTest.xml",
+        "sha256": "2279b8489c67693492cb5513418dc3c3c56b22ec2994b468fcf9b575050a3239"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeStartupModelTest.xml",
+        "sha256": "53d2a716035dd46247f50a0bd43c18d8a620acd13d22f050f0e52f74bf9ea64d"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeStartupProbeTest.xml",
+        "sha256": "355e93950ada7476cd29b8a70054f582be82c413947785982cb0ba531491a210"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeStoryboardTest.xml",
+        "sha256": "c349e8360383965a619dd223d92381616ee1abcd74a438c634a27419dff8713c"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeSuggestionsTest.xml",
+        "sha256": "64a95a5b99164a5c9ff8e6ba3b7a0ff071447e5a7b32984cfdf51a733f0d9bbd"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeTransportTest.xml",
+        "sha256": "64e29e0a2c7567ed0fddbdcb65fa17a05d7b9d068072b882d3d62ae456f78084"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeWatchTest.xml",
+        "sha256": "83e4f2bb3c80ed8392df428ce972a2b0bbf0bc7adfa186a68b2e83b7aff96cee"
+      },
+      {
+        "file": "TEST-xyz.billybishop4.fleet.tv.YouTubeWatchedMetadataTest.xml",
+        "sha256": "baa2769a82970a76db845bf872b7cf09bd4219060c05b3f959cb8576e3690e34"
+      }
+    ],
+    "lintErrors": 0,
+    "lintWarnings": 107,
+    "lintReportSha256": "c8da602b9da2adebeb14e4a385933869878056d20b4c3af8c8786f91d9b6c043",
+    "nativeUniqueScenariosPassed": 126,
+    "nativeUnresolvedFailures": [],
+    "nativeJobs": [
+      {
+        "role": "watch_panels_and_scroll_resources",
+        "id": "878db78e107c4b8585355310437d7aa1",
+        "state": "passed",
+        "sourceArchiveSha256": "66ffb5bdb7d4d5052873dd51981ac5ed8b7f5b233e6956e80a105fe2550fa47d",
+        "productionFilesMatched": 68,
+        "buildConfigFilesMatched": 3,
+        "passed": 23,
+        "failed": [],
+        "excludedClasses": [
+          "NavigationBenchmarkTest"
+        ],
+        "classes": "xyz.billybishop4.fleet.tv.NavigationBenchmarkTest,xyz.billybishop4.fleet.tv.FluidityBenchmarkTest#distinctArtworkScrollingInputAndRetainedMemory,xyz.billybishop4.fleet.tv.UiPerformanceTest,xyz.billybishop4.fleet.tv.BrowseNavigationTest#episodeRowMatchesStreamRowForRapidAndHeldInput,xyz.billybishop4.fleet.tv.YouTubeWatchUiTest",
+        "instrumentationSha256": "54d97a00c3f6070506b0a63bb23a509622812926f66bbc8deb542b080bbeb30d",
+        "elapsedSeconds": 292.01
+      },
+      {
+        "role": "on_demand_search_and_settings",
+        "id": "b90f375b2fe944e2b43cd0715edc5ce0",
+        "state": "passed",
+        "sourceArchiveSha256": "66ffb5bdb7d4d5052873dd51981ac5ed8b7f5b233e6956e80a105fe2550fa47d",
+        "productionFilesMatched": 68,
+        "buildConfigFilesMatched": 3,
+        "passed": 35,
+        "failed": [],
+        "excludedClasses": [],
+        "classes": "xyz.billybishop4.fleet.tv.BrowseNavigationTest,xyz.billybishop4.fleet.tv.SearchCatalogTest,xyz.billybishop4.fleet.tv.NavigationRobustnessTest",
+        "instrumentationSha256": "322f57683f4ebb1977f3bbbb499556eb36d4d5f2c6ccab9b0fb67019ff3f892d",
+        "elapsedSeconds": 291.03
+      },
+      {
+        "role": "youtube_live_navigation_and_themes",
+        "id": "2c880ccec15e4a78a518e4dcab6bf4e5",
+        "state": "passed",
+        "sourceArchiveSha256": "66ffb5bdb7d4d5052873dd51981ac5ed8b7f5b233e6956e80a105fe2550fa47d",
+        "productionFilesMatched": 68,
+        "buildConfigFilesMatched": 3,
+        "passed": 68,
+        "failed": [],
+        "excludedClasses": [],
+        "classes": "xyz.billybishop4.fleet.tv.YouTubeHeldNavigationTest,xyz.billybishop4.fleet.tv.YouTubeGroupedBrowseTest,xyz.billybishop4.fleet.tv.YouTubeTvLayoutTest,xyz.billybishop4.fleet.tv.YouTubeNavigationTest,xyz.billybishop4.fleet.tv.LiveCachedRowsTest,xyz.billybishop4.fleet.tv.LiveNavigationTest,xyz.billybishop4.fleet.tv.OptimizationRegressionTest,xyz.billybishop4.fleet.tv.CategoryVisibilityTest,xyz.billybishop4.fleet.tv.ThemeUiTest",
+        "instrumentationSha256": "845a367d536a6aac7b9a00f55420633de123b45f966d13fe71beb1319f09e3d5",
+        "elapsedSeconds": 522.08
+      },
+      {
+        "role": "corrected_navigation_workload",
+        "id": "f7f14b54eb40486899664d1ab53dd634",
+        "state": "passed",
+        "sourceArchiveSha256": "b0d822f921bece6be5f8b42ae60e521258532e0c26f4fc76b5c4ad077c279930",
+        "productionFilesMatched": 68,
+        "buildConfigFilesMatched": 3,
+        "passed": 1,
+        "failed": [],
+        "excludedClasses": [],
+        "classes": "xyz.billybishop4.fleet.tv.NavigationBenchmarkTest",
+        "instrumentationSha256": "c7bcfb906c4ee821d86ca725ee6aa33b3ae56f0bec57b06af399dfb4a437a21a",
+        "elapsedSeconds": 118
+      },
+      {
+        "role": "independent_worker_corrected_navigation",
+        "id": "e75417902ffe47a8889fdb1d11567f9c",
+        "state": "passed",
+        "sourceArchiveSha256": "b0d822f921bece6be5f8b42ae60e521258532e0c26f4fc76b5c4ad077c279930",
+        "productionFilesMatched": 68,
+        "buildConfigFilesMatched": 3,
+        "passed": 1,
+        "failed": [],
+        "excludedClasses": [],
+        "classes": "xyz.billybishop4.fleet.tv.NavigationBenchmarkTest",
+        "instrumentationSha256": "00377ae544a313c193789b51bc9831580bcfad136108e61a372ab55f416653ec",
+        "elapsedSeconds": 148.72
+      }
+    ],
+    "nativeScope": "Generated fixtures on Android TV API 36 x86_64 KVM worker emulators; no physical TV actions.",
+    "diffCheck": true
+  },
+  "navigationComparison": {
+    "baselineVersion": "0.24.0",
+    "baselineCommit": "dcf43369a57e51485ed3452a51ba61a61cd077b0",
+    "baselineJob": "aac243ef7dab4ba09fd4ee8f9ad7f8ae",
+    "candidateJob": "f7f14b54eb40486899664d1ab53dd634",
+    "sameWorkerInstance": true,
+    "baselineJobState": "failed",
+    "baselineProductionFilesMatched": 67,
+    "baselineSourceArchiveSha256": "0c5a9a0d034b1d34c368249e34059764b6dae914ec718eecff63c99aa7e47d33",
+    "baselineReportSha256": "afa6316821d7e2cfdee72b55597e35421c8b0691c18f8150639e8688f7f4f860",
+    "candidateReportSha256": "da60ee994467c5b372424f74244b2f273d1dc89778a1120872945b2aff1468a8",
+    "profiles": [
+      {
+        "name": "on-demand posters",
+        "held": false,
+        "before": {
+          "itemCount": 90,
+          "deliveredDowns": 18,
+          "achievedIndex": 18,
+          "expectedIndex": 18,
+          "reachedExpected": true,
+          "focusP95Ms": 472,
+          "settleAfterLastInputMs": 847,
+          "confirmationWaitAfterLastInputMs": 847,
+          "cpuMs": 855,
+          "layoutP95Ms": 0.477572,
+          "totalP95Ms": 219.135404,
+          "framesOverActualDeadline": 27,
+          "nonFirstDrawFrames": 30,
+          "metricEventsDropped": 0
+        },
+        "after": {
+          "itemCount": 90,
+          "deliveredDowns": 18,
+          "achievedIndex": 18,
+          "expectedIndex": 18,
+          "reachedExpected": true,
+          "focusP95Ms": 406,
+          "settleAfterLastInputMs": 591,
+          "confirmationWaitAfterLastInputMs": 591,
+          "cpuMs": 590,
+          "layoutP95Ms": 3.173592,
+          "totalP95Ms": 228.148611,
+          "framesOverActualDeadline": 23,
+          "nonFirstDrawFrames": 24,
+          "metricEventsDropped": 0
+        }
+      },
+      {
+        "name": "on-demand posters",
+        "held": true,
+        "before": {
+          "itemCount": 90,
+          "deliveredDowns": 18,
+          "achievedIndex": 18,
+          "expectedIndex": 18,
+          "reachedExpected": true,
+          "focusP95Ms": 182,
+          "settleAfterLastInputMs": 903,
+          "confirmationWaitAfterLastInputMs": 903,
+          "cpuMs": 601,
+          "layoutP95Ms": 0.571953,
+          "totalP95Ms": 201.286793,
+          "framesOverActualDeadline": 19,
+          "nonFirstDrawFrames": 24,
+          "metricEventsDropped": 0
+        },
+        "after": {
+          "itemCount": 90,
+          "deliveredDowns": 18,
+          "achievedIndex": 18,
+          "expectedIndex": 18,
+          "reachedExpected": true,
+          "focusP95Ms": 290,
+          "settleAfterLastInputMs": 503,
+          "confirmationWaitAfterLastInputMs": 503,
+          "cpuMs": 340,
+          "layoutP95Ms": 1.423833,
+          "totalP95Ms": 185.780151,
+          "framesOverActualDeadline": 15,
+          "nonFirstDrawFrames": 17,
+          "metricEventsDropped": 0
+        }
+      },
+      {
+        "name": "YouTube shelf",
+        "held": false,
+        "before": {
+          "itemCount": 24,
+          "deliveredDowns": 18,
+          "achievedIndex": 18,
+          "expectedIndex": 18,
+          "reachedExpected": true,
+          "focusP95Ms": 293,
+          "settleAfterLastInputMs": 1296,
+          "confirmationWaitAfterLastInputMs": 1296,
+          "cpuMs": 650,
+          "layoutP95Ms": 0.144436,
+          "totalP95Ms": 235.396181,
+          "framesOverActualDeadline": 29,
+          "nonFirstDrawFrames": 37,
+          "metricEventsDropped": 0
+        },
+        "after": {
+          "itemCount": 24,
+          "deliveredDowns": 18,
+          "achievedIndex": 18,
+          "expectedIndex": 18,
+          "reachedExpected": true,
+          "focusP95Ms": 264,
+          "settleAfterLastInputMs": 305,
+          "confirmationWaitAfterLastInputMs": 305,
+          "cpuMs": 562,
+          "layoutP95Ms": 0.389501,
+          "totalP95Ms": 237.906238,
+          "framesOverActualDeadline": 30,
+          "nonFirstDrawFrames": 35,
+          "metricEventsDropped": 0
+        }
+      },
+      {
+        "name": "YouTube shelf",
+        "held": true,
+        "before": {
+          "itemCount": 24,
+          "deliveredDowns": 18,
+          "achievedIndex": 18,
+          "expectedIndex": 18,
+          "reachedExpected": true,
+          "focusP95Ms": 215,
+          "settleAfterLastInputMs": 1320,
+          "confirmationWaitAfterLastInputMs": 1320,
+          "cpuMs": 433,
+          "layoutP95Ms": 0.182122,
+          "totalP95Ms": 200.195772,
+          "framesOverActualDeadline": 31,
+          "nonFirstDrawFrames": 36,
+          "metricEventsDropped": 0
+        },
+        "after": {
+          "itemCount": 24,
+          "deliveredDowns": 18,
+          "achievedIndex": 18,
+          "expectedIndex": 18,
+          "reachedExpected": true,
+          "focusP95Ms": 298,
+          "settleAfterLastInputMs": 424,
+          "confirmationWaitAfterLastInputMs": 424,
+          "cpuMs": 290,
+          "layoutP95Ms": 8.381768,
+          "totalP95Ms": 258.027448,
+          "framesOverActualDeadline": 16,
+          "nonFirstDrawFrames": 18,
+          "metricEventsDropped": 0
+        }
+      },
+      {
+        "name": "YouTube vertical shelves",
+        "held": false,
+        "before": {
+          "itemCount": 10,
+          "deliveredDowns": 8,
+          "achievedIndex": 7,
+          "expectedIndex": 8,
+          "reachedExpected": false,
+          "focusP95Ms": 292,
+          "settleAfterLastInputMs": null,
+          "confirmationWaitAfterLastInputMs": 5335,
+          "cpuMs": 452,
+          "layoutP95Ms": 97.910879,
+          "totalP95Ms": 266.170328,
+          "framesOverActualDeadline": 15,
+          "nonFirstDrawFrames": 17,
+          "metricEventsDropped": 0
+        },
+        "after": {
+          "itemCount": 10,
+          "deliveredDowns": 8,
+          "achievedIndex": 8,
+          "expectedIndex": 8,
+          "reachedExpected": true,
+          "focusP95Ms": 299,
+          "settleAfterLastInputMs": 447,
+          "confirmationWaitAfterLastInputMs": 447,
+          "cpuMs": 483,
+          "layoutP95Ms": 74.732478,
+          "totalP95Ms": 300.166366,
+          "framesOverActualDeadline": 11,
+          "nonFirstDrawFrames": 12,
+          "metricEventsDropped": 0
+        }
+      },
+      {
+        "name": "Live channels",
+        "held": false,
+        "before": {
+          "itemCount": 6000,
+          "deliveredDowns": 24,
+          "achievedIndex": 24,
+          "expectedIndex": 24,
+          "reachedExpected": true,
+          "focusP95Ms": 147,
+          "settleAfterLastInputMs": 506,
+          "confirmationWaitAfterLastInputMs": 506,
+          "cpuMs": 428,
+          "layoutP95Ms": 0.24139,
+          "totalP95Ms": 162.359487,
+          "framesOverActualDeadline": 35,
+          "nonFirstDrawFrames": 60,
+          "metricEventsDropped": 0
+        },
+        "after": {
+          "itemCount": 6000,
+          "deliveredDowns": 24,
+          "achievedIndex": 24,
+          "expectedIndex": 24,
+          "reachedExpected": true,
+          "focusP95Ms": 133,
+          "settleAfterLastInputMs": 204,
+          "confirmationWaitAfterLastInputMs": 204,
+          "cpuMs": 307,
+          "layoutP95Ms": 0.622328,
+          "totalP95Ms": 160.710766,
+          "framesOverActualDeadline": 30,
+          "nonFirstDrawFrames": 39,
+          "metricEventsDropped": 0
+        }
+      },
+      {
+        "name": "Live channels",
+        "held": true,
+        "before": {
+          "itemCount": 6000,
+          "deliveredDowns": 24,
+          "achievedIndex": 24,
+          "expectedIndex": 24,
+          "reachedExpected": true,
+          "focusP95Ms": 113,
+          "settleAfterLastInputMs": 701,
+          "confirmationWaitAfterLastInputMs": 701,
+          "cpuMs": 273,
+          "layoutP95Ms": 0.077685,
+          "totalP95Ms": 159.330971,
+          "framesOverActualDeadline": 25,
+          "nonFirstDrawFrames": 38,
+          "metricEventsDropped": 0
+        },
+        "after": {
+          "itemCount": 6000,
+          "deliveredDowns": 24,
+          "achievedIndex": 24,
+          "expectedIndex": 24,
+          "reachedExpected": true,
+          "focusP95Ms": 112,
+          "settleAfterLastInputMs": 205,
+          "confirmationWaitAfterLastInputMs": 205,
+          "cpuMs": 158,
+          "layoutP95Ms": 0.146388,
+          "totalP95Ms": 139.069495,
+          "framesOverActualDeadline": 21,
+          "nonFirstDrawFrames": 33,
+          "metricEventsDropped": 0
+        }
+      }
+    ],
+    "initialMemoryBefore": {
+      "pssKiB": 126483,
+      "nativeBytes": 38852416,
+      "managedUsedBytes": 11001632,
+      "artworkBytes": 7567560,
+      "artworkMaxBytes": 8388608,
+      "forcedGc": false
+    },
+    "initialMemoryAfter": {
+      "pssKiB": 134113,
+      "nativeBytes": 43572544,
+      "managedUsedBytes": 11046816,
+      "artworkBytes": 7567560,
+      "artworkMaxBytes": 16777216,
+      "forcedGc": false
+    },
+    "retainedMemoryBefore": {
+      "pssKiB": 174797,
+      "nativeBytes": 82354832,
+      "managedUsedBytes": 15553488,
+      "artworkBytes": 8113344,
+      "artworkMaxBytes": 8388608,
+      "forcedGc": false
+    },
+    "retainedMemoryAfter": {
+      "pssKiB": 179309,
+      "nativeBytes": 87104832,
+      "managedUsedBytes": 15592000,
+      "artworkBytes": 15696760,
+      "artworkMaxBytes": 16777216,
+      "forcedGc": false
+    },
+    "retainedPssDeltaKiB": 4512,
+    "renderer": "SwiftShader",
+    "api": 36,
+    "physicalTv": false,
+    "scope": "Single matched software-rendered worker trial per profile; not physical-TV FPS, audible playback, or a TizenTube comparison. Actual per-frame deadlines exclude first-draw frames."
+  },
+  "additionalBenchmarks": {
+    "baselineJob": "432a0db3de2b47fd92801137aeef9819",
+    "candidateJob": "878db78e107c4b8585355310437d7aa1",
+    "sameWorkerInstance": true,
+    "scope": "Matching generated forced-scroll and episode/stream workloads. Separate from the corrected seven-profile navigation trial.",
+    "fluidity-artwork.json": {
+      "baselineReportSha256": "38584e79fb4ec26284daa5d2b510de5d7f94d424532fd6668d9c5b0052821063",
+      "candidateReportSha256": "9e1d0928414456062c0d91465379c0eea717ea97c3d8e7b43fa519f8bae717dc",
+      "before": {
+        "scrollTrials": [
+          {
+            "trial": 0,
+            "processCpuMs": 1900,
+            "frameP95Ms": 169.04848,
+            "layoutP95Ms": 0.106208,
+            "framesOverActualDeadline": 76,
+            "nonFirstDrawFrames": 117
+          },
+          {
+            "trial": 1,
+            "processCpuMs": 1498,
+            "frameP95Ms": 157.792779,
+            "layoutP95Ms": 0.102022,
+            "framesOverActualDeadline": 74,
+            "nonFirstDrawFrames": 119
+          }
+        ],
+        "retainedPssKiB": 154527,
+        "artworkBytes": 8195600
+      },
+      "after": {
+        "scrollTrials": [
+          {
+            "trial": 0,
+            "processCpuMs": 1375,
+            "frameP95Ms": 179.644283,
+            "layoutP95Ms": 0.142332,
+            "framesOverActualDeadline": 92,
+            "nonFirstDrawFrames": 117
+          },
+          {
+            "trial": 1,
+            "processCpuMs": 1500,
+            "frameP95Ms": 200.148307,
+            "layoutP95Ms": 0.084326,
+            "framesOverActualDeadline": 90,
+            "nonFirstDrawFrames": 118
+          }
+        ],
+        "retainedPssKiB": 160051,
+        "artworkBytes": 16593360
+      }
+    },
+    "ui-performance.json": {
+      "baselineReportSha256": "578f08b832ce092de943e91fe0cacbca011d0ca69f1e40a491ed87fd6524de9e",
+      "candidateReportSha256": "c1213d2c73f4d7fb6e2a6a302e442d5a81c49c776eb2532d3e8d301c22c65f1c",
+      "before": {
+        "channels": 6000,
+        "scrollSteps": 180,
+        "processCpuMs": 1164,
+        "frameP95Ms": 97.394611,
+        "layoutP95Ms": 0.071607,
+        "framesOverActualDeadline": 56,
+        "nonFirstDrawFrames": 179,
+        "attachedRows": 7
+      },
+      "after": {
+        "channels": 6000,
+        "scrollSteps": 180,
+        "processCpuMs": 1162,
+        "frameP95Ms": 98.833021,
+        "layoutP95Ms": 0.087951,
+        "framesOverActualDeadline": 72,
+        "nonFirstDrawFrames": 175,
+        "attachedRows": 7
+      }
+    },
+    "episode-stream-navigation.json": {
+      "baselineReportSha256": "2541199d0e3d306081c9dbe36487f5c21f0dca46776b3f55850e4b4cd14ac6b1",
+      "candidateReportSha256": "4bd36b6639d0859c906b676fbe9195a7eb1c2efc79c538c917da5c128b547d62",
+      "before": {
+        "profiles": [
+          {
+            "row": "streams",
+            "input": "rapid",
+            "achievedIndex": 18,
+            "p95FocusLatencyMs": 174
+          },
+          {
+            "row": "episodes",
+            "input": "rapid",
+            "achievedIndex": 18,
+            "p95FocusLatencyMs": 102
+          },
+          {
+            "row": "streams",
+            "input": "held",
+            "achievedIndex": 18,
+            "p95FocusLatencyMs": 119
+          },
+          {
+            "row": "episodes",
+            "input": "held",
+            "achievedIndex": 18,
+            "p95FocusLatencyMs": 115
+          }
+        ]
+      },
+      "after": {
+        "profiles": [
+          {
+            "row": "streams",
+            "input": "rapid",
+            "achievedIndex": 18,
+            "p95FocusLatencyMs": 99
+          },
+          {
+            "row": "episodes",
+            "input": "rapid",
+            "achievedIndex": 18,
+            "p95FocusLatencyMs": 105
+          },
+          {
+            "row": "streams",
+            "input": "held",
+            "achievedIndex": 18,
+            "p95FocusLatencyMs": 94
+          },
+          {
+            "row": "episodes",
+            "input": "held",
+            "achievedIndex": 18,
+            "p95FocusLatencyMs": 87
+          }
+        ]
+      }
+    }
+  },
+  "resourceDesign": {
+    "players": 1,
+    "newDependencies": 0,
+    "newNativeLibraries": 0,
+    "additionalApkBytes": 6928,
+    "lowRamArtworkMaxMiB": 8,
+    "normalArtworkMaxMiB": 16,
+    "normalArtworkIncreaseMiB": 8,
+    "youtubeShelfCardPoolCaps": {
+      "regular": 6,
+      "hero": 6,
+      "portrait": 8
+    },
+    "youtubeVisibleShelfCache": 2,
+    "youtubeInnerCardCache": 2,
+    "onDemandPosterCache": 4,
+    "streamCardCache": 4,
+    "episodeButtonCache": 6,
+    "scrollDurationMinMs": 70,
+    "scrollDurationMaxMs": 140,
+    "inputThrottle": false,
+    "focusStartsPlayback": false,
+    "defaultIptvProfiles": 0
+  },
+  "reviews": [
+    "Independent On-Demand review: current-series/list caches, metadata refresh and unchanged navigation/resume behavior.",
+    "Independent Live/customer review: cached holders refresh preview/favorite state on reattach without tuning.",
+    "Independent YouTube review: bounded card pools, logical pending cursor, matching OK release, Back/input/account/source cancellation.",
+    "Root cross-review kept stream identity indexes bound to the committed adapter during async diffs.",
+    "Independent benchmark review found and corrected a fixture exceeding the production Home video limit."
+  ],
+  "measurementCorrections": [
+    "Earlier NavigationBenchmarkTest workloads used ten shelves of 24 but production retains 120 videos, yielding five actual shelves. The eight-Down to index 4 result was correct clamping, not demonstrated lost input. Earlier vertical results are discarded. The final test installs ten shelves of 12, asserts fixture capacity and exact committed row count, and requires all intended destinations.",
+    "A prototype used instant scrolling when the worker disabled ValueAnimator animations. That path and its latency figures are discarded; final native OverScroller uses 70\u2013140 ms.",
+    "The earlier benchmark sampled IDLE before deferred layout/focus completed. Final measurements require the intended focus, no pending layout/adapter work, and release of the temporary focus owner."
+  ],
+  "deviceDeployment": {
+    "performed": false,
+    "reason": "Explicit user hold: do not push changes to TCL until asked.",
+    "lastKnownInstalledVersionName": "0.24.0",
+    "lastKnownInstalledVersionCode": 32,
+    "installs": 0,
+    "launches": 0,
+    "interactiveTests": 0,
+    "deviceProbes": 0,
+    "configurationEdits": 0
+  },
+  "limitations": [
+    "No physical TCL playback, navigation or performance measurements for 0.25.0; the user has explicitly held deployment.",
+    "Worker SwiftShader frame timings include substantial emulator jank and scheduling variability. These checks do not establish universal frame-time improvement or 60 FPS on TV hardware.",
+    "Google-owner approval, real account mutations/phone pairing and actual provider streams were not exercised in these generated-fixture checks."
+  ]
+}

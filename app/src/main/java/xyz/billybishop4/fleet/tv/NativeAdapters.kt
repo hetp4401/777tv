@@ -66,7 +66,10 @@ internal class PosterCard(context: Context, private val loader: ArtworkLoader, p
         setOnClickListener { title?.let { value -> open?.invoke(value) } }
     }
     fun bind(value: Title, click: (Title) -> Unit) {
-        open = click; title = value; contentDescription = value.name; tag = "title:${value.key}"; label.text = value.name
+        open = click
+        val previous=title;title=value
+        if(previous==value)return
+        contentDescription = value.name; tag = "title:${value.key}"; label.textIfChanged(value.name)
         image.refreshDrawableState()
         loader.show(image, model.repository.artwork(value.poster), context.dp(widthDp), context.dp(widthDp * 3 / 2))
     }
@@ -87,14 +90,14 @@ internal class ShelfCard(context: Context, loader: ArtworkLoader, model: FleetMo
         } else if(progress!=null)model.open(Route.Sources(title,progress.episode)) else open(title)
     }
     private val title = context.text("", 21f, bold = true)
-    val list = RecyclerView(context)
+    val list = TvRecyclerView(context)
     private val adapter = NativeAdapter<Title>({ it.key }, { parent, _ -> PosterCard(parent.context, loader, model, if (large) 162 else 130, true) },
         { view, value, _ -> (view as PosterCard).bind(value, select) }, recycle = { (it as PosterCard).release() })
     init {
         orientation = VERTICAL; layoutParams = RecyclerView.LayoutParams(-1, -2).apply { bottomMargin = context.dp(17) }
         add(title); gap(9)
-        list.layoutManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false).apply { initialPrefetchItemCount = 3 }
-        list.setRecycledViewPool(pool); list.tune(); list.adapter = adapter
+        list.layoutManager = LinearLayoutManager(context, RecyclerView.HORIZONTAL, false).apply { initialPrefetchItemCount = 4 }
+        list.setRecycledViewPool(pool); list.tune(cachedViews=4); list.adapter = adapter
         add(list, height = context.dp((if (large) 162 else 130) * 3 / 2 + 47))
     }
     fun release() { list.adapter = null }
@@ -111,7 +114,7 @@ internal class ShelfCard(context: Context, loader: ArtworkLoader, model: FleetMo
         val changed=shelfKey!=row.key
         shelfName=row.name;shelfKey=row.key;boundTitles=row.titles;continuing=row.name=="Continue watching"
         if(list.adapter==null)list.adapter=adapter
-        title.text=row.name;tag="shelf:${row.key}";list.contentDescription=row.name
+        title.textIfChanged(row.name);tag="shelf:${row.key}";list.contentDescription=row.name
         if(changed)list.stopScroll()
         adapter.submitList(row.titles) {
             if(shelfKey==row.key && changed) {

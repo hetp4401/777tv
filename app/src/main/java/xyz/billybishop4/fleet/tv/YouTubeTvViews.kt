@@ -210,7 +210,7 @@ internal class YouTubeShelfView(
     private var bound=false
     private var items:List<YouTubeVideo> = emptyList()
     private val heading=context.text("",19f,bold=true).apply { maxLines=1;ellipsize=TextUtils.TruncateAt.END }
-    val list=RecyclerView(context)
+    val list=TvRecyclerView(context)
     private val width=context.dp(when(kind){2->128;1->288;else->218})
     private val select:(YouTubeVideo)->Unit={play(it,items)}
     private val adapter=NativeAdapter<YouTubeVideo>({it.id},{parent,_->YouTubeCard(parent.context,loader,kind==2,width,true)},
@@ -218,8 +218,11 @@ internal class YouTubeShelfView(
     init {
         orientation=VERTICAL;layoutParams=RecyclerView.LayoutParams(-1,-2).apply { bottomMargin=context.dp(16) }
         add(heading);gap(9)
-        list.layoutManager=LinearLayoutManager(context,RecyclerView.HORIZONTAL,false).apply { initialPrefetchItemCount=1 }
-        list.setRecycledViewPool(pool);list.tune(cachedViews=1);list.adapter=adapter
+        val slot=width+context.dp(16)
+        val viewport=(context.resources.displayMetrics.widthPixels-context.dp(48+64)).coerceAtLeast(slot)
+        val prefetch=((viewport+slot-1)/slot).coerceIn(2,if(kind==2)8 else 6)
+        list.layoutManager=LinearLayoutManager(context,RecyclerView.HORIZONTAL,false).apply { initialPrefetchItemCount=prefetch }
+        list.setRecycledViewPool(pool);list.tune(cachedViews=2);list.adapter=adapter
         if(end!=null)list.addOnScrollListener(object:RecyclerView.OnScrollListener(){override fun onScrolled(recyclerView:RecyclerView,dx:Int,dy:Int) {
             if(isShown && list.adapter===adapter && adapter.currentList==items && items.isNotEmpty() &&
                 (list.layoutManager as LinearLayoutManager).findLastVisibleItemPosition()>=items.lastIndex-2)end.invoke(shelfKey,stateKey)

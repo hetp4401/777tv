@@ -60,7 +60,7 @@ internal class YouTubeWatchPanel(
     private val status=a.text("",13f,MUTED).apply { tag="youtube-panel-status";maxLines=3 }
     private val retry=a.action("Retry","Retry video details"){load(append=currentPage()!=null)}.quiet()
     private val feedback=a.row().apply { addView(status,LinearLayout.LayoutParams(0,-2,1f));add(retry,width=-2);visibility=View.GONE }
-    private val list=RecyclerView(a).apply { tag="youtube-panel-list";tune(cachedViews=1) }
+    private val list=TvRecyclerView(a).apply { tag="youtube-panel-list";tune(cachedViews=2) }
     private val descriptionText=a.text("",14f).apply { tag="youtube-description-text";setLineSpacing(a.dp(5).toFloat(),1f) }
     private val descriptionScroll=ScrollView(a).apply {
         tag="youtube-description-panel";id=View.generateViewId();visibility=View.GONE;isFocusable=true;isFocusableInTouchMode=true

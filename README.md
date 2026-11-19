@@ -6,23 +6,22 @@ and Media3 ExoPlayer; no JavaScript UI or alternate playback engine.
 
 ## Development candidate
 
-**0.24.0 · version code 32 · Android 7.0 / API 24 or later**
+**0.25.0 · version code 33 · Android 7.0 / API 24 or later**
 
 This branch contains the native YouTube integration and continuing TizenTube
-functional review, with independent app and section themes. Version 0.24.0 adds
-a YouTube TV-style native player with direct actions and storyboard seeking.
-IPTV Live TV and On-Demand retain their existing players and controls. The release
-record separates final-source emulator scenarios from actual device verification.
-The candidate is installed in place on the TCL; its existing foreground session
-was preserved. This release was exercised on worker emulators without launching
-a physical-TV playback probe.
-Development also uses local checks and worker emulators.
+functional review, with independent app and section themes. Version 0.25.0
+improves native scrolling, retains nearby cards and artwork, and reuses episode
+and stream presentation data. YouTube keeps its own player; IPTV and On-Demand
+retain their existing controls. See the [navigation review](docs/navigation-performance-0.25.md).
+This candidate is **not deployed to the TCL**. The user has requested a hold;
+development and validation use the Mac and worker emulators. The TV's last
+installed version remains 0.24.0; its foreground session and data are preserved.
 The application ID remains `xyz.billybishop4.fleet.tv` for in-place updates.
 The app and launcher are named **777tv**.
 
-[Candidate verification](releases/0.24.0/verification.json) records the APK checksum,
+[Candidate verification](releases/0.25.0/verification.json) records the APK checksum,
 source/build checksums and validation scope.
-[SHA256SUMS](releases/0.24.0/SHA256SUMS) identifies the candidate APK. The original
+[SHA256SUMS](releases/0.25.0/SHA256SUMS) identifies the candidate APK. The original
 production import remains recorded in [0.14.1](releases/0.14.1/production.json).
 Signing keys, credentials, device exports, imported APKs and local build outputs
 are excluded from Git.
@@ -110,6 +109,11 @@ are excluded from Git.
   **No IPTV profiles are installed by default.**
 - Encrypted provider/add-on configuration using Android Keystore, bounded
   artwork and channel caches, recycled lists and one shared player.
+- Native TV lists use short, distance-based scrolling with no input throttle.
+  Adjacent cards are retained within bounded pools; the pixel-accounted artwork
+  LRU is capped at 8 MiB on low-RAM devices and 16 MiB otherwise. Episode indexes
+  and prepared stream labels belong to the current screen and are cleared when
+  it closes. Scrolling and focus never start a decoder or tune a Live channel.
 - Faster explicit playback: YouTube resolves playback data without waiting for
   unrelated thumbnails or watch-next. Three recent URL records expire after
   60 seconds; a running next-Short request is reused when selected. All sources

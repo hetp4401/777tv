@@ -27,8 +27,8 @@ internal class SearchScreen(private val a:MainActivity):NativeScreen {
             return super.dispatchKeyEvent(event)
         }
     }
-    private val home=RecyclerView(a).apply { tag="search-home";layoutManager=LinearLayoutManager(a);tune(cachedViews=1) }
-    private val results=RecyclerView(a).apply { tag="search-results";layoutManager=LinearLayoutManager(a);tune(cachedViews=1) }
+    private val home=TvRecyclerView(a).apply { tag="search-home";layoutManager=LinearLayoutManager(a);tune(cachedViews=1) }
+    private val results=TvRecyclerView(a).apply { tag="search-results";layoutManager=LinearLayoutManager(a);tune(cachedViews=1) }
     private val filterRow=a.row()
     private val filters=HorizontalScrollView(a).apply { tag="catalog-filters";isHorizontalScrollBarEnabled=false;addView(filterRow) }
     private var filterDefinitions:List<CatalogDefinition>?=null
@@ -275,21 +275,21 @@ internal class SearchScreen(private val a:MainActivity):NativeScreen {
         if(capabilities.addons!==m.addons)capabilities=BrowseAddonCapabilities(m.addons)
         val recovery=addonRecovery(m,capabilities,if(searching)capabilities.search || m.catalogDefinitions.any { it.canSearch } else capabilities.home || m.catalogDefinitions.any { it.canBrowse },
             if(searching)"search movies and shows" else "browse movies and shows")
-        addonMessage.text=recovery.orEmpty();addonNotice.visibility=if(recovery==null)View.GONE else View.VISIBLE
+        addonMessage.textIfChanged(recovery.orEmpty());addonNotice.visibility=if(recovery==null)View.GONE else View.VISIBLE
         clear.visibility=if(m.searchText.isNotEmpty())View.VISIBLE else View.GONE
         submit.nextFocusRightId=if(clear.visibility==View.VISIBLE)clear.id else View.NO_ID
         home.visibility=if(searching)View.GONE else View.VISIBLE;results.visibility=if(searching && recovery==null)View.VISIBLE else View.GONE
         val shortQuery=m.searchText.isNotBlank() && !searching
         summary.visibility=if(shortQuery || searching && !m.busy && m.results.isNotEmpty())View.VISIBLE else View.GONE
-        summary.text=if(shortQuery)"Enter at least 2 characters" else m.results.size.toString()+" "+if(m.results.size==1)"title" else "titles"
+        summary.textIfChanged(if(shortQuery)"Enter at least 2 characters" else m.results.size.toString()+" "+if(m.results.size==1)"title" else "titles")
         if(searching) {
             if(lastQuery!=m.searchText) { resultsState=null;results.scrollToPosition(0) }
             lastQuery=m.searchText
             searchRows.submitList(resultRows()) {
                 if(m.results.isNotEmpty())resultsState?.let { results.layoutManager?.onRestoreInstanceState(it);resultsState=null }
             }
-            emptyTitle.text="No results"
-            emptyMessage.text="Try another title or check the spelling."
+            emptyTitle.textIfChanged("No results")
+            emptyMessage.textIfChanged("Try another title or check the spelling.")
             emptyRefresh.visibility=View.GONE
             empty.visibility=if(recovery==null && !m.busy && m.results.isEmpty() && m.error==null)View.VISIBLE else View.GONE
         } else {
@@ -298,8 +298,8 @@ internal class SearchScreen(private val a:MainActivity):NativeScreen {
             rows.submitList(items) {
                 if(items.isNotEmpty())homeState?.let { home.layoutManager?.onRestoreInstanceState(it);homeState=null }
             }
-            emptyTitle.text="Nothing to browse yet"
-            emptyMessage.text="Search for a title, or refresh your catalog."
+            emptyTitle.textIfChanged("Nothing to browse yet")
+            emptyMessage.textIfChanged("Search for a title, or refresh your catalog.")
             emptyRefresh.visibility=View.VISIBLE
             empty.visibility=if(recovery==null && !m.busy && items.isEmpty() && m.error==null)View.VISIBLE else View.GONE
         }
@@ -335,6 +335,10 @@ internal class SearchScreen(private val a:MainActivity):NativeScreen {
         } else homeState=state
     }
     override fun background() { focusRestore.cancel();hideKeyboard() }
-    override fun close() { background();filterDialog?.dismiss();filterDialog=null;home.adapter=null;results.adapter=null }
+    override fun close() {
+        background();filterDialog?.dismiss();filterDialog=null;home.adapter=null;results.adapter=null
+        rows.submitList(emptyList());searchRows.submitList(emptyList())
+        homeRowsKey=null;homeRows=emptyList();resultsShelves=null;resultRows=emptyList();shelfStates.clear()
+    }
 }
 
