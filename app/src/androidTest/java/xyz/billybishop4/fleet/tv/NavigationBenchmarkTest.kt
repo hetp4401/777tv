@@ -28,14 +28,19 @@ class NavigationBenchmarkTest:NativeTestBase() {
     private val result=JSONObject()
     private val profiles=JSONArray()
     private fun http(path:String)=runBlocking{Http().text(base+path,timeout=120000)}
+    private fun portalLinks()=JSONObject(http("/__state")).getInt("portal_links")
     private fun write(){File(ui{a.getExternalFilesDir(null)!!},"navigation-performance.json").writeText(result.put("profiles",profiles).toString(2))}
     @Before fun prepare() {
+        // reset=1 resets fixture behavior but deliberately preserves its lifetime
+        // portal counter. Earlier tests may have explicitly played a channel.
+        result.put("portalLinksBeforeSetup",portalLinks())
         http("/youtube/performance/prepare");http("/__control?reset=1&large_channels=1");http("/youtube/control?reset=1")
         ui{a.model.showProfiles();a.model.resetProviders();a.model.clearHistory();a.model.updatePreferences(Preferences())
             a.model.server(base);a.model.store.youTubeCredentials().write(null);a.model.youtubeFixture(base);a.model.top(Section.SEARCH);a.model.search("")}
-        await{ui{!a.model.busy} && tagged("search-home")?.isShown==true}
+        await{ui{!a.model.busy && a.activePlayer==null} && tagged("search-home")?.isShown==true}
         result.put("version",ui{a.packageManager.getPackageInfo(a.packageName,0).versionName}).put("device",Build.MODEL)
             .put("api",Build.VERSION.SDK_INT).put("scope","Worker Android TV, generated HTTP artwork; frame deadlines are UI timings, not video FPS or physical-TV latency")
+            .put("portalLinksAfterSetup",portalLinks())
         write()
     }
     private fun memory():JSONObject {
@@ -47,6 +52,9 @@ class NavigationBenchmarkTest:NativeTestBase() {
     }
     private fun position(row:RecyclerView,view:View?)=view?.let{row.findContainingViewHolder(it)?.bindingAdapterPosition}?:-1
     private fun profile(row:RecyclerView,name:String,key:Int,count:Int=18,held:Boolean=false) {
+        // Include the initial row focus in the no-tune invariant, while keeping
+        // counter HTTP audits outside the timed input/frame/CPU window.
+        val linksBefore=portalLinks()
         val itemCount=ui{row.adapter?.itemCount?:0}
         assertTrue("$name fixture has $itemCount items; $count moves require at least ${count+1}",itemCount>count)
         ui{row.stopScroll();row.scrollToPosition(0)}
@@ -114,6 +122,9 @@ class NavigationBenchmarkTest:NativeTestBase() {
                 SystemClock.uptimeMillis()}
             thread.quitSafely();thread.join(3000)
             val frames=synchronized(values){values.toList()};val events=ui{focus.toList()}
+            val cpuMs=Process.getElapsedCpuTime()-cpu
+            val gcAfter=Debug.getRuntimeStats()
+            val linksAfter=portalLinks()
             fun p(list:List<Long>,fraction:Double):Double=if(list.isEmpty())0.0 else list.sorted()[((list.size-1)*fraction).toInt()].toDouble()
             profiles.put(JSONObject().put("name",name).put("held",held).put("injectedDowns",accepted).put("deliveredDowns",delivered)
                 .put("itemCount",itemCount)
@@ -122,10 +133,11 @@ class NavigationBenchmarkTest:NativeTestBase() {
                 .put("deliveries",JSONArray(ui{deliveries.toList()}))
                 .put("focusP95Ms",p(events.filter{it.getInt("index")>=0}.map{it.getLong("delayMs")},.95))
                 .put("reachedExpected",reachedExpected).put("confirmationWaitAfterLastInputMs",end-lastInput)
-                .put("settleAfterLastInputMs",if(reachedExpected)end-lastInput else JSONObject.NULL).put("elapsedMs",end-start).put("cpuMs",Process.getElapsedCpuTime()-cpu)
+                .put("settleAfterLastInputMs",if(reachedExpected)end-lastInput else JSONObject.NULL).put("elapsedMs",end-start).put("cpuMs",cpuMs)
+                .put("portalLinksBefore",linksBefore).put("portalLinksAfter",linksAfter).put("portalLinkDelta",linksAfter-linksBefore)
                 .put("frames",frames.size).put("totalP95Ms",p(frames.map{it[0]},.95)/1e6).put("layoutP95Ms",p(frames.map{it[1]},.95)/1e6)
                 .put("nonFirstDrawFrames",frames.count{it[3]==0L}).put("framesOverActualDeadline",frames.count{it[3]==0L && it[2]>0 && it[0]>it[2]})
-                .put("metricEventsDropped",frames.sumOf{it[4]}).put("gcBefore",JSONObject(gc)).put("gcAfter",JSONObject(Debug.getRuntimeStats())))
+                .put("metricEventsDropped",frames.sumOf{it[4]}).put("gcBefore",JSONObject(gc)).put("gcAfter",JSONObject(gcAfter)))
             write()
         }
         // Collect every profile (including memory) before the final destination
@@ -137,6 +149,7 @@ class NavigationBenchmarkTest:NativeTestBase() {
         await{ui{(tagged("search-home") as RecyclerView).getChildAt(0) is ShelfCard}}
         val shelf=ui{descendants(tagged("search-home")!!).filterIsInstance<ShelfCard>().first{it.shelfName=="My list"}}
         await{ui{shelf.list.adapter?.itemCount==90 && shelf.list.childCount>0}}
+        val linksBeforeInput=portalLinks();result.put("portalLinksBeforeInput",linksBeforeInput)
         result.put("initialMemory",memory());profile(shelf.list,"on-demand posters",KeyEvent.KEYCODE_DPAD_RIGHT)
         profile(shelf.list,"on-demand posters",KeyEvent.KEYCODE_DPAD_RIGHT,held=true)
         ui{a.model.top(Section.YOUTUBE)};await{tagged("youtube-page")?.isShown==true && ui{!a.model.youtube.busy}}
@@ -155,16 +168,26 @@ class NavigationBenchmarkTest:NativeTestBase() {
         await{ui{a.model.youtube.homeShelves.size==10 && home.adapter?.itemCount==10 && !home.hasPendingAdapterUpdates() &&
             (home.findViewHolderForAdapterPosition(0)?.itemView as? YouTubeShelfView)?.shelfKey=="vertical-0"}}
         profile(home,"YouTube vertical shelves",KeyEvent.KEYCODE_DPAD_DOWN,count=8)
+        val linksBeforeLiveSetup=portalLinks();result.put("portalLinksBeforeLiveSetup",linksBeforeLiveSetup)
         val provider=Provider("navigation-benchmark","Generated navigation portal","$base/stalker_portal/",mac="00:1A:79:00:00:01")
         ui{a.model.showProfiles();a.model.saveProvider(provider);a.model.open(Route.Channels(provider))}
-        await{ui{!a.model.busy && a.model.channels.size==6000} && tagged("channels")?.isShown==true}
+        await{ui{!a.model.busy && a.model.channels.size==6000 && a.activePlayer==null} && tagged("channels")?.isShown==true}
+        val linksBeforeLiveInput=portalLinks();result.put("portalLinksBeforeLiveInput",linksBeforeLiveInput)
         val channels=tagged("channels") as RecyclerView
         profile(channels,"Live channels",KeyEvent.KEYCODE_DPAD_DOWN,count=24)
         profile(channels,"Live channels",KeyEvent.KEYCODE_DPAD_DOWN,count=24,held=true)
-        result.put("retainedMemory",memory()).put("portalLinks",JSONObject(http("/__state")).getInt("portal_links"));write()
-        assertEquals("Navigation must not tune a channel",0,result.getInt("portalLinks"))
+        val retained=memory();val linksAfterInput=portalLinks()
+        // Keep absolute process totals for audit, but assert only requests made
+        // by this journey. A previous test's intentional tune is not a regression.
+        result.put("retainedMemory",retained).put("portalLinks",linksAfterInput).put("portalLinksAfterInput",linksAfterInput)
+            .put("portalLinkDelta",linksAfterInput-linksBeforeInput).put("liveSetupPortalLinkDelta",linksBeforeLiveInput-linksBeforeLiveSetup)
+            .put("liveInputPortalLinkDelta",linksAfterInput-linksBeforeLiveInput);write()
+        assertEquals("Opening the generated Live list must not tune",0,result.getInt("liveSetupPortalLinkDelta"))
+        assertEquals("Navigation must not tune a channel",0,result.getInt("portalLinkDelta"))
         for(index in 0 until profiles.length()) {
             val measured=profiles.getJSONObject(index)
+            assertEquals("${measured.getString("name")} held=${measured.getBoolean("held")} tuned while focusing or scrolling",
+                0,measured.getInt("portalLinkDelta"))
             assertTrue("${measured.getString("name")} held=${measured.getBoolean("held")}: "+
                 "expected ${measured.getInt("expectedIndex")}, reached ${measured.getInt("achievedIndex")}",measured.getBoolean("reachedExpected"))
         }

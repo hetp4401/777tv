@@ -3,6 +3,28 @@
 - Current user hold during 0.25 navigation work: do not deploy/push any changes
   to the TCL until Het explicitly asks. Continue on the Mac and worker emulators;
   preserve the TV's foreground session and installed 0.24 data.
+- Independent whole-app QA of 0.25.0 is complete: 275 unique fixture scenarios,
+  one real anonymous YouTube Home/library probe (51 recommendations/seven shelves),
+  245 JVM passes/3 opt-in skips, lint zero errors/107 warnings. No TCL actions.
+  QA fixed two runtime-confirmed bugs: Playback now lets nine global media keys
+  continue through existing dispatch while YouTube panels retain native D-pad;
+  StreamChoices caches semantic labels from the canonical committed Stream,
+  with an identity guard, so stale holders cannot poison refreshed-source focus.
+  Preserve these guards and the metadata/renewal/headers/Play/Back regression.
+  The final release APK SHA-256 is
+  `83f3effac99f942acf0632ce144138d122c0888da2cb40ecb96fdd3b39f769c6`.
+  All 68 production and three root build hashes match selected snapshots; the
+  main APK was identical across jobs. Two harness corrections use a newer test
+  APK with that same main APK. Native legacy dialog/Shorts readiness failures,
+  fixture model-replacement/counter errors and worker interruptions are retained
+  in `releases/0.25.0/verification.json`, with successful stricter reruns. Do not
+  claim speculative dialog/queue product fixes. Fixture portal_links is process-
+  cumulative: assert measured deltas, preserving absolute baselines. Fixture
+  account tests must sign in through the active model, rather than replacing it
+  inside a coalesced route change. See `docs/qa-review-0.25.md`. Private evidence,
+  signed test-build chunk runner and independent verdict stay in
+  `.tools/navigation025/qa/`; no signing keys/data were uploaded. Real Google-owner,
+  phone pairing/provider playback and physical-TV acceptance remain untested.
 - 0.25.0/code 33 is a signed local candidate, not installed on the TCL. Native
   lists use 70–140 ms scrolling; nearby cards and pixel-accounted artwork stay
   within bounded caches (8 MiB low-RAM / 16 MiB normal). Keep stream identity
@@ -18,9 +40,10 @@
   wait for the intended focus plus completed layout. Final scrolls animate even
   with worker ValueAnimator scales disabled; discard the instant-scroll prototype.
   `releases/0.25.0/verification.json` records 245 JVM passes/3 opt-in skips,
-  lint zero errors/107 warnings and 126 unique native passes. All 68 production
+  lint zero errors/107 warnings, 275 fixture passes and one real-service pass. All 68 production
   hashes and three root build-config hashes match selected snapshots/release
-  inputs. Paired worker PSS grew about 4.4 MiB; software frame timings do not
+  inputs. The historical isolated navigation sample grew about 4.4 MiB in PSS;
+  the final broader QA process has different warmup/prior work. Software timings do not
   prove physical-TV smoothness. See `docs/navigation-performance-0.25.md`.
   Private evidence stays in `.tools/navigation025/`; no TV actions were taken.
 - 0.24.0/code 32 is installed in place on the TCL. The installed APK was pulled

@@ -22,7 +22,8 @@ class PerformanceTest:NativeTestBase(){
         File(dir,"native-gfx.txt").writeText(device.executeShellCommand("dumpsys gfxinfo xyz.billybishop4.fleet.tv framestats"))
         File(dir,"native-memory.txt").writeText(device.executeShellCommand("dumpsys meminfo xyz.billybishop4.fleet.tv"))
         val report=ui{JSONObject().put("manufacturer",Build.MANUFACTURER).put("model",Build.MODEL).put("androidApi",Build.VERSION.SDK_INT)
-            .put("channels",a.model.channels.size).put("attachedChannelViews",grid.childCount).put("artworkCacheLimitMiB",24).put("dpadEvents",48)}
+            .put("channels",a.model.channels.size).put("attachedChannelViews",grid.childCount)
+            .put("artworkCacheLimitMiB",(a.artwork.loader.memoryCache?.maxSize?:0)/1024.0/1024.0).put("dpadEvents",48)}
         assertTrue(ui{grid.childCount<40});File(dir,"native-performance.json").writeText(report.toString(2))
     }
 }

@@ -12,7 +12,10 @@ This branch contains the native YouTube integration and continuing TizenTube
 functional review, with independent app and section themes. Version 0.25.0
 improves native scrolling, retains nearby cards and artwork, and reuses episode
 and stream presentation data. YouTube keeps its own player; IPTV and On-Demand
-retain their existing controls. See the [navigation review](docs/navigation-performance-0.25.md).
+retain their existing controls. Independent [whole-app QA](docs/qa-review-0.25.md)
+passes 275 fixture scenarios and a real anonymous YouTube Home/library check,
+with fixes for panel media keys and refreshed-stream focus. See the
+[navigation review](docs/navigation-performance-0.25.md).
 This candidate is **not deployed to the TCL**. The user has requested a hold;
 development and validation use the Mac and worker emulators. The TV's last
 installed version remains 0.24.0; its foreground session and data are preserved.

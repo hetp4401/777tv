@@ -31,7 +31,10 @@ episode buttons six. Decoder concurrency, artwork disk-cache size, playback
 buffers, add-ons and saved preferences are unchanged. The APK adds 6,928 bytes
 and no dependency, native library or additional player.
 
-The matched comparison uses production 0.24.0 at `dcf4336` and this candidate on
+The isolated comparison below was recorded at navigation commit `82e0421`, before
+the two later [whole-app QA fixes](qa-review-0.25.md). The final build retains the
+same scrolling policy and cache budgets. It compares production 0.24.0 at
+`dcf4336` with that navigation candidate on
 the same API 36 x86_64 KVM worker instance with SwiftShader, generated distinct
 HTTP artwork and asynchronous window-delivered D-pad events. Horizontal profiles
 send 18 Right presses, vertical YouTube sends 8 Down presses through ten shelves,
@@ -57,7 +60,12 @@ run from the last injected Down to that confirmation. Each cell shows baseline
 Retained PSS for this complete journey was 170.7 → 175.1 MiB,
 without forcing GC. Whole-process PSS varies with allocator/GC timing; the fixed
 artwork budget is the resource tradeoff, rather than a promised memory saving.
-Both runs made zero channel-link requests while browsing.
+Both isolated runs made zero channel-link requests while browsing. The final
+broader QA process retained 183.8 MiB after this journey with different warmup
+and prior test work; that sample does not establish a causal memory increase.
+The final audited run reaches all seven destinations and adds zero links per
+profile, Live setup/input and the complete measured journey. Its cumulative
+fixture counter started and ended at 15 following earlier explicit tuning tests.
 
 The separate episode/stream input check also reaches index 18 in every profile.
 Streams' p95 focus delay was 174 → 99 ms for taps and 119 → 94 ms held;
@@ -75,12 +83,15 @@ the user's instruction to deploy.
 
 Validation: 245 JVM passes, three opt-in skips,
 lint with zero errors/107 warnings, and
-126 unique native fixture scenarios. Coverage includes metadata refresh,
+275 unique native fixture scenarios plus a successful real anonymous YouTube
+Home/library check. Coverage includes metadata refresh,
 season/episode rollover, stream identity renewal and resume focus, search,
 YouTube rail/grid/shelf bounds and reversals, deferred/canceled OK, source removal,
 Back, cached Live favorites/preview marks, settings, themes and watch panels.
-All 68 production file hashes plus three root build-configuration hashes
-match the selected emulator snapshots and local release inputs.
+All 68 final production hashes plus three root build configurations match the
+selected emulator snapshots and local release inputs. The verification separates
+the historical isolated performance comparison, final broad-process samples,
+corrected test audits and full regression verdict.
 
 The first vertical benchmark mistakenly requested eight moves through a fixture
 which the production 120-video limit reduced to five shelves. Its result was

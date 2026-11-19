@@ -283,8 +283,14 @@ private class StreamChoices(private val a:MainActivity,private val showErrors:Bo
             if(generation==a.focusInputGeneration)focusRestore.start { sourceAt(0) }
         }
     }
-    private fun semanticLabel(stream:Stream):String=if(sourceIndices.containsKey(stream.identity))
-        semanticLabels.getOrPut(stream.identity){streamSemantic(stream)} else streamSemantic(stream)
+    private fun semanticLabel(stream:Stream):String {
+        val identity=stream.identity
+        val committed=sourceIndices[identity]?.let{adapter.currentList.getOrNull(it)}?.takeIf{it.identity==identity}
+        // A committed metadata diff can precede its holder rebind. Focus from
+        // that old holder must not cache its old label for the current source.
+        return if(committed==null)streamSemantic(stream)
+            else semanticLabels.getOrPut(identity){streamSemantic(committed)}
+    }
     private fun streamsCommitted():Boolean = !m.streamsBusy && submittedModelStreams===m.streams &&
         // currentList is an unmodifiable wrapper, so retain the exact committed
         // wrapper as well as its revision instead of rescanning it every frame.

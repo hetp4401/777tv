@@ -495,8 +495,13 @@ internal class NativePlayback(private val a: MainActivity, private val m: FleetM
         if(!fullscreen)return false
         if(youtubePanel?.visible==true) {
             // Native panel descendants handle navigation; global media buttons still reach the same player.
-            return if(event.keyCode in setOf(KeyEvent.KEYCODE_MEDIA_PLAY,KeyEvent.KEYCODE_MEDIA_PAUSE,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
-                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,KeyEvent.KEYCODE_MEDIA_REWIND))controls?.dispatchKey(event)?:false else false
+            when(event.keyCode) {
+                KeyEvent.KEYCODE_MEDIA_PLAY,KeyEvent.KEYCODE_MEDIA_PAUSE,KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,KeyEvent.KEYCODE_MEDIA_REWIND,
+                KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD,KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD,
+                KeyEvent.KEYCODE_MEDIA_NEXT,KeyEvent.KEYCODE_MEDIA_PREVIOUS->Unit
+                else->return false
+            }
         }
         if(original.short &&
             event.keyCode in setOf(KeyEvent.KEYCODE_DPAD_UP,KeyEvent.KEYCODE_DPAD_DOWN,KeyEvent.KEYCODE_MEDIA_NEXT,KeyEvent.KEYCODE_MEDIA_PREVIOUS)) {
